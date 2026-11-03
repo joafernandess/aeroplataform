@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AERO — Admin Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238587ff' d='M12 2 2 22h20L12 2zm0 6 5.5 12h-11L12 8z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="aurora aurora-1"></div>
+<div class="aurora aurora-2"></div>
+<div class="dot-grid"></div>
+
+<!-- ============================== LOGIN ============================== -->
+<div id="login-view" class="login-wrap">
+  <form id="login-form" class="login-card" autocomplete="off">
+    <img class="login-mark" src="aero-logo.svg" alt="">
+    <div class="login-logo">AERO</div>
+    <div class="login-sub">Admin Dashboard</div>
+    <label class="field">
+      <span>Email</span>
+      <input type="email" id="login-email" required placeholder="admin@yourdomain">
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input type="password" id="login-password" required placeholder="••••••••">
+    </label>
+    <div id="login-error" class="login-error" hidden></div>
+    <button type="submit" class="btn btn-primary btn-block" id="login-submit">Sign in</button>
+    <p class="login-hint">First run? Use the bootstrap credentials from your <code>.env</code>.</p>
+  </form>
+</div>
+
+<!-- ============================== APP ============================== -->
+<div id="app-view" hidden>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="brand"><img class="brand-logo" src="aero-logo.svg" alt=""><div class="brand-text"><span class="brand-mark">AERO</span><span class="brand-sub">control panel</span></div></div>
+      <button class="nav-btn active" data-view="overview">Overview</button>
+      <button class="nav-btn" data-view="keys">Keys</button>
+      <button class="nav-btn" data-view="scripts">Scripts</button>
+      <button class="nav-btn" data-view="catalog">Catalog</button>
+      <button class="nav-btn" data-view="users">Users</button>
+      <button class="nav-btn" data-view="sales">Sales</button>
+      <button class="nav-btn" data-view="activity">Activity</button>
+      <button class="nav-btn" data-view="settings">Settings</button>
+      <div class="sidebar-foot">
+        <div id="api-status" class="api-status">API: checking…</div>
+      </div>
+    </nav>
+
+    <main class="main">
+      <header class="topbar">
+        <h1 id="view-title">Overview</h1>
+        <div class="topbar-right">
+          <span id="must-change-note" class="must-change" hidden>⚠ Password change required</span>
+          <span id="whoami" class="whoami"></span>
+          <button id="logout-btn" class="btn btn-ghost btn-sm">Log out</button>
+        </div>
+      </header>
+
+      <!-- =========== OVERVIEW =========== -->
+      <section id="view-overview" class="view">
+        <div class="stat-grid" id="stat-grid"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head"><h2>Recent authentication events</h2></div>
+            <table class="table" id="ov-events"><thead>
+              <tr><th>Time</th><th>Kind</th><th>Result</th><th>Key</th><th>Reason</th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Recent admin actions</h2></div>
+            <table class="table" id="ov-audit"><thead>
+              <tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========== KEYS =========== -->
+      <section id="view-keys" class="view" hidden>
+        <div class="toolbar">
+          <button id="keys-gen-btn" class="btn btn-primary">Generate keys</button>
+          <input id="keys-search" class="input" placeholder="Search key / user / note…">
+          <select id="keys-status" class="input">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="banned">Banned</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+          <span id="keys-total" class="muted"></span>
+          <div class="spacer"></div>
+          <button id="keys-prev" class="btn btn-ghost btn-sm">‹ Prev</button>
+          <button id="keys-next" class="btn btn-ghost btn-sm">Next ›</button>
+        </div>
+        <div class="card">
+          <table class="table table-keys" id="keys-table"><thead>
+            <tr>
+              <th>Key</th><th>Status</th><th>Owner</th><th>Product</th>
+              <th>Expires</th><th>Execs</th><th>HWID</th><th>Created</th><th>Actions</th>
+            </tr>
+          </thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <!-- =========== SCRIPTS =========== -->
+      <section id="view-scripts" class="view" hidden>
+        <div class="toolbar">
+          <button id="script-new-btn" class="btn btn-primary">New script</button>
+        </div>
+        <div id="scripts-list" class="scripts-grid"></div>
+      </section>
+
+      <!-- =========== CATALOG =========== -->
+      <section id="view-catalog" class="view" hidden>
+        <div class="three-col">
+          <div class="card">
+            <div class="card-head"><h2>Games</h2><button class="btn btn-ghost btn-sm" id="game-new-btn">+ Add</button></div>
+            <table class="table" id="games-table"><thead>
+              <tr><th>Name</th><th>Place IDs</th><th>Active</th><th></th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Licenses</h2><button class="btn btn-ghost btn-sm" id="license-new-btn">+ Add</button></div>
+            <table class="table" id="licenses-table"><thead>
+              <tr><th>Name</th><th>Days</th><th>Price</th><th></th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Products</h2><button class="btn btn-ghost btn-sm" id="product-new-btn">+ Add</button></div>
+            <table class="table" id="products-table"><thead>
+              <tr><th>Name</th><th>Game</th><th>License</th><th>Price</th><th></th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========== USERS =========== -->
+      <section id="view-users" class="view" hidden>
+        <div class="toolbar">
+          <input id="users-search" class="input" placeholder="Search user / Discord ID…">
+          <span id="users-total" class="muted"></span>
+          <div class="spacer"></div>
+          <button id="users-prev" class="btn btn-ghost btn-sm">‹ Prev</button>
+          <button id="users-next" class="btn btn-ghost btn-sm">Next ›</button>
+        </div>
+        <div class="card">
+          <table class="table" id="users-table"><thead>
+            <tr><th>Discord ID</th><th>Name</th><th>Keys</th><th>Active</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+          </thead><tbody></tbody></table>
+        </div>
+        <div class="card" id="user-detail-card" hidden>
+          <div class="card-head">
+            <h2 id="user-detail-title"></h2>
+            <div>
+              <button class="btn btn-ghost btn-sm" id="user-detail-close">× Close</button>
+            </div>
+          </div>
+          <div class="two-col">
+            <div>
+              <h3 class="subhead">Keys</h3>
+              <table class="table" id="user-key-table"><thead>
+                <tr><th>Key</th><th>Status</th><th>Expires</th><th>Execs</th></tr>
+              </thead><tbody></tbody></table>
+            </div>
+            <div>
+              <h3 class="subhead">Access history</h3>
+              <table class="table" id="user-event-table"><thead>
+                <tr><th>Time</th><th>Kind</th><th>Result</th><th>Reason</th></tr>
+              </thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div class="user-detail-foot">
+            <textarea id="user-notes" class="input" rows="2" placeholder="Internal notes…"></textarea>
+            <button id="user-notes-save" class="btn btn-sm">Save notes</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========== SALES =========== -->
+      <section id="view-sales" class="view" hidden>
+        <div class="toolbar">
+          <button id="sale-new-btn" class="btn btn-primary">Record sale</button>
+          <span class="muted" id="sales-totals"></span>
+        </div>
+        <div class="card">
+          <table class="table" id="sales-table"><thead>
+            <tr><th>Date</th><th>Buyer</th><th>Discord ID</th><th>Game</th><th>Product</th><th>Amount</th><th>Status</th></tr>
+          </thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <!-- =========== ACTIVITY =========== -->
+      <section id="view-activity" class="view" hidden>
+        <div class="toolbar">
+          <select id="ev-kind" class="input">
+            <option value="">All event kinds</option>
+            <option>execute_ok</option><option>loader_auth</option><option>heartbeat</option>
+            <option>rate_limited</option><option>dash_login</option><option>dash_login_failed</option>
+            <option>autokick_denied</option>
+          </select>
+          <button id="ev-reload" class="btn btn-ghost btn-sm">Reload</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Auth events</h2></div>
+          <table class="table" id="events-table"><thead>
+            <tr><th>Time</th><th>Kind</th><th>Result</th><th>Key</th><th>HWID</th><th>IP</th><th>Reason / detail</th></tr>
+          </thead><tbody></tbody></table>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Audit log</h2></div>
+          <table class="table" id="audit-table"><thead>
+            <tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr>
+          </thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <!-- =========== SETTINGS =========== -->
+      <section id="view-settings" class="view" hidden>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head"><h2>API tokens</h2><button class="btn btn-ghost btn-sm" id="token-new-btn">+ New token</button></div>
+            <p class="hint">Service tokens authenticate the Discord bot. Loader tokens are delivery-only. The full token is shown <b>only once</b> at creation.</p>
+            <table class="table" id="tokens-table"><thead>
+              <tr><th>Name</th><th>Role</th><th>Prefix</th><th>Last used</th><th>Status</th><th></th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Dashboard accounts</h2><button class="btn btn-ghost btn-sm" id="dash-user-new-btn">+ New account</button></div>
+            <table class="table" id="dash-users-table"><thead>
+              <tr><th>Email</th><th>Role</th><th>Last login</th><th>Status</th></tr>
+            </thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Change my password</h2></div>
+            <div class="form-grid">
+              <label class="field"><span>Current password</span><input type="password" id="pw-old" class="input"></label>
+              <label class="field"><span>New password (min 8 chars)</span><input type="password" id="pw-new" class="input"></label>
+              <button id="pw-save" class="btn">Update password</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Loader endpoint</h2></div>
+            <p class="hint">Your users execute this in the game — it fetches the real loader from your backend:</p>
+            <div class="copy-row"><code id="loader-url"></code><button class="btn btn-ghost btn-sm" data-copy="loader-url">Copy</button></div>
+            <p class="hint">API health:</p>
+            <div class="copy-row"><code id="health-url"></code><button class="btn btn-ghost btn-sm" data-copy="health-url">Copy</button></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ============================== MODAL ============================== -->
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <div class="modal" id="modal"></div>
+</div>
+<div id="toast-wrap" class="toast-wrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
