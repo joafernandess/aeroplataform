@@ -22,7 +22,7 @@ local function fakeVisuals()
 		end,
 		Update = function() end,
 		Destroy = function() end,
-		GetSpawnCFrame = function()
+		GetAreaCenter = function()
 			return nil
 		end,
 	}
