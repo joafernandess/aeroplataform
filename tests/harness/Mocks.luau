@@ -94,6 +94,7 @@ function Mocks.FakePlayer(userId: number, name: string?)
 		Parent = true,
 		Kicked = nil,
 		_attributes = {},
+		CharacterAdded = Mocks.FakeSignal(),
 	}
 	function player:Kick(message)
 		self.Kicked = message or true
@@ -242,7 +243,7 @@ function Mocks.create(runtime)
 		return if wrap == false then guid else "{" .. guid .. "}"
 	end
 
-	local marketplace = { Owned = {} }
+	local marketplace = { Owned = {}, PromptGamePassPurchaseFinished = Mocks.FakeSignal() }
 	function marketplace:UserOwnsGamePassAsync(userId, passId)
 		return self.Owned[userId .. ":" .. passId] == true
 	end

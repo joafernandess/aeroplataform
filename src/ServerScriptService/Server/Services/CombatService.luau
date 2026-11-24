@@ -132,7 +132,7 @@ function CombatService:_dealDamage(player, state, stats, playerMultiplier: numbe
 	return dealt
 end
 
-function CombatService:_resolveTarget(player, state, zoneKey: string, origin: Vector3, range: number, autoAttack: boolean)
+function CombatService:_resolveTarget(_player, state, zoneKey: string, origin: Vector3, range: number, autoAttack: boolean)
 	if state.Target then
 		local enemy = EnemyService:GetEnemy(state.Target)
 		if enemy and enemy.Alive and enemy.ZoneKey == zoneKey then

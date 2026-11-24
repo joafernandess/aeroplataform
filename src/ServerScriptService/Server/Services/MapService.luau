@@ -78,9 +78,9 @@ function MapService:BuildGreybox(): Folder
 		local spawnPos = vec(world.Spawn)
 		local theme = Color3.fromRGB(world.Theme[1], world.Theme[2], world.Theme[3])
 
-		part({ Name = "Ground", Size = Vector3.new(460, 2, 340), Position = Vector3.new(spawnPos.X + 130, 0, 0), Color = theme, Material = Enum.Material.Grass, Parent = folder })
+		part({ Name = "Ground", Size = Vector3.new(460, 2, 340), CFrame = CFrame.new(spawnPos.X + 130, 0, 0), Color = theme, Material = Enum.Material.Grass, Parent = folder })
 
-		local spawnPad = part({ Name = "Spawn", Size = Vector3.new(14, 1, 14), Position = spawnPos - Vector3.new(0, 3.5, 0), Color = Color3.fromRGB(240, 240, 240), Material = Enum.Material.Neon, CanCollide = true, Parent = folder })
+		local spawnPad = part({ Name = "Spawn", Size = Vector3.new(14, 1, 14), CFrame = CFrame.new(spawnPos - Vector3.new(0, 3.5, 0)), Color = Color3.fromRGB(240, 240, 240), Material = Enum.Material.Neon, CanCollide = true, Parent = folder })
 		addLabel(spawnPad, world.Name)
 
 		local areas = Instance.new("Folder")
@@ -95,7 +95,7 @@ function MapService:BuildGreybox(): Folder
 		npcs.Name = "NPCs"
 		npcs.Parent = folder
 		for _, npc in world.NPCs do
-			local body = part({ Name = npc.Id, Size = Vector3.new(4, 7, 4), Position = vec(npc.Position) + Vector3.new(0, 2.5, 0), Color = ROLE_COLORS[npc.Role] or Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, Parent = npcs })
+			local body = part({ Name = npc.Id, Size = Vector3.new(4, 7, 4), CFrame = CFrame.new(vec(npc.Position) + Vector3.new(0, 2.5, 0)), Color = ROLE_COLORS[npc.Role] or Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, Parent = npcs })
 			body:SetAttribute("Role", npc.Role)
 			body:SetAttribute("WorldId", world.Id)
 			addLabel(body, npc.Name)
@@ -116,11 +116,11 @@ function MapService:BuildGreybox(): Folder
 	arenas.Name = "RaidArenas"
 	arenas.Parent = root
 	for slot = 0, 7 do
-		part({ Name = "Arena" .. slot, Size = Vector3.new(160, 2, 160), Position = origin + Vector3.new(slot * 400, -4, 30), Color = Color3.fromRGB(40, 20, 60), Material = Enum.Material.Slate, Parent = arenas })
+		part({ Name = "Arena" .. slot, Size = Vector3.new(160, 2, 160), CFrame = CFrame.new(origin + Vector3.new(slot * 400, -4, 30)), Color = Color3.fromRGB(40, 20, 60), Material = Enum.Material.Slate, Parent = arenas })
 	end
 	local w3 = Worlds.Get("W3")
 	if w3 then
-		local raidNpc = part({ Name = "RaidGate", Size = Vector3.new(6, 10, 2), Position = vec(w3.Spawn) + Vector3.new(-25, 1.5, 45), Color = ROLE_COLORS.Raid, Material = Enum.Material.Neon, Parent = root:FindFirstChild("W3") })
+		local raidNpc = part({ Name = "RaidGate", Size = Vector3.new(6, 10, 2), CFrame = CFrame.new(vec(w3.Spawn) + Vector3.new(-25, 1.5, 45)), Color = ROLE_COLORS.Raid, Material = Enum.Material.Neon, Parent = root:FindFirstChild("W3") })
 		addLabel(raidNpc, "Raid Gate")
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Raids"

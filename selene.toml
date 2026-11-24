@@ -1,0 +1,5 @@
+std = "roblox_lite"
+
+[lints]
+# Services use `self` methods heavily; shadowing of `_` placeholders is intentional.
+shadowing = "allow"
