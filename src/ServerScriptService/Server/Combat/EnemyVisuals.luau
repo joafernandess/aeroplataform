@@ -102,7 +102,8 @@ function EnemyVisuals.Create(enemy): Model?
 		end
 	end
 	if model.PrimaryPart then
-		model:PivotTo(CFrame.new(enemy.Position + Vector3.new(0, model.PrimaryPart.Size.Y / 2, 0)))
+		-- Config positions are 1 stud above ground level (ground top = Y - 1), so rest the model on the ground.
+		model:PivotTo(CFrame.new(enemy.Position + Vector3.new(0, model.PrimaryPart.Size.Y / 2 - 1, 0)))
 	end
 	model.Parent = getFolder()
 	return model

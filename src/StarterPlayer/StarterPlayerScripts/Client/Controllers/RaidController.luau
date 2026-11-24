@@ -30,7 +30,7 @@ function RaidController:Render()
 		return
 	end
 	C.Clear(self.List)
-	local now = os.time()
+	local now = math.floor(workspace:GetServerTimeNow())
 	for i, raid in Raids.List do
 		local row = C.Frame(self.List, { Size = UDim2.new(1, -8, 0, 96), BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = i })
 		C.Corner(row)
@@ -57,7 +57,7 @@ function RaidController:RenderHUD()
 		return
 	end
 	local raid = Raids.Get(active.Raid)
-	local remaining = math.max(0, (active.EndsAt or os.time()) - os.time())
+	local remaining = math.max(0, (active.EndsAt or math.floor(workspace:GetServerTimeNow())) - math.floor(workspace:GetServerTimeNow()))
 	self.HUDTitle.Text = (if raid then raid.Name else "Raid") .. ("  •  Wave %d/%d"):format(active.Wave or 0, active.Waves or 0)
 	self.HUDInfo.Text = ("Time left: %s  •  Enemies: %d"):format(NumberFormat.Duration(remaining), active.Remaining or 0)
 end

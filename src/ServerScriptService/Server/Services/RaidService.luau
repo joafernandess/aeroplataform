@@ -235,7 +235,7 @@ function RaidService:StartRaid(player, raidId: string): (boolean, any)
 		if self.Services.CombatService then
 			self.Services.CombatService:ClearTarget(player)
 		end
-		PlayerUtil.Teleport(player, instance.Origin)
+		PlayerUtil.Teleport(player, instance.Origin + Vector3.new(0, 3, 0))
 		self:_spawnWave(instance)
 		return true, { Instance = instance.Id, Raid = raidId, EndsAt = instance.EndsAt, Waves = #def.Waves }
 	end)

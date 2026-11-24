@@ -58,6 +58,16 @@ return function(t)
 			expect(Unit:GetEquipSlots(player)).toBe(5)
 		end)
 
+		t.it("only the first EquipSlots units fight when slots shrink", function()
+			local _, player, data, Unit = setup()
+			for _ = 1, 4 do
+				local _, u = Unit:CreateUnit(player, "SS_Hikari")
+				table.insert(data.EquippedUnits, u.Uid)
+			end
+			expect(#data.EquippedUnits).toBe(5)
+			expect(#Unit:GetEquippedUnits(player)).toBe(3)
+		end)
+
 		t.it("equips the strongest units with EquipBest", function()
 			local h, player, data, Unit = setup()
 			local _, best = Unit:CreateUnit(player, "SS_Kurogane", { Trait = "Strong" })

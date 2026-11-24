@@ -2,6 +2,7 @@
 	Worlds
 	Each world is pure data: add a new table here (plus its enemies/units/banner) and every system picks it up.
 
+	Coordinate convention: Y = 3 is "one stud above the ground" (greybox ground top is Y = 2).
 	Positions are plain {x, y, z} arrays so the config is Roblox-free. If the map built in Studio contains
 	Workspace.Worlds.<WorldId>.Spawn (a BasePart) or Workspace.Worlds.<WorldId>.SpawnAreas.<AreaId>, those parts
 	override the coordinates below (see WorldService / EnemyService).
@@ -129,7 +130,7 @@ for _, def in list do
 end
 
 -- Raid arenas live far away from the worlds so they never overlap.
-Worlds.RaidArenaOrigin = { 0, 5, 3000 }
+Worlds.RaidArenaOrigin = { 0, 3, 3000 }
 
 function Worlds.Get(id: string): WorldDef?
 	return Worlds.ById[id]

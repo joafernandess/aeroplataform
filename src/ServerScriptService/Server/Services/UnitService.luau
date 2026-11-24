@@ -124,11 +124,17 @@ function UnitService:GetEquippedUnits(player): { any }
 	if not data then
 		return {}
 	end
+	-- Only the first GetEquipSlots() units count: if slots shrink (e.g. a game pass is refunded) the extra
+	-- equipped units stay in the list but don't fight until the player re-arranges them.
+	local slots = self:GetEquipSlots(player)
 	local out = {}
 	for _, uid in data.EquippedUnits do
 		local unit = data.Inventory.Units[uid]
 		if unit then
 			table.insert(out, unit)
+			if #out >= slots then
+				break
+			end
 		end
 	end
 	return out

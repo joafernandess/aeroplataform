@@ -78,16 +78,24 @@ function MapService:BuildGreybox(): Folder
 		local spawnPos = vec(world.Spawn)
 		local theme = Color3.fromRGB(world.Theme[1], world.Theme[2], world.Theme[3])
 
-		part({ Name = "Ground", Size = Vector3.new(460, 2, 340), CFrame = CFrame.new(spawnPos.X + 130, 0, 0), Color = theme, Material = Enum.Material.Grass, Parent = folder })
+		part({ Name = "Ground", Size = Vector3.new(460, 2, 340), CFrame = CFrame.new(spawnPos.X + 130, 1, 0), Color = theme, Material = Enum.Material.Grass, Parent = folder })
 
-		local spawnPad = part({ Name = "Spawn", Size = Vector3.new(14, 1, 14), CFrame = CFrame.new(spawnPos - Vector3.new(0, 3.5, 0)), Color = Color3.fromRGB(240, 240, 240), Material = Enum.Material.Neon, CanCollide = true, Parent = folder })
+		-- The first world's pad is a real SpawnLocation so characters spawn on the map, not in the void.
+		local spawnPad = Instance.new(if world.Order == 1 then "SpawnLocation" else "Part")
+		spawnPad.Name = "Spawn"
+		spawnPad.Anchored = true
+		spawnPad.Size = Vector3.new(14, 1, 14)
+		spawnPad.CFrame = CFrame.new(Vector3.new(spawnPos.X, 2.5, spawnPos.Z))
+		spawnPad.Color = Color3.fromRGB(240, 240, 240)
+		spawnPad.Material = Enum.Material.Neon
+		spawnPad.Parent = folder
 		addLabel(spawnPad, world.Name)
 
 		local areas = Instance.new("Folder")
 		areas.Name = "SpawnAreas"
 		areas.Parent = folder
 		for _, area in world.SpawnAreas do
-			local marker = part({ Name = area.Id, Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, area.Radius * 2, area.Radius * 2), CFrame = CFrame.new(vec(area.Center) - Vector3.new(0, 1.8, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = theme:Lerp(Color3.new(0, 0, 0), 0.25), CanCollide = false, Material = Enum.Material.SmoothPlastic, Parent = areas })
+			local marker = part({ Name = area.Id, Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, area.Radius * 2, area.Radius * 2), CFrame = CFrame.new(vec(area.Center) - Vector3.new(0, 0.95, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = theme:Lerp(Color3.new(0, 0, 0), 0.25), CanCollide = false, Material = Enum.Material.SmoothPlastic, Parent = areas })
 			marker.Transparency = 0.3
 		end
 
@@ -116,7 +124,7 @@ function MapService:BuildGreybox(): Folder
 	arenas.Name = "RaidArenas"
 	arenas.Parent = root
 	for slot = 0, 7 do
-		part({ Name = "Arena" .. slot, Size = Vector3.new(160, 2, 160), CFrame = CFrame.new(origin + Vector3.new(slot * 400, -4, 30)), Color = Color3.fromRGB(40, 20, 60), Material = Enum.Material.Slate, Parent = arenas })
+		part({ Name = "Arena" .. slot, Size = Vector3.new(160, 2, 160), CFrame = CFrame.new(origin + Vector3.new(slot * 400, -2, 30)), Color = Color3.fromRGB(40, 20, 60), Material = Enum.Material.Slate, Parent = arenas })
 	end
 	local w3 = Worlds.Get("W3")
 	if w3 then

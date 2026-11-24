@@ -57,7 +57,7 @@ function QuestController:RenderQuests(data)
 		C.Label(self.List, "All main quests completed!", { TextColor3 = Theme.Colors.Good, LayoutOrder = 1 })
 	end
 
-	local resetIn = Clock.SecondsUntilNextDay(os.time(), GameConfig.Quests.DailyResetOffsetSeconds)
+	local resetIn = Clock.SecondsUntilNextDay(math.floor(workspace:GetServerTimeNow()), GameConfig.Quests.DailyResetOffsetSeconds)
 	C.Label(self.List, "Daily Quests  (reset in " .. NumberFormat.Duration(resetIn) .. ")", { Font = Theme.Fonts.Title, TextSize = 18, LayoutOrder = 10 })
 	local ids = {}
 	for questId in data.Quests.Active do

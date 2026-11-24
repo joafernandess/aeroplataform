@@ -70,7 +70,7 @@ function HUDController:RenderBuffs()
 		return
 	end
 	C.Clear(self.BuffList)
-	local now = os.time()
+	local now = math.floor(workspace:GetServerTimeNow())
 	for stat, boost in data.ActiveBoosts or {} do
 		local remaining = boost.ExpiresAt - now
 		if remaining > 0 then
