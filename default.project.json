@@ -1,0 +1,20 @@
+{
+  "name": "AnimeFighters",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": { "$path": "src/ReplicatedStorage/Shared" }
+    },
+    "ServerScriptService": {
+      "Server": { "$path": "src/ServerScriptService/Server" }
+    },
+    "ServerStorage": {
+      "Assets": { "$path": "src/ServerStorage/Assets" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": { "$path": "src/StarterPlayer/StarterPlayerScripts/Client" }
+      }
+    }
+  }
+}
