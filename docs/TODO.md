@@ -11,6 +11,11 @@ Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 - [ ] [Código] Preencher `GameConfig.Admin.UserIds` com os UserIds dos administradores.
 - [ ] [Código/Design] Balanceamento: custos de mundos, HP de inimigos, taxas de banner (planilha recomendada).
 
+## UI
+- [ ] [Studio] Conferir o preview contra o Studio real (fontes Gotham, tamanhos de texto em telas reais).
+- [ ] [Código] Layouts dedicados para celular (no celular as janelas encolhem para ~60% e o texto fica pequeno).
+- [ ] [Código/Arte] Ícones e retratos das unidades nos cards (hoje só texto).
+
 ## Conteúdo / arte
 - [ ] [Studio] Mapas reais dos 5 mundos (`Workspace.Worlds.*`, ver convenções em `STUDIO_SETUP.md`).
 - [ ] [Studio] Modelos de inimigos (`ServerStorage/Assets/Enemies/<Id>`) e unidades (`ReplicatedStorage/Assets/Units/<Id>`).

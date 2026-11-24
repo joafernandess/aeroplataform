@@ -95,6 +95,10 @@ function InventoryController:Render()
 		Delete = "DELETE: select units to sell, then Confirm",
 	}
 	self.ModeLabel.Text = modeText[self.Mode]
+	local selecting = self.Mode ~= "Browse"
+	self.ModeBar.Visible = selecting
+	self.Grid.Position = UDim2.fromOffset(0, if selecting then 72 else 40)
+	self.Grid.Size = UDim2.new(0.58, 0, 1, if selecting then -72 else -40)
 	self.ConfirmButton.Visible = self.Mode ~= "Browse"
 	self.CancelButton.Visible = self.Mode ~= "Browse"
 
@@ -235,7 +239,8 @@ function InventoryController:Init(controllers)
 	end, { Size = UDim2.fromOffset(90, 32), TextSize = 13, LayoutOrder = 3, BackgroundColor3 = Theme.Colors.Bad })
 	self.CapacityLabel = C.Label(toolbar, "", { Size = UDim2.fromOffset(120, 32), TextSize = 13, LayoutOrder = 4, TextColor3 = Theme.Colors.TextDim })
 
-	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 38), Size = UDim2.new(0.58, 0, 0, 30) })
+	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 38), Size = UDim2.new(0.58, 0, 0, 30), Visible = false })
+	self.ModeBar = modeBar
 	self.ModeLabel = C.Label(modeBar, "", { Size = UDim2.new(1, -170, 1, 0), TextSize = 12, TextColor3 = Theme.Colors.Accent, Font = Theme.Fonts.Bold, TextWrapped = true })
 	self.ConfirmButton = C.Button(modeBar, "Confirm", function()
 		self:Confirm()

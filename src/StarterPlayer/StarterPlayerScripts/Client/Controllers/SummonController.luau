@@ -45,6 +45,7 @@ end
 function SummonController:PlayReveal(results)
 	local overlay = self.Controllers.UIController.Overlay
 	local panel = C.Frame(overlay, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(620, 330), BackgroundColor3 = Theme.Colors.Background, ZIndex = 51 })
+	self.Controllers.UIController:AddScaled(panel, "Window")
 	C.Corner(panel)
 	C.Stroke(panel, Theme.Colors.Accent, 2)
 	C.Label(panel, "Summon Results", { Position = UDim2.fromOffset(16, 8), Font = Theme.Fonts.Title, TextSize = 22, ZIndex = 52, Size = UDim2.new(1, -32, 0, 30) })

@@ -84,7 +84,7 @@ end
 function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: { [string]: any }?)
 	local button = C.Create("TextButton", {
 		AutoButtonColor = true,
-		BackgroundColor3 = Theme.Colors.PanelLight,
+		BackgroundColor3 = Theme.Colors.Button,
 		Text = text,
 		TextColor3 = Theme.Colors.Text,
 		Font = Theme.Fonts.Bold,
@@ -107,6 +107,7 @@ function C.Scroll(parent: Instance, props: { [string]: any }?)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
+		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar, -- content never sits under the scrollbar
 		ScrollBarImageColor3 = Theme.Colors.Stroke,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
@@ -119,10 +120,10 @@ function C.Scroll(parent: Instance, props: { [string]: any }?)
 	return scroll
 end
 
--- Removes every child except layouts/padding/corners.
+-- Removes every child except UI components (layouts, padding, corners, strokes, UIScale, constraints).
 function C.Clear(container: Instance)
 	for _, child in container:GetChildren() do
-		if not (child:IsA("UIGridStyleLayout") or child:IsA("UIPadding") or child:IsA("UICorner") or child:IsA("UIStroke")) then
+		if not child:IsA("UIComponent") then
 			child:Destroy()
 		end
 	end
@@ -154,7 +155,7 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 	local api = {}
 	function api.Select(name: string)
 		for tabName, button in buttons do
-			button.BackgroundColor3 = if tabName == name then Theme.Colors.Accent else Theme.Colors.PanelLight
+			button.BackgroundColor3 = if tabName == name then Theme.Colors.Accent else Theme.Colors.Button
 			button.TextColor3 = if tabName == name then Theme.Colors.Background else Theme.Colors.Text
 		end
 		onSelect(name)

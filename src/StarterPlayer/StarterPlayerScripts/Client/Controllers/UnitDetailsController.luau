@@ -44,8 +44,9 @@ end
 
 local function statLine(parent, label: string, value: string, order: number, color: Color3?)
 	local row = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = order })
-	C.Label(row, label, { Size = UDim2.new(0.5, 0, 1, 0), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
-	C.Label(row, value, { Position = UDim2.fromScale(0.5, 0), Size = UDim2.new(0.5, 0, 1, 0), TextSize = 13, Font = Theme.Fonts.Bold, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = color or Theme.Colors.Text })
+	C.Label(row, label, { Size = UDim2.new(0.32, 0, 1, 0), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
+	C.Label(row, value, { Position = UDim2.fromScale(0.32, 0), Size = UDim2.new(0.68, -4, 1, 0), TextSize = 13, Font = Theme.Fonts.Bold, TextXAlignment = Enum.TextXAlignment.Right,
+		TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = color or Theme.Colors.Text })
 end
 
 function UnitDetailsController:Render(container: Frame, uid: string?)

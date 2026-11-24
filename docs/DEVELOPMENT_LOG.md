@@ -51,6 +51,24 @@
   usam o relógio do servidor; alturas do greybox (inimigos, marcadores, arenas); `SpawnLocation` no mapa gerado;
   `MapService` usa `CFrame` em vez de `Position`.
 
+### Preview da UI (sem Studio)
+- Criado `tools/ui-preview/`: executa o cliente REAL (`Main.client.luau` + 17 controllers) sobre Instances
+  simuladas (`FakeRoblox`), ligado aos serviços REAIS do servidor por uma ponte de rede em memória, e
+  renderiza a árvore de GUI em HTML (`Render`: UDim2, AnchorPoint, UIListLayout, UIGridLayout, UIPadding,
+  UICorner, UIStroke, UIScale, AutomaticSize, ScrollingFrame) para screenshots via Playwright.
+- É uma aproximação do renderizador do Roblox (fonte Inter no lugar da Gotham; mundo 3D não aparece).
+- Problemas reais encontrados e corrigidos com ele:
+  - nome do mundo sobreposto às moedas no HUD;
+  - barra de rolagem cobrindo o fim dos valores (agora `VerticalScrollBarInset = ScrollBar`);
+  - raridade Secret quase preta, ilegível no fundo escuro;
+  - botões da aba Items com a mesma cor da linha (invisíveis);
+  - **celular**: janelas de tamanho fixo saíam da tela (cabeçalho e botão fechar inacessíveis) → `UIScale`
+    responsivo em janelas e HUD (`UIController:AddScaled`), recalculado quando o `ViewportSize` muda;
+  - `C.Clear` apagava o `UIScale` junto com o conteúdo;
+  - nome do mundo aparecendo cortado atrás das janelas.
+- Novo teste `tests/specs/70_client.spec.luau`: sobe o cliente real, abre todas as janelas, faz summon pela UI
+  e verifica a escala no celular. **167 testes passando.**
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

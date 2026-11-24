@@ -38,7 +38,7 @@ function HUDController:Init(controllers)
 	-- World name (top centre)
 	self.WorldLabel = C.Label(root, "", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 12),
+		Position = UDim2.new(0.5, 0, 0, 54),
 		Size = UDim2.fromOffset(320, 30),
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Font = Theme.Fonts.Title,
@@ -62,6 +62,16 @@ function HUDController:Init(controllers)
 			State.Request("UpdateSetting", "AutoAttack", not data.Settings.AutoAttack)
 		end
 	end, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16), Size = UDim2.fromOffset(130, 44) })
+
+	-- Responsive scaling (phones/tablets): every HUD block keeps its anchor and shrinks with the screen.
+	local ui = controllers.UIController
+	-- The world name sits where window headers go; hide it while a window is open.
+	ui.WindowChanged:Connect(function(current)
+		self.WorldLabel.Visible = current == nil
+	end)
+	for _, gui in { bar, self.WorldLabel, levelFrame, self.BuffList, self.AutoButton } do
+		ui:AddScaled(gui, "Hud")
+	end
 end
 
 function HUDController:RenderBuffs()

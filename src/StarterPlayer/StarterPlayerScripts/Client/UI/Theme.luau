@@ -12,6 +12,7 @@ Theme.Colors = {
 	Background = Color3.fromRGB(22, 24, 34),
 	Panel = Color3.fromRGB(32, 35, 50),
 	PanelLight = Color3.fromRGB(44, 48, 68),
+	Button = Color3.fromRGB(66, 72, 102),
 	Stroke = Color3.fromRGB(70, 76, 110),
 	Text = Color3.fromRGB(240, 242, 255),
 	TextDim = Color3.fromRGB(160, 166, 200),

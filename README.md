@@ -9,9 +9,13 @@ Este repositório contém:
 
 ```bash
 rokit install          # Rojo, Lune, Selene, StyLua
-lune run tests/run     # 164 testes automatizados (fora do Roblox)
+lune run tests/run     # 167 testes automatizados (fora do Roblox)
 selene src             # lint
 rojo serve             # sincronizar com o Roblox Studio
+
+# Preview da UI sem Studio (cliente real + servidor real, renderizado em HTML/PNG)
+lune run tools/ui-preview/preview ui-preview-out
+node tools/ui-preview/screenshot.js ui-preview-out
 ```
 
 Documentação:

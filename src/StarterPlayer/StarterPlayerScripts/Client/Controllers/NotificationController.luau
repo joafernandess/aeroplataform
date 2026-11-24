@@ -69,6 +69,7 @@ function NotificationController:Init(controllers)
 		ZIndex = 60,
 	})
 	C.List(self.Container, Enum.FillDirection.Vertical, 6)
+	controllers.UIController:AddScaled(self.Container, "Hud")
 	State.Notify = function(text, kind)
 		self:Show(text, kind)
 	end

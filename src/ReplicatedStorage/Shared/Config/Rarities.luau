@@ -21,7 +21,7 @@ local list: { RarityDef } = {
 	{ Id = "Epic", Order = 3, Color = { 170, 80, 255 }, MaxLevel = 45, XPCurveMultiplier = 1.3, FeedXP = 400, SellValue = 120, Summonable = true },
 	{ Id = "Legendary", Order = 4, Color = { 255, 190, 40 }, MaxLevel = 60, XPCurveMultiplier = 1.5, FeedXP = 1500, SellValue = 500, Summonable = true },
 	{ Id = "Mythical", Order = 5, Color = { 255, 70, 90 }, MaxLevel = 75, XPCurveMultiplier = 1.75, FeedXP = 5000, SellValue = 2000, Summonable = true },
-	{ Id = "Secret", Order = 6, Color = { 20, 20, 20 }, MaxLevel = 90, XPCurveMultiplier = 2.0, FeedXP = 15000, SellValue = 8000, Summonable = true },
+	{ Id = "Secret", Order = 6, Color = { 255, 90, 200 }, MaxLevel = 90, XPCurveMultiplier = 2.0, FeedXP = 15000, SellValue = 8000, Summonable = true },
 	{ Id = "Divine", Order = 7, Color = { 255, 255, 160 }, MaxLevel = 100, XPCurveMultiplier = 2.3, FeedXP = 40000, SellValue = 20000, Summonable = true },
 	{ Id = "Exclusive", Order = 8, Color = { 0, 255, 200 }, MaxLevel = 100, XPCurveMultiplier = 2.3, FeedXP = 40000, SellValue = 20000, Summonable = false },
 }
