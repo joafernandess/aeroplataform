@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local GameConfig = require(Shared.Config.GameConfig)
 local Quests = require(Shared.Config.Quests)
 local Clock = require(Shared.Modules.Clock)
@@ -152,6 +153,9 @@ function QuestService:Track(player, objectiveType: string, amount: number, conte
 end
 
 function QuestService:Claim(player, questId: string): (boolean, any)
+	if not Features.Quests then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

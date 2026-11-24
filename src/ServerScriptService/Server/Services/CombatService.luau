@@ -132,7 +132,7 @@ function CombatService:_dealDamage(player, state, stats, playerMultiplier: numbe
 	return dealt
 end
 
-function CombatService:_resolveTarget(_player, state, zoneKey: string, origin: Vector3, range: number, autoAttack: boolean)
+function CombatService:_resolveTarget(_player, state, zoneKey: string, origin: Vector3, range: number, autoAttack: boolean, autoRange: number?)
 	if state.Target then
 		local enemy = EnemyService:GetEnemy(state.Target)
 		if enemy and enemy.Alive and enemy.ZoneKey == zoneKey then
@@ -145,7 +145,7 @@ function CombatService:_resolveTarget(_player, state, zoneKey: string, origin: V
 		state.Target = nil
 	end
 	if autoAttack then
-		return EnemyService:FindNearest(zoneKey, origin, range)
+		return EnemyService:FindNearest(zoneKey, origin, autoRange or range)
 	end
 	return nil
 end
@@ -172,7 +172,16 @@ function CombatService:StepPlayer(player, now: number)
 		end
 		if now >= unitState.NextAttack then
 			local stats = UnitStats.Compute(unit)
-			local target = stats and self:_resolveTarget(player, state, zoneKey, origin, stats.Range, autoAttack)
+			local target = stats
+				and self:_resolveTarget(
+					player,
+					state,
+					zoneKey,
+					origin,
+					math.max(stats.Range, COMBAT.FighterReach),
+					autoAttack,
+					math.max(stats.Range, COMBAT.AutoTargetRange)
+				)
 			if not stats or not target then
 				unitState.NextAttack = now + IDLE_RECHECK
 			else

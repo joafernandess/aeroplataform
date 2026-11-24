@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
+local Features = require(Shared.Config.Features)
 local Worlds = require(Shared.Config.Worlds)
 local Formulas = require(Shared.Modules.Formulas)
 local UnitStats = require(Shared.Modules.UnitStats)
@@ -50,10 +51,13 @@ function HUDController:Init(controllers)
 	C.List(currencies, Enum.FillDirection.Vertical, 4)
 	self.CurrencyPills = {}
 	for i, currency in GameConfig.Economy.Currencies do
+		if currency ~= "Yen" and not Features.PremiumCurrencies then
+			continue -- base game: Yen only
+		end
 		local row = C.Frame(currencies, { BackgroundTransparency = 1, Size = UDim2.fromOffset(240, 40), LayoutOrder = i })
 		local pill = C.CurrencyPill(row, Theme.Icons[currency] or "?", Theme.Currency(currency), 190)
 		self.CurrencyPills[currency] = pill
-		if currency == "Gems" then
+		if currency == "Gems" and Features.Shop then
 			local _, plus = C.IconButton(row, "+", nil, Theme.Colors.Good, function()
 				ui:Open("Shop")
 			end, 30)
@@ -80,7 +84,7 @@ function HUDController:Init(controllers)
 	C.List(self.BuffList, Enum.FillDirection.Vertical, 4, Enum.HorizontalAlignment.Right)
 
 	-- Level badge + XP bar (bottom centre)
-	local levelFrame = C.Frame(root, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(460, 52) })
+	local levelFrame = C.Frame(root, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(460, 52), Visible = Features.PlayerLevel })
 	self.XPBar = C.ProgressBar(levelFrame, Theme.Colors.XP, { Position = UDim2.fromOffset(34, 16), Size = UDim2.new(1, -34, 0, 22) })
 	local badge = C.Frame(levelFrame, { Size = UDim2.fromOffset(52, 52), BackgroundColor3 = Theme.Colors.XP, ZIndex = 4 })
 	C.Corner(badge, UDim.new(0.5, 0))
@@ -155,7 +159,7 @@ function HUDController:Start()
 		self.WorldLabel.Text = if world then world.Name else ""
 	end)
 	State.Observe({ "EquippedUnits", "Inventory", "Upgrades" }, function(data)
-		self.PowerPill.Set(NumberFormat.Abbreviate(teamPower(data)) .. " DPS")
+		self.PowerPill.Set(NumberFormat.Abbreviate(teamPower(data)) .. " Power")
 	end)
 	State.Observe({ "Settings" }, function(data)
 		local on = data.Settings.AutoAttack ~= false

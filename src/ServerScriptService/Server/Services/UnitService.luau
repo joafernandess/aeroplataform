@@ -18,6 +18,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local GameConfig = require(Shared.Config.GameConfig)
 local Units = require(Shared.Config.Units)
 local Traits = require(Shared.Config.Traits)
@@ -61,6 +62,9 @@ local function isEquipped(data, uid: string): boolean
 end
 
 function UnitService:RollTrait(): string?
+	if not Features.Traits then
+		return nil
+	end
 	local weights = { [""] = Traits.NoTraitWeight }
 	for _, def in Traits.List do
 		weights[def.Id] = def.Weight
@@ -348,6 +352,9 @@ function UnitService:AddXPToEquipped(player, amount: number)
 end
 
 function UnitService:Fuse(player, targetUid: string, fodderUids: { string }): (boolean, any)
+	if not Features.Fusion then
+		return false, "FeatureDisabled"
+	end
 	local target, data = getUnit(player, targetUid)
 	if not data then
 		return false, "DataNotLoaded"
@@ -407,6 +414,9 @@ function UnitService:Fuse(player, targetUid: string, fodderUids: { string }): (b
 end
 
 function UnitService:Evolve(player, uid: string): (boolean, any)
+	if not Features.Evolution then
+		return false, "FeatureDisabled"
+	end
 	local unit, data = getUnit(player, uid)
 	if not data then
 		return false, "DataNotLoaded"
@@ -442,6 +452,9 @@ function UnitService:Evolve(player, uid: string): (boolean, any)
 end
 
 function UnitService:RerollTrait(player, uid: string): (boolean, any)
+	if not Features.Traits then
+		return false, "FeatureDisabled"
+	end
 	local unit, data = getUnit(player, uid)
 	if not data then
 		return false, "DataNotLoaded"

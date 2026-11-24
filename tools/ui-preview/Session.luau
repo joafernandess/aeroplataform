@@ -27,56 +27,29 @@ local function deepCopy(value)
 end
 
 function Session.new()
-	-- 1. Server with a mid-game player --------------------------------------------------------------------
-	local h = ServerHarness.new()
+	-- 1. Server with a world-1 player a few minutes into the game --------------------------------------------
+	local h = ServerHarness.new({ BaseGame = true })
 	local V = h.Vector3
 	h.Services.UnitService.Random = h.Mocks.Random.new(21)
 	h.Services.SummonService.Random = h.Mocks.Random.new(22)
 	h.Services.EnemyService.Random = h.Mocks.Random.new(23)
-	while h.Clock.Weekday(h.Now) ~= 7 do -- Saturday: the weekend Yen event is active
-		h:Advance(86400)
-	end
 	local player, data = h:AddPlayer(4242, "PreviewPlayer", V.new(0, 3, 0))
 	local S = h.Services
 
-	data.Level = 25
-	data.UnlockedWorlds.W2 = true
-	data.UnlockedWorlds.W3 = true
-	data.ClearedWorlds.W1 = true
-	data.CurrentWorld = "W2"
-	S.EconomyService:Add(player, "Gems", 20000, "Preview")
-	for _ = 1, 3 do
-		S.SummonService:Summon(player, "B_W1", 10)
+	S.EconomyService:Add(player, "Yen", 5000, "Preview")
+	for _ = 1, 8 do
+		S.SummonService:Summon(player, "B_W1", 3)
 	end
-	for _ = 1, 2 do
-		S.SummonService:Summon(player, "B_W2", 10)
-	end
-	S.SummonService:Summon(player, "B_W3", 10)
-	local _, raizen = S.UnitService:CreateUnit(player, "SS_Raizen", { Trait = "Swift", IgnoreCapacity = true })
-	local _, leviath = S.UnitService:CreateUnit(player, "GT_Leviath", { Trait = "Mighty", IgnoreCapacity = true })
-	S.UnitService:CreateUnit(player, "SR_Hollowking", { Trait = "Golden", IgnoreCapacity = true })
-	S.UnitService:AddUnitXP(player, raizen.Uid, 400000)
-	S.UnitService:AddUnitXP(player, leviath.Uid, 90000)
-	raizen.Stars = 2
-	S.ProgressionService:AddPlayerXP(player, 70000)
-	data.Upgrades = { Damage = 12, Yen = 8, Luck = 3, EquipSlots = 1, UnitStorage = 2, XP = 4 }
-	data.Damage = 12
+	local _, raizen = S.UnitService:CreateUnit(player, "SS_Raizen", { IgnoreCapacity = true, Source = "Preview" })
+	local _, tetsuo = S.UnitService:CreateUnit(player, "SS_Tetsuo", { IgnoreCapacity = true, Source = "Preview" })
+	S.UnitService:AddUnitXP(player, raizen.Uid, 6000)
+	S.UnitService:AddUnitXP(player, tetsuo.Uid, 2500)
 	S.UnitService:EquipBest(player)
-	for itemId, count in { XPPotionSmall = 14, XPPotionMedium = 5, EvolutionStone = 2, ShinobiScroll = 3, TideCompass = 4, TraitCrystal = 1, DamageBoost2x = 2, YenBoost2x = 1, GemPouch = 3 } do
-		S.InventoryService:AddItem(player, itemId, count, "Preview")
-	end
-	S.BoostService:Activate(player, "Yen", 2, 640)
-	data.Currencies.Yen = 1284500
-	data.Currencies.Gems = 3450
-	data.Currencies.Gold = 820
-	data.Currencies.Tokens = 140
-	for _ = 1, 7 do
+	for _ = 1, 25 do
 		local enemy = S.EnemyService:Spawn("W1_Bandit", V.new(3, 3, 0), "World:W1")
 		S.EnemyService:ApplyDamage(player, enemy, 1e9)
 	end
-	data.Stats.TotalKills = 1840
-	data.Stats.BossKills = 12
-	data.Currencies.Yen = 1284500
+	data.Currencies.Yen = 2350
 
 	-- 2. Network bridge ---------------------------------------------------------------------------------------
 	local listeners: { [string]: { (...any) -> () } } = {}
@@ -143,7 +116,7 @@ function Session.new()
 		Camera = services.Workspace.CurrentCamera,
 		Net = clientNet,
 		Controller = controller,
-		Units = { Raizen = raizen, Leviath = leviath },
+		Units = { Raizen = raizen, Tetsuo = tetsuo },
 	}
 end
 

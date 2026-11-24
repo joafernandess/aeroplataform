@@ -28,7 +28,7 @@ local function fakeVisuals()
 	}
 end
 
-function ServerHarness.new(options: { Services: { string }? }?)
+function ServerHarness.new(options: { Services: { string }?, BaseGame: boolean? }?)
 	local self = setmetatable({}, ServerHarness)
 	local rt = Runtime.new({ IsServer = true })
 	self.Runtime = rt
@@ -43,6 +43,11 @@ function ServerHarness.new(options: { Services: { string }? }?)
 	local GameConfig = rt:Require("ReplicatedStorage/Shared/Config/GameConfig")
 	GameConfig.Data.RetryBaseDelay = 0
 	self.GameConfig = GameConfig
+	-- Full game by default (every system tested); { BaseGame = true } keeps the shipped feature switches.
+	self.Features = rt:Require("ReplicatedStorage/Shared/Config/Features")
+	if not (options and options.BaseGame) then
+		self.Features.SetAll(true)
+	end
 
 	self.Now = 1_700_000_000 -- a Tuesday
 	self.PreciseNow = 1000

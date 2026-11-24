@@ -5,7 +5,8 @@
 
 	Fields:
 	  Id, Name, World (nil for global/event banners)
-	  Currency, CostSingle, CostMulti (price of a x10)
+	  Currency, CostSingle, CostMulti (price of one multi-open of MultiCount units)
+	  MultiCount     size of the multi-open (default 10; the world-1 star opens x3)
 	  Rates          { [rarity] = weight } — weights, normalised at runtime (they do not need to sum to 100)
 	  Pool           { [rarity] = { unitId, ... } } — units obtainable per rarity (uniform pick)
 	  Pity           { { Rarity, Threshold } } — after Threshold-1 pulls without >= Rarity, the next pull is forced
@@ -45,7 +46,8 @@ local LUCK = { Epic = true, Legendary = true, Mythical = true, Secret = true, Di
 
 local list: { BannerDef } = {
 	{
-		Id = "B_W1", Name = "Shinobi Valley Banner", World = "W1", Currency = "Gems", CostSingle = 50, CostMulti = 450,
+		-- World 1 star: paid with Yen dropped by enemies, opens x1 or x3 (core loop of the base game).
+		Id = "B_W1", Name = "Shinobi Star", World = "W1", Currency = "Yen", CostSingle = 100, CostMulti = 280, MultiCount = 3,
 		Rates = STANDARD_RATES,
 		Pool = {
 			Common = { "SS_GeninRecruit", "SS_Kenta" },
@@ -54,7 +56,7 @@ local list: { BannerDef } = {
 			Legendary = { "SS_Raizen" },
 			Mythical = { "SS_Kurogane" },
 		},
-		Pity = STANDARD_PITY, MultiGuarantee = "Rare", Requirements = { WorldUnlocked = "W1" }, LuckAffects = LUCK,
+		Pity = STANDARD_PITY, Requirements = { WorldUnlocked = "W1" }, LuckAffects = LUCK,
 	},
 	{
 		Id = "B_W2", Name = "Tidebreaker Banner", World = "W2", Currency = "Gems", CostSingle = 60, CostMulti = 540,
@@ -150,7 +152,14 @@ for _, def in list do
 	Banners.ById[def.Id] = def
 end
 
-Banners.AllowedCounts = { [1] = true, [10] = true }
+-- A banner can be opened x1 or x MultiCount (default 10).
+function Banners.GetMultiCount(banner): number
+	return banner.MultiCount or 10
+end
+
+function Banners.IsAllowedCount(banner, count: number): boolean
+	return count == 1 or count == Banners.GetMultiCount(banner)
+end
 
 function Banners.Get(id: string): BannerDef?
 	return Banners.ById[id]

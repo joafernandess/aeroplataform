@@ -34,21 +34,25 @@ return function(t)
 			task.wait(0.05)
 
 			for _, warning in rt.Mocks.Warnings do
-				expect(string.find(warning, "failed", 1, true) == nil).toBe(true)
+				expect(string.find(string.lower(warning), "failed", 1, true) == nil).toBe(true)
 			end
 			for _, name in { "GetProfile", "Summon", "EquipUnit", "UnlockWorld", "ClaimQuest", "StartRaid", "BuyShopItem", "BuyUpgrade", "UpdateSetting", "AdminCommand" } do
 				expect(net.Handlers[name] ~= nil).toBe(true)
 			end
 			expect(net.EventHandlers.SetTarget ~= nil).toBe(true)
 
-			-- Greybox map was generated with NPC prompts for every world
+			-- Base game greybox: world 1 only, with the summon orb (prompt role "Summon"), zones and decor
 			local worlds = workspace:FindFirstChild("Worlds")
 			expect(worlds ~= nil).toBe(true)
+			expect(worlds:FindFirstChild("W2")).toBeNil()
 			local w1 = worlds:FindFirstChild("W1")
 			expect(w1:FindFirstChild("Spawn") ~= nil).toBe(true)
-			local npcs = w1:FindFirstChild("NPCs"):GetChildren()
-			expect(#npcs).toBe(5)
-			expect(npcs[1]:FindFirstChildOfClass("ProximityPrompt") ~= nil).toBe(true)
+			local orb = w1:FindFirstChild("NPCs"):FindFirstChild("W1_SummonOrb")
+			expect(orb ~= nil).toBe(true)
+			local prompt = orb:FindFirstChildWhichIsA("ProximityPrompt", true)
+			expect(prompt ~= nil and prompt:GetAttribute("Role") == "Summon").toBe(true)
+			expect(#w1:FindFirstChild("NPCs"):GetChildren()).toBe(1)
+			expect(#w1:FindFirstChild("Decor"):GetChildren() > 40).toBe(true)
 
 			-- A joining player gets a profile through the real PlayerAdded wiring
 			local players = rt:GetService("Players")
@@ -96,7 +100,7 @@ return function(t)
 			expect(data.Quests.MainCurrent).toBe("M02")
 
 			-- 3. Summon x1 three times with starting gems + quest gems.
-			data.Currencies.Gems += 500
+			data.Currencies.Yen += 500
 			for _ = 1, 3 do
 				expect(h:Invoke(player, "Summon", "B_W1", 1).ok).toBe(true)
 			end

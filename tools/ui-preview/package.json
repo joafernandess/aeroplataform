@@ -1,0 +1,8 @@
+{
+  "name": "ui-preview",
+  "private": true,
+  "description": "Renders previews of the game UI and a 3D greybox scene (dev tool, not part of the game).",
+  "devDependencies": {
+    "three": "0.160.0"
+  }
+}

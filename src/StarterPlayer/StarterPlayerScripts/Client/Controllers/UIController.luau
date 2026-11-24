@@ -18,6 +18,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Signal = require(game:GetService("ReplicatedStorage").Shared.Modules.Signal)
+local Features = require(game:GetService("ReplicatedStorage").Shared.Config.Features)
 
 local Client = script.Parent.Parent
 local C = require(Client.UI.Components)
@@ -32,6 +33,7 @@ UIController.Windows = {}
 UIController.Current = nil :: string?
 UIController.WindowChanged = Signal.new() -- (currentWindowName?)
 
+local HOTKEY_FEATURE = { Quests = "Quests", Worlds = "MultipleWorlds", Shop = "Shop" }
 local DESIGN_SIZE = Vector2.new(1280, 720)
 local TOPBAR_INSET = 58 -- Roblox top bar height (ScreenGui.IgnoreGuiInset = false)
 local HUD_BOOST = 1.2
@@ -172,18 +174,19 @@ function UIController:Init()
 end
 
 function UIController:Start()
+	-- { window, caption, feature switch (nil = always) }. In the base game the star is opened in the world.
 	local order = {
-		{ "Inventory", "Units" },
-		{ "Summon", "Summon" },
-		{ "Worlds", "Worlds" },
-		{ "Quests", "Quests" },
-		{ "Shop", "Shop" },
-		{ "Upgrades", "Upgrades" },
-		{ "Raids", "Raids" },
-		{ "Settings", "Settings" },
+		{ "Inventory", "Fighters", nil },
+		{ "Summon", "Summon", "MultipleWorlds" },
+		{ "Worlds", "Worlds", "MultipleWorlds" },
+		{ "Quests", "Quests", "Quests" },
+		{ "Shop", "Shop", "Shop" },
+		{ "Upgrades", "Upgrades", "Upgrades" },
+		{ "Raids", "Raids", "Raids" },
+		{ "Settings", "Settings", nil },
 	}
 	for i, entry in order do
-		if self.Windows[entry[1]] then
+		if self.Windows[entry[1]] and (entry[3] == nil or Features[entry[3]]) then
 			self:AddMenuButton(entry[1], entry[2], i)
 		end
 	end
@@ -209,7 +212,8 @@ function UIController:Start()
 			return
 		end
 		local windowName = HOTKEYS[input.KeyCode]
-		if windowName and self.Windows[windowName] then
+		local feature = windowName and HOTKEY_FEATURE[windowName]
+		if windowName and self.Windows[windowName] and (feature == nil or Features[feature]) then
 			self:Toggle(windowName)
 		end
 	end)

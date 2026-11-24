@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
 local Banners = require(Shared.Config.Banners)
+local Features = require(Shared.Config.Features)
 local Rarities = require(Shared.Config.Rarities)
 local Units = require(Shared.Config.Units)
 local Formulas = require(Shared.Modules.Formulas)
@@ -98,7 +99,7 @@ end
 -- Rolls `count` units. Returns { { UnitId, Rarity } } and mutates `pity`.
 function SummonService.RollMany(generator, banner, pity: { [string]: number }, luck: number, count: number)
 	local results = {}
-	local guaranteeMet = banner.MultiGuarantee == nil or count < 10
+	local guaranteeMet = banner.MultiGuarantee == nil or count < Banners.GetMultiCount(banner)
 	for i = 1, count do
 		local minRarity = nil
 		if not guaranteeMet and i == count then
@@ -121,6 +122,9 @@ function SummonService:CanUseBanner(player, banner): (boolean, string?)
 	if not data then
 		return false, "DataNotLoaded"
 	end
+	if not Features.MultipleWorlds and banner.World ~= GameConfig.Start.World then
+		return false, "BannerUnavailable"
+	end
 	local now = Clock.Now()
 	if (banner.StartsAt and now < banner.StartsAt) or (banner.EndsAt and now > banner.EndsAt) then
 		return false, "BannerUnavailable"
@@ -133,7 +137,7 @@ function SummonService:CanUseBanner(player, banner): (boolean, string?)
 end
 
 function SummonService:GetCost(banner, count: number): number
-	return if count == 10 then banner.CostMulti else banner.CostSingle * count
+	return if count == Banners.GetMultiCount(banner) and count > 1 then banner.CostMulti else banner.CostSingle * count
 end
 
 -- Summon ---------------------------------------------------------------------------------------------------
@@ -147,7 +151,7 @@ function SummonService:Summon(player, bannerId: string, count: number): (boolean
 	if not banner then
 		return false, "BannerNotFound"
 	end
-	if not Banners.AllowedCounts[count] then
+	if not Banners.IsAllowedCount(banner, count) then
 		return false, "InvalidAmount"
 	end
 	local usable, why = self:CanUseBanner(player, banner)

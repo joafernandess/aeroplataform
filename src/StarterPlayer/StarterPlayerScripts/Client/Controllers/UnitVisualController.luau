@@ -1,12 +1,13 @@
 --[[
 	UnitVisualController
-	Cosmetic representation of the local player's equipped units: they float in a ring behind the
-	character. Purely visual — the server simulates combat independently.
+	The visible side of the core loop: your equipped fighters as characters in the world.
+	  - Idle: they follow you in a formation behind your character.
+	  - Fighting: when the server reports damage on an enemy (DamageNumbers) or you click one, they run to
+	    it, surround it and keep lunging at it until it dies or the fight stops.
+	Purely cosmetic: the server simulates combat independently (CombatService) and is authoritative.
 
-	Models: ReplicatedStorage.Assets.Units.<UnitId> (a Model with a PrimaryPart) if it exists, otherwise a
-	rarity-coloured placeholder orb with the unit's name. (Unit models must live in ReplicatedStorage to be
-	visible to clients; see docs/STUDIO_SETUP.md.)
-	When a special ability is cast (AbilityCast), the unit flashes and a beam is drawn to the target.
+	Models: ReplicatedStorage.Assets.Units.<UnitId> (a Model with a PrimaryPart) when it exists, otherwise a
+	blocky humanoid in the unit's rarity colours (RigBuilder) with its name above the head.
 ]]
 
 local Players = game:GetService("Players")
@@ -17,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Units = require(Shared.Config.Units)
+local RigBuilder = require(Shared.Modules.RigBuilder)
 local Net = require(Shared.Remotes.Net)
 
 local Client = script.Parent.Parent
@@ -29,10 +31,15 @@ local UnitVisualController = {
 	Priority = 43,
 }
 
-UnitVisualController.Visuals = {} :: { [string]: Model }
+UnitVisualController.Visuals = {} :: { [string]: { Model: Model, Scale: number, Position: Vector3? } }
+UnitVisualController.FightTarget = nil :: string?
+UnitVisualController.LastHitAt = 0
 
-local RING_RADIUS = 6
-local FOLLOW_SPEED = 8
+local FIGHTER_SCALE = 0.75
+local RUN_SPEED = 38 -- studs per second
+local FIGHT_MEMORY = 1.5 -- seconds without damage before fighters return to the player
+local FORMATION_SPACING = 3.6
+local FORMATION_BACK = 5
 
 local function findAsset(unitId: string): Model?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
@@ -44,40 +51,39 @@ local function findAsset(unitId: string): Model?
 	return nil
 end
 
-function UnitVisualController:CreateVisual(unit): Model?
+function UnitVisualController:CreateVisual(unit)
 	local def = Units.Get(unit.UnitId)
 	if not def then
 		return nil
 	end
+	local rarity = Theme.Rarity(def.Rarity)
 	local model: Model
 	local asset = findAsset(unit.UnitId)
 	if asset then
 		model = asset:Clone()
 	else
-		model = Instance.new("Model")
-		local orb = C.Create("Part", {
-			Name = "Root",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(2, 2, 2),
-			Color = Theme.Rarity(def.Rarity),
-			Material = Enum.Material.Neon,
-			Parent = model,
+		model = RigBuilder.Build({
+			Name = def.Name,
+			Scale = FIGHTER_SCALE,
+			Shirt = rarity,
+			Pants = Theme.Darken(rarity, 0.55),
+			Hair = Theme.Darken(rarity, 0.25),
 		})
-		model.PrimaryPart = orb
-		local gui = C.Create("BillboardGui", { Size = UDim2.fromOffset(110, 20), StudsOffset = Vector3.new(0, 2, 0), MaxDistance = 60, Adornee = orb, Parent = model })
-		C.Label(gui, def.Name, { Size = UDim2.fromScale(1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Bold, TextColor3 = Theme.Rarity(def.Rarity), TextStrokeTransparency = 0.4 })
 	end
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") then
 			part.Anchored = true
 			part.CanCollide = false
 			part.CanQuery = false
-			part.CastShadow = false
 		end
 	end
+	local head = model:FindFirstChild("Head") or model.PrimaryPart
+	local gui = C.Create("BillboardGui", { Size = UDim2.fromOffset(120, 22), StudsOffset = Vector3.new(0, 1.6, 0), MaxDistance = 70, Adornee = head, Parent = model })
+	C.Title(gui, def.Name, { Size = UDim2.fromScale(1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = rarity }, 1.5)
 	model.Name = unit.Uid
+	model:SetAttribute("UnitId", unit.UnitId)
 	model.Parent = self.Folder
-	return model
+	return { Model = model, Scale = if asset then 1 else FIGHTER_SCALE, Position = nil }
 end
 
 function UnitVisualController:Sync(data)
@@ -88,81 +94,122 @@ function UnitVisualController:Sync(data)
 			wanted[uid] = unit
 		end
 	end
-	for uid, model in self.Visuals do
+	for uid, visual in self.Visuals do
 		local unit = wanted[uid]
-		if not unit or model:GetAttribute("UnitId") ~= unit.UnitId then
-			model:Destroy()
+		if not unit or visual.Model:GetAttribute("UnitId") ~= unit.UnitId then
+			visual.Model:Destroy()
 			self.Visuals[uid] = nil
 		end
 	end
 	for uid, unit in wanted do
 		if not self.Visuals[uid] then
-			local model = self:CreateVisual(unit)
-			if model then
-				model:SetAttribute("UnitId", unit.UnitId)
-				self.Visuals[uid] = model
-			end
+			self.Visuals[uid] = self:CreateVisual(unit)
 		end
 	end
+end
+
+-- Enemy the fighters should be fighting right now (clicked target first, then whatever is taking damage).
+function UnitVisualController:GetFightModel(): Model?
+	local health = self.Controllers.EnemyHealthController
+	local combat = self.Controllers.CombatController
+	if combat and combat.TargetModel and combat.TargetModel.Parent then
+		return combat.TargetModel
+	end
+	if self.FightTarget and os.clock() - self.LastHitAt < FIGHT_MEMORY then
+		return health and health:GetModel(self.FightTarget)
+	end
+	return nil
 end
 
 function UnitVisualController:Step(dt: number)
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return
-	end
 	local data = State.Data
-	if not data then
+	if not root or not data then
 		return
 	end
+	local groundY = root.Position.Y - 3
+	local fightModel = self:GetFightModel()
+	local fightPart = fightModel and (fightModel.PrimaryPart or fightModel:FindFirstChildWhichIsA("BasePart"))
 	local count = #data.EquippedUnits
 	local t = os.clock()
+
 	for index, uid in data.EquippedUnits do
-		local model = self.Visuals[uid]
-		if model and model.PrimaryPart then
-			local angle = math.pi * (0.5 + (index - 0.5) / math.max(count, 1))
-			local offset = Vector3.new(math.cos(angle) * RING_RADIUS, 1.5 + math.sin(t * 2 + index) * 0.3, math.sin(angle) * RING_RADIUS)
-			local goal = root.CFrame * CFrame.new(offset)
-			local current = model:GetPivot()
-			model:PivotTo(current:Lerp(CFrame.new(goal.Position, goal.Position + root.CFrame.LookVector), math.clamp(dt * FOLLOW_SPEED, 0, 1)))
+		local visual = self.Visuals[uid]
+		if visual and visual.Model.PrimaryPart then
+			local goal: Vector3
+			local face: Vector3
+			local attacking = false
+			if fightPart then
+				-- Surround the enemy.
+				local angle = (index / math.max(count, 1)) * math.pi * 2
+				local radius = fightPart.Size.X / 2 + 2.5
+				goal = fightPart.Position + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+				face = fightPart.Position
+				attacking = true
+			else
+				-- Formation behind the player.
+				local offset = Vector3.new((index - (count + 1) / 2) * FORMATION_SPACING, 0, FORMATION_BACK + ((index - 1) % 2) * 1.5)
+				goal = (root.CFrame * CFrame.new(offset)).Position
+				face = goal + root.CFrame.LookVector
+			end
+			local rootHeight = RigBuilder.RootHeight(visual.Scale)
+			goal = Vector3.new(goal.X, groundY + rootHeight, goal.Z)
+
+			local current = visual.Position or goal
+			local delta = goal - current
+			local distance = delta.Magnitude
+			local step = math.min(distance, RUN_SPEED * dt)
+			local position = if distance > 0.01 then current + delta.Unit * step else goal
+			visual.Position = position
+
+			local moving = distance > 0.5
+			local bob = if moving then math.abs(math.sin(t * 14 + index)) * 0.35 else 0
+			local lookAt = if moving and not attacking then position + delta.Unit else Vector3.new(face.X, position.Y, face.Z)
+			local cframe = CFrame.lookAt(position + Vector3.new(0, bob, 0), lookAt + Vector3.new(0, bob, 0))
+			if attacking and not moving then
+				-- Punch rhythm: lunge toward the enemy.
+				local lunge = math.max(0, math.sin(t * 9 + index * 1.7)) * 0.9
+				cframe *= CFrame.new(0, 0, -lunge)
+			end
+			visual.Model:PivotTo(cframe)
 		end
 	end
 end
 
 function UnitVisualController:PlayCast(payload)
-	local model = self.Visuals[payload.UnitUid]
+	local visual = self.Visuals[payload.UnitUid]
 	local health = self.Controllers.EnemyHealthController
 	local target = health and health:GetModel(payload.Enemy)
-	if not model or not model.PrimaryPart then
+	if not visual or not visual.Model.PrimaryPart or not target then
 		return
 	end
-	local from = model.PrimaryPart.Position
-	if target then
-		local targetPart = target.PrimaryPart or target:FindFirstChildWhichIsA("BasePart")
-		if targetPart then
-			local to = targetPart.Position
-			local beam = C.Create("Part", {
-				Anchored = true,
-				CanCollide = false,
-				CanQuery = false,
-				Material = Enum.Material.Neon,
-				Color = Theme.Colors.Accent,
-				Size = Vector3.new(0.4, 0.4, (to - from).Magnitude),
-				CFrame = CFrame.lookAt((from + to) / 2, to),
-				Parent = self.Folder,
-			})
-			TweenService:Create(beam, TweenInfo.new(0.35), { Transparency = 1, Size = Vector3.new(0.05, 0.05, beam.Size.Z) }):Play()
-			task.delay(0.4, function()
-				beam:Destroy()
-			end)
-		end
+	local targetPart = target.PrimaryPart or target:FindFirstChildWhichIsA("BasePart")
+	if not targetPart then
+		return
 	end
+	-- Special ability flash: a bright burst on the enemy.
+	local burst = C.Create("Part", {
+		Shape = Enum.PartType.Ball,
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		Material = Enum.Material.Neon,
+		Color = Theme.Colors.Accent,
+		Size = Vector3.new(2, 2, 2),
+		CFrame = targetPart.CFrame,
+		Transparency = 0.2,
+		Parent = self.Folder,
+	})
+	TweenService:Create(burst, TweenInfo.new(0.35), { Size = Vector3.new(9, 9, 9), Transparency = 1 }):Play()
+	task.delay(0.4, function()
+		burst:Destroy()
+	end)
 end
 
 function UnitVisualController:Init(controllers)
 	self.Controllers = controllers
-	self.Folder = C.Create("Folder", { Name = "LocalUnits", Parent = Workspace })
+	self.Folder = C.Create("Folder", { Name = "LocalFighters", Parent = Workspace })
 end
 
 function UnitVisualController:Start()
@@ -171,6 +218,12 @@ function UnitVisualController:Start()
 	end)
 	RunService.RenderStepped:Connect(function(dt)
 		self:Step(dt)
+	end)
+	Net.Connect("DamageNumbers", function(list)
+		if type(list) == "table" and list[1] then
+			self.FightTarget = list[1].Enemy
+			self.LastHitAt = os.clock()
+		end
 	end)
 	Net.Connect("AbilityCast", function(payload)
 		if type(payload) == "table" then

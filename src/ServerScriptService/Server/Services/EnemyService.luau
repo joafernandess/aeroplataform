@@ -30,10 +30,12 @@ local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
 local Enemies = require(Shared.Config.Enemies)
 local Worlds = require(Shared.Config.Worlds)
+local Features = require(Shared.Config.Features)
 local Formulas = require(Shared.Modules.Formulas)
 local Signal = require(Shared.Modules.Signal)
 local Clock = require(Shared.Modules.Clock)
 local RNG = require(Shared.Modules.RNG)
+local Net = require(Shared.Remotes.Net)
 
 local Server = script.Parent.Parent
 local EnemyVisuals = require(Server.Combat.EnemyVisuals)
@@ -240,11 +242,20 @@ function EnemyService:_rewardPlayer(player, enemy)
 			bundle[key] = rewards[key]
 		end
 	end
-	EconomyService:GrantRewards(player, bundle, { Reason = "EnemyKill", ApplyMultipliers = true })
+	local _, granted = EconomyService:GrantRewards(player, bundle, { Reason = "EnemyKill", ApplyMultipliers = true })
 	if rewards.UnitXP then
 		UnitService:AddXPToEquipped(player, math.floor(rewards.UnitXP * BoostService:GetMultiplier(player, "XP")))
 	end
-	self:_rollDrops(player, rewards.Drops)
+	if Features.Items then
+		self:_rollDrops(player, rewards.Drops)
+	end
+	-- Cosmetic: the client bursts coins out of the enemy and flies them to the player.
+	Net.Fire(player, "EnemyDefeated", {
+		Enemy = enemy.Id,
+		Position = { enemy.Position.X, enemy.Position.Y, enemy.Position.Z },
+		Yen = if type(granted) == "table" then granted.Yen or 0 else 0,
+		Boss = def.IsBoss,
+	})
 	data.Stats.TotalKills += 1
 	if def.IsBoss then
 		data.Stats.BossKills += 1
@@ -308,6 +319,9 @@ function EnemyService:_buildSpawners()
 	areas = {}
 	bossPoints = {}
 	for _, world in Worlds.List do
+		if not Features.MultipleWorlds and world.Id ~= GameConfig.Start.World then
+			continue -- base game: only the starting world is populated
+		end
 		for _, areaDef in world.SpawnAreas do
 			local center = EnemyVisuals.GetAreaCenter and EnemyVisuals.GetAreaCenter(world.Id, areaDef.Id) or nil
 			table.insert(areas, {

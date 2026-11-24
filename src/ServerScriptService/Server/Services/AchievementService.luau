@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local Achievements = require(Shared.Config.Achievements)
 local Validate = require(Shared.Modules.Validate)
 local Net = require(Shared.Remotes.Net)
@@ -39,6 +40,9 @@ function AchievementService:GetProgress(player, achievementId: string)
 end
 
 function AchievementService:Claim(player, achievementId: string): (boolean, any)
+	if not Features.Achievements then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Units = require(Shared.Config.Units)
+local Features = require(Shared.Config.Features)
 local Items = require(Shared.Config.Items)
 local Rarities = require(Shared.Config.Rarities)
 local UnitStats = require(Shared.Modules.UnitStats)
@@ -86,7 +87,7 @@ function InventoryController:Render()
 	local count = TableUtil.Count(data.Inventory.Units)
 	local capacity = Formulas.UnitStorage(data.Upgrades.UnitStorage or 0)
 	local slots = Formulas.EquipSlots(data.Upgrades.EquipSlots or 0, 0)
-	self.CapacityLabel.Text = ("Units %d/%d     Equipped %d/%d"):format(count, capacity, #data.EquippedUnits, slots)
+	self.CapacityLabel.Text = ("Fighters %d/%d     Equipped %d/%d"):format(count, capacity, #data.EquippedUnits, slots)
 	self.CapacityLabel.TextColor3 = if count >= capacity then Theme.Colors.Bad else Theme.Colors.Text
 	self.SortButton.Text = "Sort: " .. self.SortBy
 
@@ -205,7 +206,7 @@ end
 function InventoryController:Init(controllers)
 	self.Controllers = controllers
 	self.SortBy = SORTS[1]
-	local window = controllers.UIController:CreateWindow("Inventory", "Your Units", UDim2.fromOffset(840, 540), function()
+	local window = controllers.UIController:CreateWindow("Inventory", "Fighters", UDim2.fromOffset(840, 540), function()
 		self:Render()
 	end)
 	window.OnClose = function()
@@ -215,7 +216,7 @@ function InventoryController:Init(controllers)
 	self.Window = window
 	local content = window.Content
 
-	local tabs = C.Tabs(content, { "Units", "Items" }, function(name)
+	local tabs = C.Tabs(content, if Features.Items then { "Units", "Items" } else { "Units" }, function(name)
 		self.Tab = name
 		self:Render()
 	end)

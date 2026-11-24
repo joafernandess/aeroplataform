@@ -4,3 +4,4 @@
 *.rbxmx
 sourcemap.json
 ui-preview-out/
+node_modules/

@@ -14,6 +14,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local Events = require(Shared.Config.Events)
 local Clock = require(Shared.Modules.Clock)
 local Net = require(Shared.Remotes.Net)
@@ -60,6 +61,9 @@ function EventService:GetActiveEvents(): { any }
 end
 
 function EventService:GetModifier(stat: string): number
+	if not Features.Events then
+		return 1
+	end
 	local multiplier = 1
 	for _, event in self:GetActiveEvents() do
 		local value = event.Modifiers[stat]

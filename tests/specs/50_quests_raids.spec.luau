@@ -55,7 +55,7 @@ return function(t)
 			data.Quests.Active = {}
 			data.Quests.MainCurrent = "M02"
 			h.Services.QuestService:EnsureMainQuest(player)
-			data.Currencies.Gems = 1000
+			data.Currencies.Yen = 1000
 			h:Invoke(player, "Summon", "B_W1", 1)
 			h:Invoke(player, "Summon", "B_W1", 1)
 			expect(data.Quests.Active.M02.Progress).toBe(2)

@@ -48,20 +48,25 @@ function EnemyHealthController:Attach(model: Instance)
 	end
 	local gui = C.Create("BillboardGui", {
 		Name = "HealthBar",
-		Size = UDim2.fromOffset(if isBoss then 220 else 120, if isBoss then 40 else 30),
-		StudsOffsetWorldSpace = Vector3.new(0, root.Size.Y / 2 + (if isBoss then 6 else 3), 0),
-		MaxDistance = if isBoss then 300 else 120,
+		Size = UDim2.fromOffset(if isBoss then 240 else 110, if isBoss then 50 else 32),
+		StudsOffsetWorldSpace = Vector3.new(0, 3.2 * (if tier then tier.Scale else 1), 0),
+		MaxDistance = if isBoss then 250 else 65, -- only nearby enemies show bars, so crowds stay readable
 		AlwaysOnTop = true,
 		Adornee = root,
 		Parent = model,
 	})
-	local tierColor = if tier then Color3.fromRGB(tier.Color[1], tier.Color[2], tier.Color[3]) else Theme.Colors.Text
-	C.Label(gui, model:GetAttribute("DisplayName") or model.Name, { Size = UDim2.new(1, 0, 0.5, 0), TextXAlignment = Enum.TextXAlignment.Center, TextScaled = true, Font = Theme.Fonts.Bold, TextColor3 = tierColor, TextStrokeTransparency = 0.4 })
-	local bar = C.ProgressBar(gui, Theme.Colors.Bad, { Position = UDim2.fromScale(0, 0.55), Size = UDim2.fromScale(1, 0.4) })
+	local tierColor = if tier and isBoss then Color3.fromRGB(tier.Color[1], tier.Color[2], tier.Color[3]) else Theme.Colors.Text
+	C.Title(gui, model:GetAttribute("DisplayName") or model.Name, {
+		Size = UDim2.new(1, 0, 0.5, 0),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextScaled = true,
+		TextColor3 = tierColor,
+	}, 2)
+	local bar = C.ProgressBar(gui, Theme.Colors.Bad, { Position = UDim2.fromScale(0, 0.52), Size = UDim2.fromScale(1, 0.46) })
 	local function update()
 		local health = model:GetAttribute("Health") or 0
 		local maxHealth = math.max(model:GetAttribute("MaxHealth") or 1, 1)
-		bar.Set(health / maxHealth, if isBoss then NumberFormat.Abbreviate(health) .. " / " .. NumberFormat.Abbreviate(maxHealth) else "")
+		bar.Set(health / maxHealth, NumberFormat.Abbreviate(health) .. " / " .. NumberFormat.Abbreviate(maxHealth))
 	end
 	update()
 	model:GetAttributeChangedSignal("Health"):Connect(update)

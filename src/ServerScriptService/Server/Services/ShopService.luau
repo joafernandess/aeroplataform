@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local GameConfig = require(Shared.Config.GameConfig)
 local Shop = require(Shared.Config.Shop)
 local Requirements = require(Shared.Modules.Requirements)
@@ -40,6 +41,9 @@ local DataService, EconomyService
 -- Currency shop -------------------------------------------------------------------------------------------
 
 function ShopService:BuyItem(player, shopItemId: string, quantity: number): (boolean, any)
+	if not Features.Shop then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

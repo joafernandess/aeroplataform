@@ -19,6 +19,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local Raids = require(Shared.Config.Raids)
 local Worlds = require(Shared.Config.Worlds)
 local Requirements = require(Shared.Modules.Requirements)
@@ -193,6 +194,9 @@ end
 -- Public API ------------------------------------------------------------------------------------------------------
 
 function RaidService:StartRaid(player, raidId: string): (boolean, any)
+	if not Features.Raids then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

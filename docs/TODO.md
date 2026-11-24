@@ -2,6 +2,13 @@
 
 Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 
+## Jogo base (prioridade)
+- [ ] [Studio] Jogar o loop no Studio e ajustar o ritmo: HP dos inimigos, Yen por kill, preço do orbe (100/280 ¥).
+- [ ] [Studio/Arte] Modelos reais dos lutadores e inimigos do Mundo 1 (substituem os bonecos do `RigBuilder`).
+- [ ] [Studio/Arte] Mapa do Mundo 1 feito à mão (`Workspace.Worlds.W1`), substituindo o greybox.
+- [ ] [Código] Animações de ataque (hoje: avanço/recuo simples) e som de moedas/golpes.
+- [ ] [Código] Depois de validado o loop, religar sistemas um a um em `Features.luau`.
+
 ## Antes de publicar
 - [ ] [Studio] Sincronizar com Rojo e rodar o jogo; revisar a Output (ver `STUDIO_SETUP.md`).
 - [ ] [Studio] Verificar visualmente todas as janelas (PC e celular). Ajustar tamanhos/escala para telas pequenas.

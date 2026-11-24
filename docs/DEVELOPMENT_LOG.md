@@ -81,6 +81,21 @@
 - Inventário: contadores de unidades/equipados, botões grandes Equip Best / **Unequip All** (novo remote no servidor).
 - Preview atualizado: `UIGradient`, contorno de texto (`UIStroke` Contextual), fontes do Google Fonts. **168 testes.**
 
+### Jogo base (essência do gênero, só o Mundo 1)
+- `Config/Features.luau`: chaves para cada sistema; o jogo base desliga tudo que não é o loop essencial.
+  O servidor responde `FeatureDisabled` e a UI esconde botões/abas. Testes rodam com tudo ligado
+  (`ServerHarness.new()`) e com o jogo base (`{ BaseGame = true }`).
+- Loop essencial: clicar inimigo → lutadores correm até ele (alcance `Combat.FighterReach` = 60) e cercam/golpeiam;
+  auto-ataque pega o mais próximo em `AutoTargetRange` = 45 → moedas espirram e voam até o jogador
+  (`EnemyDefeated` → `CoinController`) → Yen abre o **orbe** do Mundo 1 (x1 = 100 ¥, x3 = 280 ¥) →
+  Equip Best → zonas mais fortes e chefes.
+- `RigBuilder`: bonecos humanoides em blocos (com olhos e cabelo) para inimigos e lutadores até existir arte.
+- Mapa greybox do Mundo 1: chão, caminhos entre zonas, árvores, placas "Zone 1/2", arenas dos chefes,
+  orbe de invocação com letreiro e ProximityPrompt, cerca viva + paredes invisíveis na borda.
+- Inimigos renomeados para nomes originais (Bandit King, Oni Warlord).
+- Preview 3D (`tools/ui-preview/scene.luau` + three.js): o mapa real e os rigs, com a UI real sobreposta.
+- **179 testes passando.**
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Luckiest+Guy&family=Noto+Color+Emoji&display=block" rel="stylesheet">
+<style>
+html, body { margin: 0; padding: 0; width: 1280px; height: 720px; overflow: hidden; background: #8ccbf0; font-family: 'Fredoka', 'Noto Color Emoji', sans-serif; }
+canvas { position: absolute; left: 0; top: 0; }
+#labels { position: absolute; inset: 0; pointer-events: none; }
+.lbl { position: absolute; transform: translate(-50%, -100%); text-align: center; font-weight: 600; color: #fff; white-space: nowrap;
+  text-shadow: -2px -2px 0 #0c0a1a, 2px -2px 0 #0c0a1a, -2px 2px 0 #0c0a1a, 2px 2px 0 #0c0a1a, 0 2px 0 #0c0a1a, 0 -2px 0 #0c0a1a, 2px 0 0 #0c0a1a, -2px 0 0 #0c0a1a; }
+.bar { margin: 2px auto 0; height: 14px; border-radius: 8px; background: #141228; box-shadow: 0 0 0 2px #0c0a1a; position: relative; overflow: hidden; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; background: linear-gradient(#ff7a9a, #d8365c); }
+.bar > b { position: absolute; inset: 0; font-size: 10px; line-height: 14px; font-weight: 600; }
+#topbar { position: absolute; left: 0; top: 0; width: 100%; height: 58px; background: rgba(0,0,0,.35); color: #fff; font: 600 13px Inter, sans-serif; display: flex; align-items: center; padding-left: 16px; box-sizing: border-box; z-index: 5; }
+iframe { position: absolute; inset: 0; width: 1280px; height: 720px; border: 0; background: transparent; z-index: 4; }
+</style>
+</head>
+<body>
+<div id="topbar">__CAPTION__</div>
+<div id="labels"></div>
+<iframe id="overlay" src="__OVERLAY__" allowtransparency="true"></iframe>
+<script src="__THREE__"></script>
+<script>
+const DATA = __DATA__;
+if (!document.getElementById('overlay').getAttribute('src')) document.getElementById('overlay').remove();
+const W = 1280, H = 720;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8ccbf0);
+scene.fog = new THREE.Fog(0xbfe3f5, 180, 520);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x6c8f5a, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(-80, 160, -60);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 1, far: 600 });
+sun.target.position.set(110, 0, 0);
+scene.add(sun, sun.target);
+
+const geoCache = {};
+for (const p of DATA.Parts) {
+  const [sx, sy, sz] = p.z;
+  let geo;
+  if (p.s === 'Ball') geo = new THREE.SphereGeometry(Math.min(sx, sy, sz) / 2, 24, 16);
+  else if (p.s === 'Cylinder') { const r = Math.min(sy, sz) / 2; geo = new THREE.CylinderGeometry(r, r, sx, 32); geo.rotateZ(Math.PI / 2); }
+  else geo = new THREE.BoxGeometry(sx, sy, sz);
+  const color = new THREE.Color(`rgb(${p.c[0]},${p.c[1]},${p.c[2]})`);
+  const mat = p.n ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
+  if (p.t > 0) { mat.transparent = true; mat.opacity = 1 - p.t; }
+  const mesh = new THREE.Mesh(geo, mat);
+  const m = p.m; // x y z R00 R01 R02 R10 R11 R12 R20 R21 R22 (Roblox CFrame components)
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.set(m[3], m[4], m[5], m[0], m[6], m[7], m[8], m[1], m[9], m[10], m[11], m[2], 0, 0, 0, 1);
+  mesh.castShadow = !p.n && sy < 40;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+const cam = new THREE.PerspectiveCamera(DATA.Camera.Fov, W / H, 0.5, 2000);
+cam.position.set(...DATA.Camera.Position);
+cam.lookAt(new THREE.Vector3(...DATA.Camera.LookAt));
+cam.updateMatrixWorld();
+renderer.render(scene, cam);
+
+// Billboards (enemy health bars, fighter names, damage numbers, coin popup) projected as HTML.
+const layer = document.getElementById('labels');
+const abbr = (n) => { const s = ['', 'K', 'M', 'B', 'T']; let i = 0; while (n >= 1000 && i < s.length - 1) { n /= 1000; i++; } return (i ? n.toFixed(2).replace(/\.?0+$/, '') : Math.floor(n)) + s[i]; };
+for (const l of DATA.Labels) {
+  const v = new THREE.Vector3(...l.Position);
+  const dist = v.distanceTo(cam.position);
+  const maxDist = l.Boss ? 250 : (l.Kind === 'Enemy' ? 65 : (l.Kind === 'Sign' ? 160 : 80));
+  if (dist > maxDist) continue;
+  v.project(cam);
+  if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
+  const el = document.createElement('div');
+  el.className = 'lbl';
+  el.style.left = ((v.x + 1) / 2 * W) + 'px';
+  el.style.top = ((1 - v.y) / 2 * H) + 'px';
+  if (l.Kind === 'Enemy') {
+    const w = l.Boss ? 240 : 110;
+    el.style.width = w + 'px';
+    el.innerHTML = `<div style="font-size:${l.Boss ? 20 : 13}px;color:rgb(${l.Color.join(',')})">${l.Text}</div>` +
+      `<div class="bar" style="width:${w}px;height:${l.Boss ? 18 : 12}px"><i style="width:${l.Fraction * 100}%"></i><b style="font-size:${l.Boss ? 11 : 9}px;line-height:${l.Boss ? 18 : 12}px">${abbr(l.Max * l.Fraction)} / ${abbr(l.Max)}</b></div>`;
+  } else if (l.Kind === 'Fighter') {
+    el.style.fontSize = '13px'; el.style.color = `rgb(${l.Color.join(',')})`; el.textContent = l.Text;
+  } else if (l.Kind === 'Damage') {
+    el.style.fontFamily = "'Luckiest Guy', sans-serif"; el.style.fontSize = l.Crit ? '30px' : '22px';
+    el.style.color = l.Crit ? '#ff4632' : '#fff'; el.textContent = l.Text;
+  } else if (l.Kind === 'Sign') {
+    el.style.fontSize = l.Size + 'px'; el.style.color = `rgb(${l.Color.join(',')})`; el.style.whiteSpace = 'pre'; el.style.lineHeight = '1.05'; el.textContent = l.Text;
+  } else if (l.Kind === 'Prompt') {
+    el.style.transform = 'translate(-50%, -50%)';
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;background:rgba(25,25,25,.55);border-radius:10px;padding:8px 14px;text-shadow:none;font-family:Inter,sans-serif">
+      <div style="width:34px;height:34px;border-radius:8px;background:#fff;color:#222;font:700 18px Inter;display:flex;align-items:center;justify-content:center">E</div>
+      <div style="text-align:left"><div style="font:500 13px Inter;color:#ddd">${l.Object}</div><div style="font:700 18px Inter;color:#fff">${l.Text}</div></div></div>`;
+  } else if (l.Kind === 'Yen') {
+    el.style.fontSize = '24px'; el.style.color = '#ffcd32'; el.textContent = l.Text;
+  }
+  layer.appendChild(el);
+}
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

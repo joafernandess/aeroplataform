@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Units = require(Shared.Config.Units)
+local Features = require(Shared.Config.Features)
 local Items = require(Shared.Config.Items)
 local Traits = require(Shared.Config.Traits)
 local Abilities = require(Shared.Config.Abilities)
@@ -87,7 +88,9 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 
 	statLine(scroll, "Stars", string.rep("★", unit.Stars or 0) .. string.rep("☆", 5 - (unit.Stars or 0)), nextOrder(), Theme.Colors.Accent)
 	local trait = unit.Trait and Traits.Get(unit.Trait)
-	statLine(scroll, "Trait", if trait then trait.Name .. " (" .. trait.Description .. ")" else "None", nextOrder(), Theme.Colors.Accent)
+	if Features.Traits then
+		statLine(scroll, "Trait", if trait then trait.Name .. " (" .. trait.Description .. ")" else "None", nextOrder(), Theme.Colors.Accent)
+	end
 	statLine(scroll, "Power", NumberFormat.Abbreviate(stats.Power), nextOrder(), Theme.Colors.Good)
 	statLine(scroll, "Damage", NumberFormat.Abbreviate(stats.Damage), nextOrder())
 	statLine(scroll, "Attack speed", ("%.2f/s"):format(stats.AttackSpeed), nextOrder())
@@ -128,9 +131,11 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 	C.Button(actions, if unit.Locked then "Unlock" else "Lock", function()
 		State.Request("LockUnit", uid, not unit.Locked)
 	end, { TextSize = 13 })
-	C.Button(actions, "Fuse", function()
-		inventory:SetMode("Fuse")
-	end, { TextSize = 13, BackgroundColor3 = Theme.Colors.Info })
+	if Features.Fusion then
+		C.Button(actions, "Fuse", function()
+			inventory:SetMode("Fuse")
+		end, { TextSize = 13, BackgroundColor3 = Theme.Colors.Info })
+	end
 	C.Button(actions, ("Sell (%s)"):format(NumberFormat.Abbreviate(Formulas.UnitSellValue(def.Rarity, unit.Level, unit.Stars or 0))), function()
 		local response = State.Request("DeleteUnits", { uid })
 		if response.ok and response.data.Deleted == 0 and State.Notify then
@@ -138,7 +143,7 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 		end
 	end, { TextSize = 12, BackgroundColor3 = Theme.Colors.Bad })
 
-	if def.EvolvesTo and def.EvolutionCost then
+	if Features.Evolution and def.EvolvesTo and def.EvolutionCost then
 		local cost = def.EvolutionCost
 		local parts = {}
 		if cost.Yen then
@@ -164,7 +169,7 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 	-- Consumables on this unit
 	local consumables = C.Frame(scroll, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextOrder() })
 	C.Grid(consumables, UDim2.new(0.5, -4, 0, 30), 6)
-	for _, itemId in POTIONS do
+	for _, itemId in if Features.Items then POTIONS else {} do
 		local have = data.Inventory.Items[itemId] or 0
 		if have > 0 then
 			local itemDef = Items.Get(itemId)
@@ -173,7 +178,7 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 			end, { TextSize = 11, BackgroundColor3 = Theme.Colors.PanelLight })
 		end
 	end
-	if (data.Inventory.Items.TraitCrystal or 0) > 0 then
+	if Features.Items and Features.Traits and (data.Inventory.Items.TraitCrystal or 0) > 0 then
 		C.Button(consumables, ("Reroll Trait (%d)"):format(data.Inventory.Items.TraitCrystal), function()
 			local response = State.Request("UseItem", "TraitCrystal", uid, 1)
 			if response.ok and State.Notify then

@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local Worlds = require(Shared.Config.Worlds)
 local Requirements = require(Shared.Modules.Requirements)
 local Signal = require(Shared.Modules.Signal)
@@ -93,6 +94,9 @@ function WorldService:CanUnlock(player, worldId: string): (boolean, string?, str
 end
 
 function WorldService:Unlock(player, worldId: string): (boolean, any)
+	if not Features.MultipleWorlds then
+		return false, "FeatureDisabled"
+	end
 	local can, err = self:CanUnlock(player, worldId)
 	if not can then
 		return false, err
@@ -108,6 +112,9 @@ function WorldService:Unlock(player, worldId: string): (boolean, any)
 end
 
 function WorldService:Teleport(player, worldId: string): (boolean, any)
+	if not Features.MultipleWorlds then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

@@ -46,6 +46,7 @@ local Errors = {
 	ShopItemNotFound = "Item not for sale.",
 	MaxUpgrade = "Upgrade already maxed.",
 	NotAdmin = "Not allowed.",
+	FeatureDisabled = "Coming soon!",
 }
 
 local Codes = {}

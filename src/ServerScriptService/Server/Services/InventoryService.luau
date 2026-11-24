@@ -17,6 +17,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local GameConfig = require(Shared.Config.GameConfig)
 local Items = require(Shared.Config.Items)
 local Formulas = require(Shared.Modules.Formulas)
@@ -126,6 +127,9 @@ function InventoryService:SetItemLocked(player, itemId: string, locked: boolean)
 end
 
 function InventoryService:SellItem(player, itemId: string, count: number): (boolean, any)
+	if not Features.Items then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"
@@ -176,6 +180,9 @@ InventoryService.EffectHandlers = {
 }
 
 function InventoryService:UseItem(player, itemId: string, targetUid: string?, count: number?): (boolean, any)
+	if not Features.Items then
+		return false, "FeatureDisabled"
+	end
 	local amount = count or 1
 	if not Validate.Integer(amount, 1, MAX_USE_PER_REQUEST) then
 		return false, "InvalidAmount"
@@ -231,7 +238,7 @@ function InventoryService:Init(services)
 	EconomyService = services.EconomyService
 
 	DataService.ProfileLoaded:Connect(function(player, profile)
-		if profile.IsNew then
+		if profile.IsNew and Features.Items then
 			for itemId, count in GameConfig.Start.StarterItems do
 				self:AddItem(player, itemId, count, "Starter")
 			end

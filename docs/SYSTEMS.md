@@ -1,5 +1,8 @@
 # Sistemas
 
+> **Jogo base (atual):** só o loop essencial do Mundo 1 está ligado (`Config/Features.luau`). As seções abaixo
+> descrevem todos os sistemas implementados; os marcados como desligados no jogo base voltam com uma chave.
+
 Cada seção indica arquivos, API principal, regras e estado real. "Testado" = coberto por testes
 automatizados em Lune (fora do Roblox). Nada foi executado dentro do Roblox Studio.
 

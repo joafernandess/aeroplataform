@@ -329,15 +329,18 @@ function Render.Page(playerGui, options): string
 <style>
 html,body{margin:0;padding:0}
 body{width:%dpx;height:%dpx;position:relative;overflow:hidden;font-family:Inter,"DejaVu Sans",sans-serif;
-background:linear-gradient(180deg,#7ec8f0 0%%,#bfe6f7 52%%,#6fb35a 52.2%%,#4f8f3d 100%%)}
+%s}
 .g{position:absolute;box-sizing:border-box}
 .t{position:absolute;inset:0;display:flex;line-height:1.15;overflow:visible}
 .topbar{position:absolute;left:0;top:0;width:100%%;height:%dpx;background:rgba(0,0,0,.35);color:#fff;font:600 13px Inter,sans-serif;display:flex;align-items:center;padding-left:16px;box-sizing:border-box}
-</style></head><body><div class="topbar">%s</div>%s</body></html>]],
+</style></head><body>%s%s</body></html>]],
 		W,
 		H,
+		if options.Transparent
+			then "background:transparent"
+			else "background:linear-gradient(180deg,#7ec8f0 0%,#bfe6f7 52%,#6fb35a 52.2%,#4f8f3d 100%)",
 		inset,
-		escape(options.Caption or ""),
+		if options.Transparent then "" else '<div class="topbar">' .. escape(options.Caption or "") .. "</div>",
 		table.concat(body)
 	)
 end

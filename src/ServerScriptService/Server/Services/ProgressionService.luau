@@ -14,6 +14,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Features = require(Shared.Config.Features)
 local Progression = require(Shared.Config.Progression)
 local Formulas = require(Shared.Modules.Formulas)
 local Requirements = require(Shared.Modules.Requirements)
@@ -84,6 +85,9 @@ function ProgressionService:GetUpgradeLevel(player, upgradeId: string): number
 end
 
 function ProgressionService:BuyUpgrade(player, upgradeId: string): (boolean, any)
+	if not Features.Upgrades then
+		return false, "FeatureDisabled"
+	end
 	local data = DataService:GetData(player)
 	if not data then
 		return false, "DataNotLoaded"

@@ -17,6 +17,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Enemies = require(ReplicatedStorage.Shared.Config.Enemies)
+local RigBuilder = require(ReplicatedStorage.Shared.Modules.RigBuilder)
 
 local EnemyVisuals = {}
 
@@ -47,33 +48,17 @@ local function findAsset(path: string): Instance?
 	return node
 end
 
+-- Placeholder enemy: a blocky humanoid in the tier's colour, scaled by tier (bosses are giants).
 local function buildPlaceholder(def, tier): Model
-	local scale = tier.Scale
 	local color = Color3.fromRGB(tier.Color[1], tier.Color[2], tier.Color[3])
-	local model = Instance.new("Model")
-
-	local body = Instance.new("Part")
-	body.Name = "HumanoidRootPart"
-	body.Size = Vector3.new(2, 3, 1.5) * scale
-	body.Color = color
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = false
-	body.Parent = model
-
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Shape = Enum.PartType.Ball
-	head.Size = Vector3.new(1.6, 1.6, 1.6) * scale
-	head.Color = color:Lerp(Color3.new(1, 1, 1), 0.3)
-	head.Anchored = true
-	head.CanCollide = false
-	head.CFrame = body.CFrame * CFrame.new(0, (body.Size.Y + head.Size.Y) / 2, 0)
-	head.Parent = model
-
-	model.PrimaryPart = body
-	model.Name = def.Name
-	return model
+	return RigBuilder.Build({
+		Name = def.Name,
+		Scale = tier.Scale,
+		Shirt = color,
+		Pants = color:Lerp(Color3.new(0, 0, 0), 0.6),
+		Hair = color:Lerp(Color3.new(0, 0, 0), 0.75),
+		Skin = Color3.fromRGB(235, 190, 150),
+	})
 end
 
 function EnemyVisuals.Create(enemy): Model?
@@ -102,8 +87,12 @@ function EnemyVisuals.Create(enemy): Model?
 		end
 	end
 	if model.PrimaryPart then
-		-- Config positions are 1 stud above ground level (ground top = Y - 1), so rest the model on the ground.
-		model:PivotTo(CFrame.new(enemy.Position + Vector3.new(0, model.PrimaryPart.Size.Y / 2 - 1, 0)))
+		-- Config positions are 1 stud above ground level (ground top = Y - 1): stand the model on the ground,
+		-- facing a random direction so groups don't look cloned.
+		local ground = enemy.Position.Y - 1
+		local rootHeight = if asset and asset:IsA("Model") then model.PrimaryPart.Size.Y / 2 else RigBuilder.RootHeight(tier.Scale)
+		local yaw = math.rad((tonumber(string.match(enemy.Id, "%d+")) or 0) * 47 % 360)
+		model:PivotTo(CFrame.new(enemy.Position.X, ground + rootHeight, enemy.Position.Z) * CFrame.Angles(0, yaw, 0))
 	end
 	model.Parent = getFolder()
 	return model

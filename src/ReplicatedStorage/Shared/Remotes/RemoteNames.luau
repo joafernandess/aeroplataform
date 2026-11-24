@@ -51,6 +51,7 @@ return {
 		"RaidUpdate", -- (payload { State, Raid, Wave, Waves, EndsAt })
 		"LevelUp", -- (payload { Level })
 		"EventsChanged", -- (activeEvents)
+		"EnemyDefeated", -- ({ Enemy, Position = {x,y,z}, Yen, Boss }) cosmetic coin burst for the killer(s)
 	},
 
 	-- Client -> Server fire-and-forget (RemoteEvent).

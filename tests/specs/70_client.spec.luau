@@ -31,12 +31,12 @@ return function(t)
 			local State = s.Runtime:Require("StarterPlayer/StarterPlayerScripts/Client/State")
 			local UI = s.Controller("UIController")
 			local Summon = s.Controller("SummonController")
-			local gems = State.Data.Currencies.Gems
+			local yen = State.Data.Currencies.Yen
 			UI:Open("Summon", "B_W1")
-			task.spawn(Summon.Summon, Summon, 10)
+			task.spawn(Summon.Summon, Summon, 3)
 			task.wait(1.2)
-			expect(State.Data.Currencies.Gems).toBe(gems - 450)
-			expect(State.Data.Currencies.Gems).toBe(s.Data.Currencies.Gems)
+			expect(State.Data.Currencies.Yen).toBe(yen - 280)
+			expect(State.Data.Currencies.Yen).toBe(s.Data.Currencies.Yen)
 			-- Reveal panel was shown in the overlay
 			expect(#UI.Overlay:GetChildren() > 0).toBe(true)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)

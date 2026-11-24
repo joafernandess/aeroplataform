@@ -20,7 +20,7 @@
 ]]
 
 export type Vec = { number }
-export type SpawnArea = { Id: string, Center: Vec, Radius: number, MaxEnemies: number, Enemies: { [string]: number } }
+export type SpawnArea = { Id: string, Name: string, Center: Vec, Radius: number, MaxEnemies: number, Enemies: { [string]: number } }
 export type WorldDef = {
 	Id: string,
 	Name: string,
@@ -49,8 +49,8 @@ local function makeWorld(def)
 	def.Spawn = def.Spawn or { x, 5, 0 }
 	def.SpawnAreas = def.SpawnAreas
 		or {
-			{ Id = "Field", Center = { x + 60, 3, 0 }, Radius = 45, MaxEnemies = 12, Enemies = def.FieldEnemies },
-			{ Id = "Camp", Center = { x + 150, 3, 60 }, Radius = 30, MaxEnemies = 5, Enemies = def.CampEnemies },
+			{ Id = "Field", Name = def.FieldName or "Field", Center = { x + 60, 3, 0 }, Radius = 45, MaxEnemies = 12, Enemies = def.FieldEnemies },
+			{ Id = "Camp", Name = def.CampName or "Camp", Center = { x + 150, 3, 60 }, Radius = 30, MaxEnemies = 5, Enemies = def.CampEnemies },
 		}
 	def.Bosses = def.Bosses or {}
 	for _, boss in def.BossList or {} do
@@ -67,6 +67,8 @@ local function makeWorld(def)
 	def.Requirements = def.Requirements or {}
 	def.FieldEnemies = nil
 	def.CampEnemies = nil
+	def.FieldName = nil
+	def.CampName = nil
 	def.BossList = nil
 	return def
 end
@@ -74,6 +76,7 @@ end
 local list: { WorldDef } = {
 	makeWorld({
 		Id = "W1", Name = "Shinobi Valley", Order = 1, Banner = "B_W1", Theme = { 120, 200, 110 },
+		FieldName = "Bandit Fields", CampName = "Ninja Camp",
 		UnlockCost = { Currency = "Yen", Amount = 0 },
 		FieldEnemies = { W1_Bandit = 70, W1_RogueNinja = 30 },
 		CampEnemies = { W1_RogueNinja = 70, W1_MaskedElite = 30 },
