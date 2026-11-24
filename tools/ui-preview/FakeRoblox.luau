@@ -60,6 +60,7 @@ local PARENTS = {
 	UIStroke = { "UIComponent" },
 	UISizeConstraint = { "UIConstraint", "UIComponent" },
 	UIScale = { "UIComponent" },
+	UIGradient = { "UIComponent" },
 	Part = { "BasePart", "PVInstance" },
 	SpawnLocation = { "Part", "BasePart", "PVInstance" },
 	Model = { "PVInstance" },
@@ -99,6 +100,7 @@ local DEFAULTS = {
 	UIStroke = { Thickness = 1, Color = roblox.Color3.new(0, 0, 0), Transparency = 0 },
 	ScrollingFrame = { ScrollBarThickness = 12 },
 	UIScale = { Scale = 1 },
+	UIGradient = { Rotation = 0 },
 }
 
 local EVENTS = {

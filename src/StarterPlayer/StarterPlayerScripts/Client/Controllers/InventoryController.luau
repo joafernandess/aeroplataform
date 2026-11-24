@@ -85,8 +85,9 @@ function InventoryController:Render()
 
 	local count = TableUtil.Count(data.Inventory.Units)
 	local capacity = Formulas.UnitStorage(data.Upgrades.UnitStorage or 0)
-	self.CapacityLabel.Text = ("%d / %d units"):format(count, capacity)
-	self.CapacityLabel.TextColor3 = if count >= capacity then Theme.Colors.Bad else Theme.Colors.TextDim
+	local slots = Formulas.EquipSlots(data.Upgrades.EquipSlots or 0, 0)
+	self.CapacityLabel.Text = ("Units %d/%d     Equipped %d/%d"):format(count, capacity, #data.EquippedUnits, slots)
+	self.CapacityLabel.TextColor3 = if count >= capacity then Theme.Colors.Bad else Theme.Colors.Text
 	self.SortButton.Text = "Sort: " .. self.SortBy
 
 	local modeText = {
@@ -97,8 +98,7 @@ function InventoryController:Render()
 	self.ModeLabel.Text = modeText[self.Mode]
 	local selecting = self.Mode ~= "Browse"
 	self.ModeBar.Visible = selecting
-	self.Grid.Position = UDim2.fromOffset(0, if selecting then 72 else 40)
-	self.Grid.Size = UDim2.new(0.58, 0, 1, if selecting then -72 else -40)
+	self.Toolbar.Visible = not selecting
 	self.ConfirmButton.Visible = self.Mode ~= "Browse"
 	self.CancelButton.Visible = self.Mode ~= "Browse"
 
@@ -124,9 +124,9 @@ function InventoryController:Render()
 		end)
 		card.LayoutOrder = i
 		if self.MultiSelect[entry.Uid] then
-			card.BackgroundColor3 = Theme.Colors.Accent
+			C.HighlightCard(card, "Marked")
 		elseif entry.Uid == self.SelectedUid then
-			card.BackgroundColor3 = Theme.Colors.Stroke
+			C.HighlightCard(card, "Selected")
 		end
 	end
 
@@ -205,7 +205,7 @@ end
 function InventoryController:Init(controllers)
 	self.Controllers = controllers
 	self.SortBy = SORTS[1]
-	local window = controllers.UIController:CreateWindow("Inventory", "Units", UDim2.fromOffset(820, 520), function()
+	local window = controllers.UIController:CreateWindow("Inventory", "Your Units", UDim2.fromOffset(840, 540), function()
 		self:Render()
 	end)
 	window.OnClose = function()
@@ -219,46 +219,62 @@ function InventoryController:Init(controllers)
 		self.Tab = name
 		self:Render()
 	end)
-	tabs.Frame.Size = UDim2.new(1, 0, 0, 34)
+	self.CapacityLabel = C.Title(content, "", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromOffset(360, 34),
+		TextSize = 18,
+		TextXAlignment = Enum.TextXAlignment.Right,
+	})
 
 	-- Units page
-	local unitsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 1, -40) })
+	local unitsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 44), Size = UDim2.new(1, 0, 1, -44) })
 	self.UnitsPage = unitsPage
-	local toolbar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 36) })
-	C.List(toolbar, Enum.FillDirection.Horizontal, 6)
-	C.Button(toolbar, "Equip Best", function()
-		State.Request("EquipBest")
-	end, { Size = UDim2.fromOffset(100, 32), TextSize = 13, LayoutOrder = 1, BackgroundColor3 = Theme.Colors.Good })
+
+	local toolbar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 34) })
+	C.List(toolbar, Enum.FillDirection.Horizontal, 8)
+	self.Toolbar = toolbar
 	self.SortButton = C.Button(toolbar, "Sort", function()
 		local index = table.find(SORTS, self.SortBy) or 1
 		self.SortBy = SORTS[index % #SORTS + 1]
 		self:Render()
-	end, { Size = UDim2.fromOffset(100, 32), TextSize = 13, LayoutOrder = 2 })
+	end, { Size = UDim2.fromOffset(130, 30), TextSize = 15, LayoutOrder = 1, BackgroundColor3 = Theme.Colors.Info })
 	C.Button(toolbar, "Mass Sell", function()
 		self:SetMode(if self.Mode == "Delete" then "Browse" else "Delete")
-	end, { Size = UDim2.fromOffset(90, 32), TextSize = 13, LayoutOrder = 3, BackgroundColor3 = Theme.Colors.Bad })
-	self.CapacityLabel = C.Label(toolbar, "", { Size = UDim2.fromOffset(120, 32), TextSize = 13, LayoutOrder = 4, TextColor3 = Theme.Colors.TextDim })
+	end, { Size = UDim2.fromOffset(110, 30), TextSize = 15, LayoutOrder = 2, BackgroundColor3 = Theme.Colors.Bad })
 
-	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 38), Size = UDim2.new(0.58, 0, 0, 30), Visible = false })
+	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 34), Visible = false })
 	self.ModeBar = modeBar
-	self.ModeLabel = C.Label(modeBar, "", { Size = UDim2.new(1, -170, 1, 0), TextSize = 12, TextColor3 = Theme.Colors.Accent, Font = Theme.Fonts.Bold, TextWrapped = true })
+	self.ModeLabel = C.Title(modeBar, "", { Size = UDim2.new(1, -184, 1, 0), TextSize = 13, TextColor3 = Theme.Colors.Cta, TextWrapped = true }, 1.5)
 	self.ConfirmButton = C.Button(modeBar, "Confirm", function()
 		self:Confirm()
-	end, { Position = UDim2.new(1, -164, 0, 0), Size = UDim2.fromOffset(80, 28), TextSize = 13, BackgroundColor3 = Theme.Colors.Good, Visible = false })
+	end, { Position = UDim2.new(1, -176, 0, 2), Size = UDim2.fromOffset(86, 30), TextSize = 15, BackgroundColor3 = Theme.Colors.Good, Visible = false })
 	self.CancelButton = C.Button(modeBar, "Cancel", function()
 		self:SetMode("Browse")
-	end, { Position = UDim2.new(1, -80, 0, 0), Size = UDim2.fromOffset(80, 28), TextSize = 13, Visible = false })
+	end, { Position = UDim2.new(1, -86, 0, 2), Size = UDim2.fromOffset(86, 30), TextSize = 15, Visible = false })
 
-	local gridHolder = C.Scroll(unitsPage, { Position = UDim2.fromOffset(0, 72), Size = UDim2.new(0.58, 0, 1, -72) })
-	C.Grid(gridHolder, UDim2.fromOffset(104, 104), 6)
+	local gridHolder = C.Scroll(unitsPage, { Position = UDim2.fromOffset(0, 42), Size = UDim2.new(0.58, 0, 1, -42 - 56) })
+	C.Grid(gridHolder, UDim2.fromOffset(104, 116), 8)
+	C.Create("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 4), Parent = gridHolder })
 	self.Grid = gridHolder
+
+	-- Footer: big team actions
+	local footer = C.Frame(unitsPage, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(0.58, 0, 0, 48) })
+	C.List(footer, Enum.FillDirection.Horizontal, 12, Enum.HorizontalAlignment.Center)
+	C.Button(footer, "Equip Best", function()
+		State.Request("EquipBest")
+	end, { Size = UDim2.fromOffset(190, 44), TextSize = 20, LayoutOrder = 1, BackgroundColor3 = Theme.Colors.Good })
+	C.Button(footer, "Unequip All", function()
+		State.Request("UnequipAll")
+	end, { Size = UDim2.fromOffset(190, 44), TextSize = 20, LayoutOrder = 2, BackgroundColor3 = Theme.Colors.Bad })
 
 	self.Details = C.Frame(unitsPage, { Position = UDim2.new(0.6, 0, 0, 0), Size = UDim2.new(0.4, 0, 1, 0), BackgroundColor3 = Theme.Colors.Background })
 	C.Corner(self.Details)
-	C.Padding(self.Details, 10)
+	C.Stroke(self.Details, Theme.Colors.Stroke, 2.5)
+	C.Padding(self.Details, 12)
 
 	-- Items page
-	local itemsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 1, -40), Visible = false })
+	local itemsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 44), Size = UDim2.new(1, 0, 1, -44), Visible = false })
 	self.ItemsPage = itemsPage
 	self.ItemList = C.Scroll(itemsPage)
 	C.List(self.ItemList, Enum.FillDirection.Vertical, 6)

@@ -158,7 +158,7 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 			if response.ok and State.Notify then
 				State.Notify(def.Name .. " evolved!", "Success")
 			end
-		end, { Size = UDim2.new(1, 0, 0, 34), LayoutOrder = nextOrder(), BackgroundColor3 = Theme.Colors.Accent, TextColor3 = Theme.Colors.Background })
+		end, { Size = UDim2.new(1, 0, 0, 34), LayoutOrder = nextOrder(), BackgroundColor3 = Theme.Colors.Cta })
 	end
 
 	-- Consumables on this unit
@@ -180,7 +180,7 @@ function UnitDetailsController:Render(container: Frame, uid: string?)
 				local newTrait = Traits.Get(response.data)
 				State.Notify("New trait: " .. (if newTrait then newTrait.Name else tostring(response.data)), "Success")
 			end
-		end, { TextSize = 11, BackgroundColor3 = Theme.Colors.Accent, TextColor3 = Theme.Colors.Background })
+		end, { TextSize = 11, BackgroundColor3 = Theme.Colors.Cta })
 	end
 end
 

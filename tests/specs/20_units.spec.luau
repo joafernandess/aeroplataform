@@ -80,6 +80,13 @@ return function(t)
 			expect(#data.EquippedUnits).toBe(3)
 		end)
 
+		t.it("unequips every unit with UnequipAll", function()
+			local h, player, data = setup()
+			expect(#data.EquippedUnits).toBe(1)
+			expect(h:Invoke(player, "UnequipAll").ok).toBe(true)
+			expect(#data.EquippedUnits).toBe(0)
+		end)
+
 		t.it("deletes units for Yen, skipping locked and equipped ones", function()
 			local h, player, data, Unit = setup()
 			local _, a = Unit:CreateUnit(player, "SS_Kenta")

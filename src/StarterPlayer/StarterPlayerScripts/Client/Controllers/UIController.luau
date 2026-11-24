@@ -143,9 +143,10 @@ function UIController:Toggle(name: string, ...: any)
 end
 
 function UIController:AddMenuButton(name: string, label: string, order: number)
-	C.Button(self.Menu, label, function()
+	local container = C.IconButton(self.Menu, Theme.Icons[name] or "?", label, Theme.MenuColors[name] or Theme.Colors.Button, function()
 		self:Toggle(name)
-	end, { LayoutOrder = order, Size = UDim2.fromOffset(110, 38), TextSize = 15 })
+	end, 58)
+	container.LayoutOrder = order
 end
 
 function UIController:Init()
@@ -159,11 +160,11 @@ function UIController:Init()
 	self.Menu = C.Frame(self.Root, {
 		Name = "Menu",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.5, 0),
-		Size = UDim2.fromOffset(110, 420),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, -12),
+		Size = UDim2.fromOffset(152, 324),
 	})
-	C.List(self.Menu, Enum.FillDirection.Vertical, 6)
+	C.Grid(self.Menu, UDim2.fromOffset(72, 78), 4)
 	self:AddScaled(self.Menu, "Hud")
 	-- Effects layer (popups that sit above windows, e.g. summon reveal)
 	self.Overlay = C.Frame(self.Root, { Name = "Overlay", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 50 })

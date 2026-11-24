@@ -9,7 +9,7 @@ Este repositório contém:
 
 ```bash
 rokit install          # Rojo, Lune, Selene, StyLua
-lune run tests/run     # 167 testes automatizados (fora do Roblox)
+lune run tests/run     # 168 testes automatizados (fora do Roblox)
 selene src             # lint
 rojo serve             # sincronizar com o Roblox Studio
 

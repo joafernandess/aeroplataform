@@ -61,7 +61,7 @@ function WorldController:Render()
 				if response.ok and State.Notify then
 					State.Notify(world.Name .. " unlocked!", "Success")
 				end
-			end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 40), BackgroundColor3 = Theme.Colors.Accent, TextColor3 = Theme.Colors.Background })
+			end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 40), BackgroundColor3 = Theme.Colors.Cta })
 		end
 	end
 end

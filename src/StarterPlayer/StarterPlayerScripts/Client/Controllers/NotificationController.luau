@@ -21,7 +21,7 @@ local KIND_COLORS = {
 	Info = Theme.Colors.Info,
 	Success = Theme.Colors.Good,
 	Error = Theme.Colors.Bad,
-	Quest = Theme.Colors.Accent,
+	Quest = Theme.Colors.Cta,
 	Level = Theme.Colors.XP,
 }
 
@@ -43,10 +43,11 @@ function NotificationController:Show(text: string, kind: string?, duration: numb
 		toasts[1]:Destroy()
 	end
 	counter += 1
-	local toast = C.Frame(container, { Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.Colors.Panel, LayoutOrder = counter })
-	C.Corner(toast)
-	C.Stroke(toast, KIND_COLORS[kind or "Info"] or Theme.Colors.Info, 2)
-	local label = C.Label(toast, text, { Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0), TextWrapped = true, TextSize = 15, Font = Theme.Fonts.Bold })
+	local toast = C.Frame(container, { Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = KIND_COLORS[kind or "Info"] or Theme.Colors.Info, LayoutOrder = counter })
+	C.Corner(toast, UDim.new(0, 12))
+	C.Stroke(toast, Theme.Colors.Stroke, 3)
+	C.Gloss(toast)
+	local label = C.Title(toast, text, { Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0), TextWrapped = true, TextSize = 16 }, 2)
 	task.delay(duration or 3, function()
 		if toast.Parent then
 			local tween = TweenService:Create(toast, TweenInfo.new(0.3), { BackgroundTransparency = 1 })

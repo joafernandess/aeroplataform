@@ -12,7 +12,6 @@ local Shared = ReplicatedStorage.Shared
 local Banners = require(Shared.Config.Banners)
 local Units = require(Shared.Config.Units)
 local Rarities = require(Shared.Config.Rarities)
-local Traits = require(Shared.Config.Traits)
 local Requirements = require(Shared.Modules.Requirements)
 local NumberFormat = require(Shared.Modules.NumberFormat)
 
@@ -41,31 +40,46 @@ function SummonController:Summon(count: number)
 	end
 end
 
--- Default reveal: cards pop in one by one, best rarity last gets a highlight.
+-- Default reveal: rarity cards pop in one by one. Replace this function for a cinematic animation.
 function SummonController:PlayReveal(results)
 	local overlay = self.Controllers.UIController.Overlay
-	local panel = C.Frame(overlay, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(620, 330), BackgroundColor3 = Theme.Colors.Background, ZIndex = 51 })
+	local panel = C.Frame(overlay, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(640, 360), BackgroundColor3 = Theme.Colors.Panel, ZIndex = 51 })
 	self.Controllers.UIController:AddScaled(panel, "Window")
-	C.Corner(panel)
-	C.Stroke(panel, Theme.Colors.Accent, 2)
-	C.Label(panel, "Summon Results", { Position = UDim2.fromOffset(16, 8), Font = Theme.Fonts.Title, TextSize = 22, ZIndex = 52, Size = UDim2.new(1, -32, 0, 30) })
-	local grid = C.Frame(panel, { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 46), Size = UDim2.new(1, -32, 1, -100), ZIndex = 52 })
-	C.Grid(grid, UDim2.fromOffset(110, 110), 8)
+	C.Corner(panel, UDim.new(0, 16))
+	C.Stroke(panel, Theme.Colors.Stroke, 3.5)
+	local header = C.Frame(panel, { BackgroundColor3 = Theme.MenuColors.Summon, Size = UDim2.new(1, 0, 0, 50), ZIndex = 52 })
+	C.Corner(header, UDim.new(0, 16))
+	C.Gloss(header)
+	local title = C.Label(header, "SUMMON RESULTS", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 28, ZIndex = 53 })
+	C.Outline(title, 2.5)
+	local grid = C.Frame(panel, { BackgroundTransparency = 1, Position = UDim2.fromOffset(18, 62), Size = UDim2.new(1, -36, 1, -122), ZIndex = 52 })
+	C.Grid(grid, UDim2.fromOffset(112, 112), 8)
 	for i, result in results do
 		local def = Units.Get(result.UnitId)
-		local trait = result.Trait and Traits.Get(result.Trait)
-		local card = C.Frame(grid, { BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = i, ZIndex = 53, BackgroundTransparency = 1 })
-		C.Corner(card, UDim.new(0, 8))
-		C.Stroke(card, Theme.Rarity(result.Rarity), if Rarities.AtLeast(result.Rarity, "Legendary") then 3 else 1.5)
-		C.Label(card, if def then def.Name else result.UnitId, { Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 0, 40), TextWrapped = true, TextSize = 14, Font = Theme.Fonts.Bold, ZIndex = 54, TextYAlignment = Enum.TextYAlignment.Top })
-		C.Label(card, result.Rarity, { Position = UDim2.new(0, 6, 1, -40), Size = UDim2.new(1, -12, 0, 16), TextSize = 13, Font = Theme.Fonts.Bold, TextColor3 = Theme.Rarity(result.Rarity), ZIndex = 54 })
-		C.Label(card, if result.AutoDeleted then "Auto-sold" elseif trait then trait.Name else "", { Position = UDim2.new(0, 6, 1, -22), Size = UDim2.new(1, -12, 0, 16), TextSize = 12, TextColor3 = Theme.Colors.TextDim, ZIndex = 54 })
+		local card = C.UnitCard(grid, {
+			Name = if def then def.Name else result.UnitId,
+			Rarity = result.Rarity,
+			Level = 1,
+			Stars = 0,
+			Locked = false,
+			Equipped = false,
+			Trait = result.Trait,
+			Badge = if result.AutoDeleted then "SOLD" else string.upper(result.Rarity),
+		})
+		card.LayoutOrder = i
+		card.ZIndex = 53
+		if Rarities.AtLeast(result.Rarity, "Legendary") then
+			C.HighlightCard(card, "Selected")
+		end
+		if result.AutoDeleted then
+			C.Frame(card, { BackgroundColor3 = Theme.Colors.Background, BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), ZIndex = 6 })
+		end
 		TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0 }):Play()
 		task.wait(if #results > 1 then 0.08 else 0.2)
 	end
 	C.Button(panel, "OK", function()
 		panel:Destroy()
-	end, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.fromOffset(140, 36), ZIndex = 55, BackgroundColor3 = Theme.Colors.Accent, TextColor3 = Theme.Colors.Background })
+	end, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(160, 42), TextSize = 22, ZIndex = 55, BackgroundColor3 = Theme.Colors.Good })
 	task.delay(12, function()
 		if panel.Parent then
 			panel:Destroy()
@@ -85,8 +99,8 @@ function SummonController:RenderBannerList(data)
 			button.TextColor3 = Theme.Colors.TextDim
 		end
 		if banner.Id == self.SelectedBanner then
-			button.BackgroundColor3 = Theme.Colors.Accent
-			button.TextColor3 = Theme.Colors.Background
+			button.BackgroundColor3 = Theme.Colors.Cta
+			button.TextColor3 = Theme.Colors.Text
 		end
 	end
 end
@@ -136,7 +150,7 @@ function SummonController:RenderBanner(data)
 	end, { Size = UDim2.fromOffset(150, 40), BackgroundColor3 = Theme.Colors.Info })
 	C.Button(buttons, "Summon x10", function()
 		self:Summon(10)
-	end, { Size = UDim2.fromOffset(150, 40), BackgroundColor3 = Theme.Colors.Accent, TextColor3 = Theme.Colors.Background })
+	end, { Size = UDim2.fromOffset(150, 40), BackgroundColor3 = Theme.Colors.Cta })
 end
 
 function SummonController:Render()

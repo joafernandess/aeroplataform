@@ -161,7 +161,43 @@ function computeChildRects(inst, rect)
 	return out, (maxBottom - rect.y) + pb
 end
 
-local FONT_WEIGHT = { GothamBlack = 900, GothamBold = 700, Gotham = 400, Legacy = 400 }
+local EMOJI = "'Noto Color Emoji'"
+local FONTS = {
+	GothamBlack = { "Inter", 900 },
+	GothamBold = { "Inter", 700 },
+	GothamMedium = { "Inter", 500 },
+	Gotham = { "Inter", 400 },
+	FredokaOne = { "'Fredoka'", 600 },
+	LuckiestGuy = { "'Luckiest Guy'", 400 },
+	Legacy = { "Inter", 400 },
+}
+
+-- Outline ring made of text-shadows (Roblox UIStroke with ApplyStrokeMode = Contextual on text).
+local function outlineShadow(color: string, thickness: number): string
+	local parts = {}
+	local steps = 16
+	for i = 0, steps - 1 do
+		local a = (i / steps) * math.pi * 2
+		table.insert(parts, string.format("%.2fpx %.2fpx 0 %s", math.cos(a) * thickness, math.sin(a) * thickness, color))
+	end
+	return table.concat(parts, ",")
+end
+
+local function strokes(inst)
+	local border, text = nil, nil
+	for _, child in inst:GetChildren() do
+		if Fake.Data(child).ClassName == "UIStroke" and child.Enabled ~= false then
+			local mode = enumName(child.ApplyStrokeMode)
+			local isText = Fake.Data(inst).ClassName == "TextLabel" or Fake.Data(inst).ClassName == "TextButton"
+			if mode == "Border" or not isText then
+				border = border or child
+			else
+				text = text or child
+			end
+		end
+	end
+	return border, text
+end
 
 local function textHtml(inst, rect): string
 	local text = tostring(inst.Text or "")
@@ -179,10 +215,14 @@ local function textHtml(inst, rect): string
 		size = math.min(rect.h * 0.82, rect.w / math.max(longest, 1) * 1.75, 100)
 	end
 	local stroke = ""
-	local strokeT = inst.TextStrokeTransparency or 1
-	if strokeT < 1 then
-		local c = rgba(inst.TextStrokeColor3 or { R = 0, G = 0, B = 0 }, strokeT)
-		stroke = string.format("text-shadow:-1px -1px 0 %s,1px -1px 0 %s,-1px 1px 0 %s,1px 1px 0 %s;", c, c, c, c)
+	local _, textStroke = strokes(inst)
+	if textStroke then
+		stroke = "text-shadow:" .. outlineShadow(rgba(textStroke.Color, textStroke.Transparency), textStroke.Thickness) .. ";"
+	else
+		local strokeT = inst.TextStrokeTransparency or 1
+		if strokeT < 1 then
+			stroke = "text-shadow:" .. outlineShadow(rgba(inst.TextStrokeColor3 or { R = 0, G = 0, B = 0 }, strokeT), 1.2) .. ";"
+		end
 	end
 	local justify = if xa == "Left" then "flex-start" elseif xa == "Right" then "flex-end" else "center"
 	local align = if ya == "Top" then "flex-start" elseif ya == "Bottom" then "flex-end" else "center"
@@ -193,12 +233,13 @@ local function textHtml(inst, rect): string
 		body = '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">' .. body .. "</span>"
 	end
 	return string.format(
-		'<div class="t" style="justify-content:%s;align-items:%s;text-align:%s;font-size:%.1fpx;font-weight:%d;color:%s;%s%s">%s</div>',
+		'<div class="t" style="justify-content:%s;align-items:%s;text-align:%s;font-size:%.1fpx;font-family:%s;font-weight:%d;color:%s;%s%s">%s</div>',
 		justify,
 		align,
 		string.lower(if xa == "" then "center" else xa),
 		size,
-		FONT_WEIGHT[enumName(inst.Font)] or 500,
+		(FONTS[enumName(inst.Font)] or FONTS.Gotham)[1] .. "," .. EMOJI,
+		(FONTS[enumName(inst.Font)] or FONTS.Gotham)[2],
 		rgba(inst.TextColor3, inst.TextTransparency),
 		wrap,
 		stroke,
@@ -211,15 +252,28 @@ local function nodeHtml(inst, rect, parentRect): string
 		string.format("left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx;", rect.x - parentRect.x, rect.y - parentRect.y, rect.w, rect.h),
 	}
 	if inst.BackgroundTransparency < 1 then
-		table.insert(styles, "background:" .. rgba(inst.BackgroundColor3, inst.BackgroundTransparency) .. ";")
+		local gradient = findComponent(inst, "UIGradient")
+		if gradient and gradient.Enabled ~= false then
+			-- UIGradient multiplies the background colour; Rotation 0 = left->right, 90 = top->bottom.
+			local bg = inst.BackgroundColor3
+			local stops = {}
+			for _, keypoint in gradient.Color.Keypoints do
+				local c = keypoint.Value
+				local mixed = { R = bg.R * c.R, G = bg.G * c.G, B = bg.B * c.B }
+				table.insert(stops, string.format("%s %.1f%%", rgba(mixed, inst.BackgroundTransparency), keypoint.Time * 100))
+			end
+			table.insert(styles, string.format("background:linear-gradient(%ddeg,%s);", (gradient.Rotation or 0) + 90, table.concat(stops, ",")))
+		else
+			table.insert(styles, "background:" .. rgba(inst.BackgroundColor3, inst.BackgroundTransparency) .. ";")
+		end
 	end
 	local corner = findComponent(inst, "UICorner")
 	if corner then
 		local r = udim(corner.CornerRadius, math.min(rect.w, rect.h))
 		table.insert(styles, string.format("border-radius:%.1fpx;", math.min(r, math.min(rect.w, rect.h) / 2)))
 	end
-	local stroke = findComponent(inst, "UIStroke")
-	if stroke and (stroke.Enabled ~= false) then
+	local stroke = strokes(inst)
+	if stroke then
 		table.insert(styles, string.format("box-shadow:0 0 0 %.1fpx %s;", stroke.Thickness, rgba(stroke.Color, stroke.Transparency)))
 	end
 	local uiScale = findComponent(inst, "UIScale")
@@ -270,7 +324,9 @@ function Render.Page(playerGui, options): string
 		end
 	end
 	return string.format(
-		[[<!doctype html><html><head><meta charset="utf-8"><style>
+		[[<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Luckiest+Guy&family=Noto+Color+Emoji&display=block" rel="stylesheet">
+<style>
 html,body{margin:0;padding:0}
 body{width:%dpx;height:%dpx;position:relative;overflow:hidden;font-family:Inter,"DejaVu Sans",sans-serif;
 background:linear-gradient(180deg,#7ec8f0 0%%,#bfe6f7 52%%,#6fb35a 52.2%%,#4f8f3d 100%%)}

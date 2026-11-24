@@ -13,6 +13,7 @@ return {
 		"EquipUnit",
 		"UnequipUnit",
 		"EquipBest",
+		"UnequipAll",
 		"LockUnit",
 		"DeleteUnits",
 		"FuseUnits",

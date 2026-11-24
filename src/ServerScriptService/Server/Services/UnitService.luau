@@ -234,6 +234,16 @@ function UnitService:EquipBest(player): (boolean, any)
 	return true, equipped
 end
 
+function UnitService:UnequipAll(player): (boolean, any)
+	local data = DataService:GetData(player)
+	if not data then
+		return false, "DataNotLoaded"
+	end
+	data.EquippedUnits = {}
+	equippedChanged(player, data)
+	return true, data.EquippedUnits
+end
+
 function UnitService:SetLocked(player, uid: string, locked: boolean): (boolean, any)
 	local unit, data = getUnit(player, uid)
 	if not data then
@@ -488,6 +498,9 @@ function UnitService:Init(services)
 	end)
 	Net.Handle("EquipBest", function(player)
 		return self:EquipBest(player)
+	end, { RateLimit = 2 })
+	Net.Handle("UnequipAll", function(player)
+		return self:UnequipAll(player)
 	end, { RateLimit = 2 })
 	Net.Handle("LockUnit", function(player, uid, locked)
 		if not Validate.UnitUid(uid) or not Validate.Boolean(locked) then

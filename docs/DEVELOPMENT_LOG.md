@@ -69,6 +69,18 @@
 - Novo teste `tests/specs/70_client.spec.luau`: sobe o cliente real, abre todas as janelas, faz summon pela UI
   e verifica a escala no celular. **167 testes passando.**
 
+### Redesign visual (estilo "simulador", identidade própria)
+- Inspirado na linguagem visual do gênero (botões redondos com ícone, pílulas de moeda, texto com contorno,
+  gradientes, cards de raridade), **sem copiar** layout, logo, títulos ou arte do Anime Fighters Simulator.
+- Tema novo (`UI/Theme`): paleta índigo/ciano/laranja, fontes Fredoka One e Luckiest Guy, ícones em emoji
+  centralizados em `Theme.Icons` (trocar por imagens `rbxassetid` quando houver arte).
+- Componentes novos: `C.IconButton`, `C.CurrencyPill`, `C.Title`/`C.Outline`, `C.Gloss`, `C.HighlightCard`;
+  janelas com cabeçalho em gradiente e botão de fechar redondo; cards de unidade com retrato (iniciais).
+- HUD: moedas empilhadas (atalho "+" para a loja), banner do mundo, "Team Power" (DPS estimado), boosts/eventos
+  em selos, menu em grade de botões redondos, nível em selo + barra, botão AUTO grande.
+- Inventário: contadores de unidades/equipados, botões grandes Equip Best / **Unequip All** (novo remote no servidor).
+- Preview atualizado: `UIGradient`, contorno de texto (`UIStroke` Contextual), fontes do Google Fonts. **168 testes.**
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

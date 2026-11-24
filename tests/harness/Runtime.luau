@@ -221,6 +221,9 @@ function Runtime.new(options: { IsServer: boolean?, Root: string? }?)
 		Enum = roblox.Enum,
 		Instance = roblox.Instance,
 		NumberRange = roblox.NumberRange,
+		ColorSequence = roblox.ColorSequence,
+		ColorSequenceKeypoint = roblox.ColorSequenceKeypoint,
+		NumberSequence = roblox.NumberSequence,
 		TweenInfo = roblox.TweenInfo or nil,
 		time = function()
 			return os.clock()

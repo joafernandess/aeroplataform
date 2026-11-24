@@ -44,6 +44,10 @@ Tudo abaixo depende do Studio/site do Roblox e **não foi feito** neste ambiente
 - **Unidades** (visual no cliente): Models em `ReplicatedStorage/Assets/Units/<UnitId>` com `PrimaryPart`.
   Precisam estar em ReplicatedStorage porque o cliente os clona.
 - Sem modelos, placeholders coloridos são gerados automaticamente.
+- **Ícones da UI**: hoje são emojis (`Client/UI/Theme.luau` › `Theme.Icons`). Para usar arte própria, faça upload
+  das imagens (Asset Manager) e troque os botões por `ImageLabel` com os `rbxassetid://` correspondentes.
+- **Retratos das unidades**: os cards mostram as iniciais; quando houver imagens, adicione um campo `Icon` em
+  `Config/Units.luau` e um `ImageLabel` em `C.UnitCard`.
 
 ## 7. Verificações manuais recomendadas (não feitas aqui)
 - [ ] Layout das janelas em PC, celular (Device Emulator) e console.
