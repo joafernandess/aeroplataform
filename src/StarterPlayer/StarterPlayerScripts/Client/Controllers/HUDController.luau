@@ -2,7 +2,7 @@
 	HUDController
 	Always-visible HUD:
 	  top-left      currency pills (Gems has a "+" shortcut to the shop)
-	  top-centre    world banner (hidden while a window is open)
+	  top-centre    kept clear (the big world-name banner was removed at the owner's request)
 	  top-right     Team Power, active boosts and events
 	  bottom-centre level badge + XP bar
 	  bottom-right  big round AUTO toggle
@@ -14,7 +14,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
 local Features = require(Shared.Config.Features)
-local Worlds = require(Shared.Config.Worlds)
 local Formulas = require(Shared.Modules.Formulas)
 local UnitStats = require(Shared.Modules.UnitStats)
 local NumberFormat = require(Shared.Modules.NumberFormat)
@@ -67,24 +66,6 @@ function HUDController:Init(controllers)
 		self.CurrencyPills[currency] = pill
 	end
 
-	-- World banner (top centre): straight blue plate with speed-lines and the cyan energy line.
-	local banner = C.Frame(root, {
-		Name = "WorldBanner",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 10),
-		Size = UDim2.fromOffset(340, 48),
-		BackgroundColor3 = P.White,
-		ClipsDescendants = true,
-	})
-	C.Corner(banner, Theme.Radius.Header)
-	C.Stroke(banner, P.Ink, Theme.Stroke.Button)
-	C.Gradient(banner, Theme.Gradients.WindowHeader.Top, Theme.Gradients.WindowHeader.Bottom)
-	C.SpeedLines(banner, 5, { Start = 0.72, Spacing = 24, Length = 90 })
-	C.Frame(banner, { BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 3 })
-	self.WorldLabel = C.Label(banner, "", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 26, ZIndex = 4 })
-	C.Outline(self.WorldLabel, 3)
-	self.Banner = banner
-
 	-- Team power + boosts/events (top-right)
 	local right = C.Frame(root, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 10), Size = UDim2.fromOffset(260, 170) })
 	C.List(right, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Right)
@@ -115,12 +96,8 @@ function HUDController:Init(controllers)
 	self.AutoButton = autoButton
 	self.AutoCaption = autoContainer:FindFirstChild("Caption")
 
-	-- The world banner sits where window headers go; hide it while a window is open.
-	ui.WindowChanged:Connect(function(current)
-		banner.Visible = current == nil
-	end)
 	-- Responsive scaling (phones/tablets): every HUD block keeps its anchor and shrinks with the screen.
-	for _, gui in { currencies, banner, right, levelFrame, autoContainer } do
+	for _, gui in { currencies, right, levelFrame, autoContainer } do
 		ui:AddScaled(gui, "Hud")
 	end
 end
@@ -165,10 +142,6 @@ function HUDController:Start()
 		local needed = Formulas.PlayerXPToNext(data.Level)
 		self.LevelLabel.Text = tostring(data.Level)
 		self.XPBar.Set(data.Experience / math.max(needed, 1), NumberFormat.Abbreviate(data.Experience) .. " / " .. NumberFormat.Abbreviate(needed) .. " XP")
-	end)
-	State.Observe({ "CurrentWorld" }, function(data)
-		local world = Worlds.Get(data.CurrentWorld)
-		self.WorldLabel.Text = if world then world.Name else ""
 	end)
 	State.Observe({ "EquippedUnits", "Inventory", "Upgrades" }, function(data)
 		self.PowerPill.Set(NumberFormat.Abbreviate(teamPower(data)) .. " Power")
