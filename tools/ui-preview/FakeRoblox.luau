@@ -113,6 +113,12 @@ local EVENTS = {
 	CharacterAdded = true,
 	Completed = true,
 	Triggered = true,
+	MouseEnter = true,
+	MouseLeave = true,
+	MouseButton1Down = true,
+	MouseButton1Up = true,
+	InputBegan = true,
+	InputEnded = true,
 }
 
 local counter = 0

@@ -166,6 +166,9 @@ local FONTS = {
 	GothamBlack = { "Inter", 900 },
 	GothamBold = { "Inter", 700 },
 	GothamMedium = { "Inter", 500 },
+	BuilderSansExtraBold = { "Inter", 800 },
+	BuilderSansBold = { "Inter", 700 },
+	BuilderSans = { "Inter", 500 },
 	Gotham = { "Inter", 400 },
 	FredokaOne = { "'Fredoka'", 600 },
 	LuckiestGuy = { "'Luckiest Guy'", 400 },
@@ -276,10 +279,21 @@ local function nodeHtml(inst, rect, parentRect): string
 	if stroke then
 		table.insert(styles, string.format("box-shadow:0 0 0 %.1fpx %s;", stroke.Thickness, rgba(stroke.Color, stroke.Transparency)))
 	end
+	local transforms = {}
 	local uiScale = findComponent(inst, "UIScale")
 	if uiScale and math.abs(uiScale.Scale - 1) > 1e-3 then
-		-- Roblox scales around the element's AnchorPoint (its Position stays fixed).
-		table.insert(styles, string.format("transform:scale(%.4f);transform-origin:%.1f%% %.1f%%;", uiScale.Scale, inst.AnchorPoint.X * 100, inst.AnchorPoint.Y * 100))
+		table.insert(transforms, string.format("scale(%.4f)", uiScale.Scale))
+	end
+	local rotation = tonumber(inst.Rotation) or 0
+	if math.abs(rotation) > 1e-3 then
+		table.insert(transforms, string.format("rotate(%.2fdeg)", rotation))
+	end
+	if #transforms > 0 then
+		-- Roblox scales around the AnchorPoint (Position stays fixed) and rotates around the centre.
+		local origin = if #transforms == 1 and rotation ~= 0 and not uiScale
+			then "50% 50%"
+			else string.format("%.1f%% %.1f%%", inst.AnchorPoint.X * 100, inst.AnchorPoint.Y * 100)
+		table.insert(styles, "transform:" .. table.concat(transforms, " ") .. ";transform-origin:" .. origin .. ";")
 	end
 	local className = Fake.Data(inst).ClassName
 	local clips = className == "ScrollingFrame" or inst.ClipsDescendants == true

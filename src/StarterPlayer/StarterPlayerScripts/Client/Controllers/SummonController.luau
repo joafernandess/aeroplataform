@@ -35,6 +35,7 @@ function SummonController:Summon(count: number)
 		return
 	end
 	self.Busy = true
+	self.LastCount = count
 	local response = State.Request("Summon", self.SelectedBanner, count)
 	self.Busy = false
 	if response.ok then
@@ -42,49 +43,95 @@ function SummonController:Summon(count: number)
 	end
 end
 
--- Default reveal: rarity cards pop in one by one. Replace this function for a cinematic animation.
+-- Default reveal: speed-line burst behind a row of cards popping in one by one.
+-- Replace this function for a cinematic animation; the request flow stays the same.
 function SummonController:PlayReveal(results)
-	local overlay = self.Controllers.UIController.Overlay
-	local panel = C.Frame(overlay, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(640, 360), BackgroundColor3 = Theme.Colors.Panel, ZIndex = 51 })
-	self.Controllers.UIController:AddScaled(panel, "Window")
-	C.Corner(panel, UDim.new(0, 16))
-	C.Stroke(panel, Theme.Colors.Stroke, 3.5)
-	local header = C.Frame(panel, { BackgroundColor3 = Theme.MenuColors.Summon, Size = UDim2.new(1, 0, 0, 50), ZIndex = 52 })
-	C.Corner(header, UDim.new(0, 16))
-	C.Gloss(header)
-	local title = C.Label(header, "SUMMON RESULTS", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 28, ZIndex = 53 })
-	C.Outline(title, 2.5)
-	local grid = C.Frame(panel, { BackgroundTransparency = 1, Position = UDim2.fromOffset(18, 62), Size = UDim2.new(1, -36, 1, -122), ZIndex = 52 })
-	C.Grid(grid, UDim2.fromOffset(112, 112), 8)
+	local ui = self.Controllers.UIController
+	local P = Theme.Colors
+	local overlay = ui.Overlay
+	local reveal = C.Frame(overlay, { Name = "Reveal", BackgroundColor3 = P.Ink, BackgroundTransparency = 0.35, Size = UDim2.fromScale(1, 1), ZIndex = 50 })
+	-- Burst of speed-lines radiating from the centre.
+	for k = 0, 15 do
+		C.Frame(reveal, {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(4, 900),
+			Rotation = k * 22.5,
+			BackgroundColor3 = P.White,
+			BackgroundTransparency = 0.86,
+			ZIndex = 51,
+		})
+	end
+	local panel = C.Frame(reveal, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(760, 420), ZIndex = 52 })
+	ui:AddScaled(panel, "Window")
+	local title = C.Label(panel, "NEW FIGHTERS!", {
+		Size = UDim2.new(1, 0, 0, 56),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Font = Theme.Fonts.Display,
+		TextSize = 44,
+		ZIndex = 53,
+	})
+	C.Outline(title, 3)
+	local many = #results > 5
+	local row = C.Frame(panel, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 74), Size = UDim2.new(1, 0, 0, if many then 320 else 160), ZIndex = 53 })
+	if many then
+		C.Grid(row, UDim2.fromOffset(120, 150), 12)
+	else
+		C.List(row, Enum.FillDirection.Horizontal, 16, Enum.HorizontalAlignment.Center)
+	end
 	for i, result in results do
 		local def = Units.Get(result.UnitId)
-		local card = C.UnitCard(grid, {
+		local holder = C.Frame(row, { BackgroundTransparency = 1, Size = UDim2.fromOffset(120, 150), LayoutOrder = i, ZIndex = 54 })
+		local card = C.UnitCard(holder, {
 			Name = if def then def.Name else result.UnitId,
 			Rarity = result.Rarity,
 			Level = 1,
 			Stars = 0,
 			Locked = false,
 			Equipped = false,
-			Trait = result.Trait,
-			Badge = if result.AutoDeleted then "SOLD" else string.upper(result.Rarity),
+			New = not result.AutoDeleted,
+			HideLevel = true,
+			Footer = string.upper(result.Rarity),
+			FooterColor = Theme.Rarity(result.Rarity),
+			FooterFont = Theme.Fonts.Display,
 		})
-		card.LayoutOrder = i
-		card.ZIndex = 53
+		card.Size = UDim2.fromScale(1, 1)
 		if Rarities.AtLeast(result.Rarity, "Legendary") then
 			C.HighlightCard(card, "Selected")
 		end
 		if result.AutoDeleted then
-			C.Frame(card, { BackgroundColor3 = Theme.Colors.Background, BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), ZIndex = 6 })
+			local dim = C.Frame(card, { BackgroundColor3 = P.Ink, BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 9 })
+			C.Corner(dim, Theme.Radius.Card)
+			local ribbon = C.Frame(card, {
+				BackgroundColor3 = P.Ink,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.42),
+				Size = UDim2.new(1, 16, 0, 26),
+				Rotation = -12,
+				ZIndex = 10,
+			})
+			C.Stroke(ribbon, P.White, 2)
+			C.Title(ribbon, "SOLD", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 16, ZIndex = 11 }, 2)
 		end
-		TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0 }):Play()
-		task.wait(if #results > 1 then 0.08 else 0.2)
+		local scale = card:FindFirstChildOfClass("UIScale")
+		if scale then
+			scale.Scale = 0.2
+			TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = if Rarities.AtLeast(result.Rarity, "Legendary") then 1.04 else 1 }):Play()
+		end
+		task.wait(if #results > 1 then 0.12 else 0.2)
 	end
-	C.Button(panel, "OK", function()
-		panel:Destroy()
-	end, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(160, 42), TextSize = 22, ZIndex = 55, BackgroundColor3 = Theme.Colors.Good })
-	task.delay(12, function()
-		if panel.Parent then
-			panel:Destroy()
+	local buttons = C.Frame(panel, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.new(1, 0, 0, 56), ZIndex = 55 })
+	C.List(buttons, Enum.FillDirection.Horizontal, 16, Enum.HorizontalAlignment.Center)
+	C.Button(buttons, "OK", function()
+		reveal:Destroy()
+	end, { Kind = "Secondary", Size = UDim2.fromOffset(170, 52), TextSize = 22, LayoutOrder = 1 })
+	C.Button(buttons, "OPEN AGAIN", function()
+		reveal:Destroy()
+		self:Summon(self.LastCount or 1)
+	end, { Kind = "Primary", Size = UDim2.fromOffset(210, 52), TextSize = 22, LayoutOrder = 2 })
+	task.delay(15, function()
+		if reveal.Parent then
+			reveal:Destroy()
 		end
 	end)
 end
@@ -111,31 +158,22 @@ function SummonController:RenderBannerList(data)
 		local button = C.Button(self.BannerList, banner.Name, function()
 			self.SelectedBanner = banner.Id
 			self:Render()
-		end, { Size = UDim2.new(1, -6, 0, 40), TextSize = 13, TextWrapped = true, LayoutOrder = i })
-		if not ok then
-			button.TextColor3 = Theme.Colors.TextDim
-		end
-		if banner.Id == self.SelectedBanner then
-			button.BackgroundColor3 = Theme.Colors.Cta
-		end
+		end, { Kind = if banner.Id == self.SelectedBanner then "Primary" else "Dark", Size = UDim2.new(1, -8, 0, 48), TextSize = 15, LayoutOrder = i })
+		C.SetDisabled(button, not ok and banner.Id ~= self.SelectedBanner)
+		C.SetSelected(button, banner.Id == self.SelectedBanner)
 	end
 end
 
 function SummonController:RenderBanner(data)
-	C.Clear(self.Info)
+	C.Clear(self.Pool)
+	C.Clear(self.Actions)
 	local banner = self.SelectedBanner and Banners.Get(self.SelectedBanner)
 	if not banner then
 		return
 	end
+	local P = Theme.Colors
 	local multi = Banners.GetMultiCount(banner)
 	local ok, reason = Requirements.Check(data, banner.Requirements)
-	if #visibleBanners() > 1 then
-		C.Title(self.Info, banner.Name, { TextSize = 24, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 1 })
-	end
-	C.Label(self.Info, "Possible fighters and their chances:", { TextSize = 14, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 2 })
-	if not ok then
-		C.Title(self.Info, "Locked: " .. tostring(reason), { TextSize = 16, TextColor3 = Theme.Colors.Bad, LayoutOrder = 3 }, 1.5)
-	end
 
 	-- Pool: one card per fighter with its individual chance (rarity rate / fighters in that rarity).
 	local rates = Banners.GetDisplayRates(banner.Id)
@@ -149,53 +187,118 @@ function SummonController:RenderBanner(data)
 	table.sort(entries, function(a, b)
 		return Rarities.GetOrder(a.Rarity) < Rarities.GetOrder(b.Rarity)
 	end)
-	local poolFrame = C.Frame(self.Info, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 10 })
-	C.Grid(poolFrame, UDim2.fromOffset(100, 112), 8)
-	C.Create("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 4), Parent = poolFrame })
 	for i, entry in entries do
 		local def = Units.Get(entry.UnitId)
 		local chance = if entry.Chance >= 1 then ("%.0f%%"):format(entry.Chance) else ("%.2f%%"):format(entry.Chance)
-		local card = C.UnitCard(poolFrame, {
+		local autoSold = data.Settings["AutoDelete" .. entry.Rarity] == true
+		local card = C.UnitCard(self.Pool, {
 			Name = if def then def.Name else entry.UnitId,
 			Rarity = entry.Rarity,
 			Level = 1,
 			Stars = 0,
 			Locked = false,
 			Equipped = false,
-			Badge = chance,
+			HideLevel = true,
+			Footer = chance,
 		})
 		card.LayoutOrder = i
-		card.AutoButtonColor = false
+		if autoSold then
+			local dim = C.Frame(card, { BackgroundColor3 = P.Ink, BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 9 })
+			C.Corner(dim, Theme.Radius.Card)
+			local tag = C.Frame(card, { BackgroundColor3 = P.Ink, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(46, 18), ZIndex = 10 })
+			C.Corner(tag, UDim.new(0.5, 0))
+			C.Stroke(tag, P.White, 2)
+			C.Label(tag, "AUTO", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 11, Font = Theme.Fonts.Bold, ZIndex = 11 })
+		end
+	end
+
+	-- Actions column
+	local order = 0
+	local function nextOrder()
+		order += 1
+		return order
+	end
+	-- With a single banner its name is already the window title.
+	if #visibleBanners() > 1 then
+		C.Title(self.Actions, banner.Name, { Font = Theme.Fonts.Display, TextSize = 28, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = nextOrder() }, 3)
+	end
+	C.Label(self.Actions, "Spend the Yen your enemies drop to recruit new fighters.", {
+		TextSize = 15,
+		TextWrapped = true,
+		TextColor3 = P.TextDim,
+		Size = UDim2.new(1, 0, 0, 40),
+		LayoutOrder = nextOrder(),
+	})
+	if not ok then
+		C.Title(self.Actions, "Locked: " .. tostring(reason), { TextSize = 16, TextColor3 = P.Ice, LayoutOrder = nextOrder() }, 2)
+	end
+	local balance = (data.Currencies or {})[banner.Currency] or 0
+	for _, option in { { Count = 1, Cost = banner.CostSingle, Kind = "Secondary" }, { Count = multi, Cost = banner.CostMulti, Kind = "Primary" } } do
+		local button = C.Button(self.Actions, ("OPEN x%d"):format(option.Count), function()
+			self:Summon(option.Count)
+		end, {
+			Kind = option.Kind,
+			Size = UDim2.new(1, 0, 0, 64),
+			TextSize = 24,
+			Subtext = price(option.Cost, banner.Currency),
+			LayoutOrder = nextOrder(),
+		})
+		local short = option.Cost - balance
+		C.SetDisabled(button, not ok or short > 0)
+		if ok and short > 0 then
+			C.Label(self.Actions, "Need " .. price(short, banner.Currency) .. " more", {
+				TextSize = 14,
+				TextColor3 = P.TextDim,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				Size = UDim2.new(1, 0, 0, 18),
+				LayoutOrder = nextOrder(),
+			})
+		end
 	end
 
 	if Features.SummonPity then
 		local pity = (data.SummonPity or {})[banner.Id] or {}
-		for i, rule in banner.Pity do
-			C.Label(self.Info, ("Pity %s: %d / %d"):format(rule.Rarity, pity[rule.Rarity] or 0, rule.Threshold), { TextSize = 13, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 30 + i })
+		for _, rule in banner.Pity do
+			C.Label(self.Actions, ("Pity %s: %d / %d"):format(rule.Rarity, pity[rule.Rarity] or 0, rule.Threshold), { TextSize = 14, TextColor3 = P.TextDim, LayoutOrder = nextOrder() })
 		end
 	end
 	if banner.MultiGuarantee then
-		C.Label(self.Info, ("x%d guarantees at least one %s or better."):format(multi, banner.MultiGuarantee), { TextSize = 12, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 40 })
+		C.Label(self.Actions, ("x%d guarantees at least one %s or better."):format(multi, banner.MultiGuarantee), {
+			TextSize = 14,
+			TextWrapped = true,
+			Size = UDim2.new(1, 0, 0, 34),
+			TextColor3 = P.TextDim,
+			LayoutOrder = nextOrder(),
+		})
 	end
 
-	local buttons = C.Frame(self.Info, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), LayoutOrder = 50 })
-	C.List(buttons, Enum.FillDirection.Horizontal, 12, Enum.HorizontalAlignment.Center)
-	C.Button(buttons, ("Open x1  •  %s"):format(price(banner.CostSingle, banner.Currency)), function()
-		self:Summon(1)
-	end, { Size = UDim2.fromOffset(230, 48), TextSize = 19, BackgroundColor3 = Theme.Colors.Info, LayoutOrder = 1 })
-	C.Button(buttons, ("Open x%d  •  %s"):format(multi, price(banner.CostMulti, banner.Currency)), function()
-		self:Summon(multi)
-	end, { Size = UDim2.fromOffset(230, 48), TextSize = 19, BackgroundColor3 = Theme.Colors.Cta, LayoutOrder = 2 })
-
-	-- Auto-sell toggles (server-side setting, applied while summoning).
-	local toggles = C.Frame(self.Info, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = 60 })
-	C.List(toggles, Enum.FillDirection.Horizontal, 12, Enum.HorizontalAlignment.Center)
-	for i, rarity in { "Common", "Rare" } do
+	-- Auto-sell chips (server-side settings, applied while summoning).
+	C.Title(self.Actions, "Auto-sell", { TextSize = 17, Size = UDim2.new(1, 0, 0, 24), LayoutOrder = nextOrder() }, 2)
+	for _, rarity in { "Common", "Rare" } do
 		local key = "AutoDelete" .. rarity
 		local on = data.Settings[key] == true
-		C.Button(toggles, ("Auto-sell %s: %s"):format(rarity, if on then "ON" else "OFF"), function()
+		local chip = C.Create("TextButton", {
+			AutoButtonColor = false,
+			Text = "",
+			BackgroundColor3 = P.PanelAlt,
+			Size = UDim2.fromOffset(200, 36),
+			LayoutOrder = nextOrder(),
+			Parent = self.Actions,
+		})
+		C.Corner(chip, UDim.new(0.5, 0))
+		C.Stroke(chip, P.Ink, 2.5)
+		local box = C.Frame(chip, { BackgroundColor3 = if on then P.Blue500 else P.Panel, Position = UDim2.fromOffset(6, 5), Size = UDim2.fromOffset(26, 26) })
+		C.Corner(box, 7)
+		C.Stroke(box, P.Ink, 2.5)
+		if on then
+			C.Title(box, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 16 }, 1.5)
+		end
+		local dot = C.Frame(chip, { BackgroundColor3 = Theme.Rarity(rarity), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 42, 0.5, 0), Size = UDim2.fromOffset(12, 12) })
+		C.Corner(dot, UDim.new(0.5, 0))
+		C.Title(chip, rarity, { Position = UDim2.fromOffset(62, 0), Size = UDim2.new(1, -66, 1, 0), TextSize = 16 }, 2)
+		chip.Activated:Connect(function()
 			State.Request("UpdateSetting", key, not on)
-		end, { Size = UDim2.fromOffset(230, 34), TextSize = 15, LayoutOrder = i, BackgroundColor3 = if on then Theme.Colors.Good else Theme.Colors.Button })
+		end)
 	end
 end
 
@@ -204,12 +307,15 @@ function SummonController:Render()
 	if not data or not self.Window.Frame.Visible then
 		return
 	end
-	-- With a single banner (base game) the list is hidden and the star takes the whole window.
+	-- Single banner (base game): pool | actions. Several banners: list | pool | actions.
 	local single = #visibleBanners() <= 1
 	self.BannerList.Visible = not single
-	self.Info.Position = if single then UDim2.new() else UDim2.fromScale(0.32, 0)
-	self.Info.Size = if single then UDim2.fromScale(1, 1) else UDim2.new(0.68, 0, 1, 0)
-	if not single then
+	if single then
+		self.Pool.Position, self.Pool.Size = UDim2.new(), UDim2.new(0.6, 0, 1, 0)
+		self.Actions.Position, self.Actions.Size = UDim2.fromScale(0.62, 0), UDim2.new(0.38, 0, 1, 0)
+	else
+		self.Pool.Position, self.Pool.Size = UDim2.fromScale(0.24, 0), UDim2.new(0.44, 0, 1, 0)
+		self.Actions.Position, self.Actions.Size = UDim2.fromScale(0.7, 0), UDim2.new(0.3, 0, 1, 0)
 		self:RenderBannerList(data)
 	end
 	self:RenderBanner(data)
@@ -217,8 +323,8 @@ end
 
 function SummonController:Init(controllers)
 	self.Controllers = controllers
-	-- The base game's single star gets a compact window; the multi-banner view needs the list column.
-	local size = if #visibleBanners() <= 1 then UDim2.fromOffset(700, 380) else UDim2.fromOffset(760, 500)
+	local single = #visibleBanners() <= 1
+	local size = if single then UDim2.fromOffset(860, 450) else UDim2.fromOffset(940, 560)
 	self.Window = controllers.UIController:CreateWindow("Summon", "Summon", size, function(bannerId)
 		local data = State.Data
 		if bannerId then
@@ -236,10 +342,13 @@ function SummonController:Init(controllers)
 		self:Render()
 	end)
 	local content = self.Window.Content
-	self.BannerList = C.Scroll(content, { Size = UDim2.new(0.3, 0, 1, 0) })
-	C.List(self.BannerList, Enum.FillDirection.Vertical, 6)
-	self.Info = C.Scroll(content, { Position = UDim2.fromScale(0.32, 0), Size = UDim2.new(0.68, 0, 1, 0) })
-	C.List(self.Info, Enum.FillDirection.Vertical, 8)
+	self.BannerList = C.Scroll(content, { Size = UDim2.new(0.22, 0, 1, 0) })
+	C.List(self.BannerList, Enum.FillDirection.Vertical, 8)
+	self.Pool = C.Scroll(content)
+	C.Grid(self.Pool, UDim2.fromOffset(112, 140), 10)
+	C.Create("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), Parent = self.Pool })
+	self.Actions = C.Frame(content, { BackgroundTransparency = 1 })
+	C.List(self.Actions, Enum.FillDirection.Vertical, 8)
 end
 
 function SummonController:Start()

@@ -90,7 +90,13 @@ function CoinController:Popup(text: string)
 		Adornee = head,
 		Parent = self.Folder,
 	})
-	local label = C.Title(gui, text, { Size = UDim2.fromScale(1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = Theme.Colors.Yen }, 2)
+	local label = C.Title(gui, text, {
+		Font = Theme.Fonts.Display,
+		Size = UDim2.fromScale(1, 1),
+		TextSize = 28,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextColor3 = Theme.Colors.Cyan,
+	}, 3)
 	TweenService:Create(gui, TweenInfo.new(0.9), { StudsOffsetWorldSpace = gui.StudsOffsetWorldSpace + Vector3.new(0, 3, 0) }):Play()
 	TweenService:Create(label, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
 	task.delay(0.95, function()

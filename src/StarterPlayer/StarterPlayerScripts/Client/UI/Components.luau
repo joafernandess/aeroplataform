@@ -1,18 +1,25 @@
 --[[
 	Components
-	UI factory used by every controller so windows look consistent and stay short.
-	All functions create real Instances; nothing here talks to the server.
+	UI factory used by every controller (see docs/ui/UI_RESEARCH.md §5). Creates real Instances only;
+	nothing here talks to the server.
 
-	Visual language ("arcade simulator"): glossy gradient buttons with thick dark borders, outlined
-	display text, round icon buttons, bold currency pills, rarity-coloured unit cards.
+	Buttons are "3D": a face (vertical gradient + gloss + 3px ink border) sitting on a darker 4px lip. The label
+	is a child TextLabel with its own outline, so use C.SetText(button, text) / C.SetKind(button, kind) /
+	C.SetDisabled(button, bool) instead of touching button.Text or button.BackgroundColor3.
+	Kinds: "Primary" (blue) · "Secondary" (white) · "Accent" (cyan) · "Dark" · "Danger" (inverted, 2-tap confirm).
 ]]
+
+local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
 
 local C = {}
 
-local GLOSS = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 205))
-local CARD_SHADE = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(105, 100, 130))
+local P = Theme.Colors
+local G = Theme.Gradients
+
+-- Per-button parts, keyed weakly by the TextButton.
+local buttons: { [Instance]: any } = setmetatable({}, { __mode = "k" }) :: any
 
 function C.Create(className: string, props: { [string]: any }?): any
 	local instance = Instance.new(className)
@@ -37,23 +44,62 @@ local function apply(instance: Instance, props: { [string]: any }?)
 	return instance
 end
 
-function C.Corner(parent: Instance, radius: UDim?)
-	return C.Create("UICorner", { CornerRadius = radius or Theme.CornerRadius, Parent = parent })
+local function tween(instance: Instance, seconds: number, goals: { [string]: any })
+	TweenService:Create(instance, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
+end
+
+-- Primitives -----------------------------------------------------------------------------------------------------
+
+function C.Corner(parent: Instance, radius: UDim | number | nil)
+	local value = if typeof(radius) == "number" then UDim.new(0, radius :: number) else (radius :: UDim?) or Theme.CornerRadius
+	return C.Create("UICorner", { CornerRadius = value, Parent = parent })
 end
 
 -- Border stroke around a frame/button.
 function C.Stroke(parent: Instance, color: Color3?, thickness: number?)
-	return C.Create("UIStroke", { Color = color or Theme.Colors.Stroke, Thickness = thickness or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = parent })
+	return C.Create("UIStroke", {
+		Color = color or P.Ink,
+		Thickness = thickness or Theme.Stroke.Button,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		LineJoinMode = Enum.LineJoinMode.Round,
+		Parent = parent,
+	})
 end
 
--- Thick outline around the glyphs of a TextLabel (the chunky "simulator" look).
+-- Thick outline around the glyphs of a TextLabel.
 function C.Outline(label: Instance, thickness: number?, color: Color3?)
-	return C.Create("UIStroke", { Color = color or Theme.Colors.Outline, Thickness = thickness or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, Parent = label })
+	return C.Create("UIStroke", {
+		Color = color or P.Ink,
+		Thickness = thickness or 2,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		LineJoinMode = Enum.LineJoinMode.Round,
+		Parent = label,
+	})
 end
 
--- Vertical gradient that multiplies the BackgroundColor3 (light top, darker bottom).
+-- Gradient with real colours (the object's BackgroundColor3 should be white). Rotation 90 = top -> bottom.
+function C.Gradient(parent: Instance, top: Color3, bottom: Color3, rotation: number?)
+	return C.Create("UIGradient", { Color = ColorSequence.new(top, bottom), Rotation = rotation or 90, Parent = parent })
+end
+
+-- Legacy helper: subtle vertical shading that multiplies the current BackgroundColor3.
 function C.Gloss(parent: Instance, sequence: ColorSequence?)
-	return C.Create("UIGradient", { Color = sequence or GLOSS, Rotation = 90, Parent = parent })
+	return C.Create("UIGradient", { Color = sequence or ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 210, 235)), Rotation = 90, Parent = parent })
+end
+
+-- White highlight over the top 45% of a rounded element.
+function C.Shine(parent: Instance, radius: number, transparency: number?)
+	local shine = C.Create("Frame", {
+		Name = "Shine",
+		BackgroundColor3 = P.White,
+		BackgroundTransparency = transparency or 0.82,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 0.45),
+		ZIndex = 2,
+		Parent = parent,
+	})
+	C.Corner(shine, radius)
+	return shine
 end
 
 function C.Padding(parent: Instance, px: number)
@@ -64,7 +110,7 @@ end
 function C.List(parent: Instance, direction: Enum.FillDirection?, padding: number?, align: Enum.HorizontalAlignment?)
 	return C.Create("UIListLayout", {
 		FillDirection = direction or Enum.FillDirection.Vertical,
-		Padding = UDim.new(0, padding or 6),
+		Padding = UDim.new(0, padding or 8),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = align or Enum.HorizontalAlignment.Left,
 		Parent = parent,
@@ -74,25 +120,25 @@ end
 function C.Grid(parent: Instance, cellSize: UDim2, padding: number?)
 	return C.Create("UIGridLayout", {
 		CellSize = cellSize,
-		CellPadding = UDim2.fromOffset(padding or 6, padding or 6),
+		CellPadding = UDim2.fromOffset(padding or 10, padding or 10),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = parent,
 	})
 end
 
 function C.Frame(parent: Instance, props: { [string]: any }?)
-	local frame = C.Create("Frame", { BackgroundColor3 = Theme.Colors.Panel, BorderSizePixel = 0, Parent = parent })
+	local frame = C.Create("Frame", { BackgroundColor3 = P.Panel, BorderSizePixel = 0, Parent = parent })
 	return apply(frame, props)
 end
 
--- Body text.
+-- Body text (BuilderSans Bold).
 function C.Label(parent: Instance, text: string, props: { [string]: any }?)
 	local label = C.Create("TextLabel", {
 		BackgroundTransparency = 1,
 		Text = text,
-		TextColor3 = Theme.Colors.Text,
+		TextColor3 = P.White,
 		Font = Theme.Fonts.Body,
-		TextSize = 16,
+		TextSize = Theme.TextSize.Body,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Size = UDim2.new(1, 0, 0, 22),
 		Parent = parent,
@@ -100,103 +146,349 @@ function C.Label(parent: Instance, text: string, props: { [string]: any }?)
 	return apply(label, props)
 end
 
--- Display text: rounded bold font with a thick outline.
+-- Display/UI text (FredokaOne by default) with an ink outline sized to the text.
 function C.Title(parent: Instance, text: string, props: { [string]: any }?, outline: number?)
 	local label = C.Label(parent, text, { Font = Theme.Fonts.Title, TextSize = 20 })
 	apply(label, props)
-	C.Outline(label, outline or 2)
+	C.Outline(label, outline or Theme.OutlineFor(label.TextSize))
 	return label
 end
 
+-- Big numbers (BuilderSans ExtraBold) with outline.
+function C.Number(parent: Instance, text: string, props: { [string]: any }?)
+	local label = C.Label(parent, text, { Font = Theme.Fonts.Number, TextSize = 24 })
+	apply(label, props)
+	C.Outline(label, Theme.OutlineFor(label.TextSize) - 0.5)
+	return label
+end
+
+-- Panel row used by list windows (quests, shop, worlds...).
+function C.Row(parent: Instance, props: { [string]: any }?)
+	local row = C.Frame(parent, { BackgroundColor3 = P.PanelAlt, Size = UDim2.new(1, -8, 0, 64) })
+	apply(row, props)
+	C.Corner(row, Theme.Radius.Card)
+	C.Stroke(row, P.Ink, Theme.Stroke.Card)
+	return row
+end
+
+-- Decorative diagonal "speed-lines" (signature element). Parent should clip descendants.
+function C.SpeedLines(parent: Instance, count: number, options: { Start: number?, Spacing: number?, Width: number?, Length: number?, Transparency: number?, ZIndex: number? }?)
+	local o = options or {}
+	local start, spacing = o.Start or 0, o.Spacing or 28
+	for i = 0, count - 1 do
+		C.Create("Frame", {
+			Name = "SpeedLine",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(start, i * spacing, 0.5, 0),
+			Size = UDim2.fromOffset(o.Width or 2, o.Length or 120),
+			Rotation = 25,
+			BackgroundColor3 = P.White,
+			BackgroundTransparency = o.Transparency or 0.88,
+			BorderSizePixel = 0,
+			ZIndex = o.ZIndex or 2,
+			Parent = parent,
+		})
+	end
+end
+
+-- Buttons --------------------------------------------------------------------------------------------------------
+
+local function labelStyle(kind: string, textSize: number)
+	if kind == "Secondary" then
+		return P.SecondaryText, 0
+	elseif kind == "Disabled" then
+		return P.TextMuted, 1.5
+	end
+	return P.White, Theme.OutlineFor(textSize)
+end
+
+local function paint(parts)
+	local kind = if parts.Disabled then "Disabled" else parts.Kind
+	local g = G[kind] or G.Primary
+	parts.Gradient.Color = ColorSequence.new(g.Top, g.Bottom)
+	parts.Lip.BackgroundColor3 = g.Lip or g.Bottom
+	parts.Lip.Visible = g.Lip ~= nil
+	parts.Stroke.Color = if kind == "Danger" then P.White else P.Ink
+	parts.Stroke.Thickness = if kind == "Danger" then 2.5 elseif kind == "Disabled" then 1.5 else parts.StrokeThickness
+	local color, outline = labelStyle(kind, parts.Label.TextSize)
+	parts.Label.TextColor3 = color
+	parts.LabelStroke.Enabled = outline > 0
+	parts.LabelStroke.Thickness = math.max(outline, 1)
+	if parts.Sub then
+		parts.Sub.TextColor3 = color
+		parts.SubStroke.Enabled = outline > 0
+	end
+end
+
 --[[
-	Glossy button. The label is drawn by the TextButton itself (controllers may change .Text later) with a
-	built-in text stroke; the box gets a thick dark border and a gloss gradient.
+	C.Button(parent, text, onClick?, props?)
+	props: any TextButton property plus
+	  Kind       "Primary" | "Secondary" | "Accent" | "Dark" | "Danger" (default "Primary")
+	  TextSize   label size (default 20)
+	  Subtext    optional second line (e.g. a price)
+	  Radius     corner radius (default 12)
+	  Confirm    Danger buttons ask "Confirm?" for 3s before running onClick (default true for Danger)
 ]]
 function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: { [string]: any }?)
+	props = table.clone(props or {})
+	local kind = props.Kind or "Primary"
+	local textSize = props.TextSize or Theme.TextSize.Button
+	local subtext = props.Subtext
+	local radius = props.Radius or Theme.Radius.Button
+	local confirm = if props.Confirm == nil then kind == "Danger" else props.Confirm
+	local strokeThickness = props.StrokeThickness or Theme.Stroke.Button
+	for _, key in { "Kind", "TextSize", "Subtext", "Radius", "Confirm", "StrokeThickness", "TextColor3", "Font", "TextWrapped" } do
+		props[key] = nil
+	end
+
 	local button = C.Create("TextButton", {
-		AutoButtonColor = true,
-		BackgroundColor3 = Theme.Colors.Button,
-		Text = text,
-		TextColor3 = Theme.Colors.Text,
-		TextStrokeColor3 = Theme.Colors.Outline,
-		TextStrokeTransparency = 0.2,
-		Font = Theme.Fonts.Bold,
-		TextSize = 17,
-		Size = UDim2.fromOffset(120, 36),
+		Name = "Button",
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Text = "",
+		Size = UDim2.fromOffset(160, 48),
 		Parent = parent,
 	})
 	apply(button, props)
-	C.Corner(button, UDim.new(0, 10))
-	C.Stroke(button, Theme.Colors.Stroke, 2.5)
-	C.Gloss(button)
+	local scale = C.Create("UIScale", { Parent = button })
+
+	local lip = C.Frame(button, { Name = "Lip", Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 1, -4) })
+	C.Corner(lip, radius)
+	C.Stroke(lip, P.Ink, strokeThickness)
+	local face = C.Frame(button, { Name = "Face", BackgroundColor3 = P.White, Size = UDim2.new(1, 0, 1, -4), ZIndex = (button.ZIndex or 1) + 1 })
+	C.Corner(face, radius)
+	local stroke = C.Stroke(face, P.Ink, strokeThickness)
+	local gradient = C.Create("UIGradient", { Rotation = 90, Parent = face })
+	C.Shine(face, radius)
+
+	local label = C.Label(face, text, {
+		Name = "Label",
+		Font = Theme.Fonts.Bold,
+		TextSize = textSize,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = if subtext then UDim2.new(1, -8, 0.58, 0) else UDim2.new(1, -8, 1, 0),
+		Position = UDim2.fromOffset(4, 0),
+		ZIndex = face.ZIndex + 2,
+	})
+	local labelStroke = C.Outline(label, Theme.OutlineFor(textSize))
+	local sub, subStroke = nil, nil
+	if subtext then
+		sub = C.Label(face, subtext, {
+			Name = "Subtext",
+			Font = Theme.Fonts.Number,
+			TextSize = math.max(14, math.floor(textSize * 0.68)),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Position = UDim2.new(0, 4, 0.52, 0),
+			Size = UDim2.new(1, -8, 0.4, 0),
+			ZIndex = face.ZIndex + 2,
+		})
+		subStroke = C.Outline(sub, 1.5)
+	end
+
+	local parts = {
+		Face = face,
+		Lip = lip,
+		Label = label,
+		LabelStroke = labelStroke,
+		Sub = sub,
+		SubStroke = subStroke,
+		Stroke = stroke,
+		Gradient = gradient,
+		Scale = scale,
+		Kind = kind,
+		Text = text,
+		Disabled = false,
+		StrokeThickness = strokeThickness,
+	}
+	buttons[button] = parts
+	paint(parts)
+
+	-- Manual states: hover grows, press sinks the face onto the lip.
+	button.MouseEnter:Connect(function()
+		if not parts.Disabled then
+			tween(scale, 0.08, { Scale = 1.04 })
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		tween(scale, 0.08, { Scale = 1 })
+		face.Position = UDim2.new()
+	end)
+	button.MouseButton1Down:Connect(function()
+		if not parts.Disabled then
+			face.Position = UDim2.fromOffset(0, 3)
+			tween(scale, 0.06, { Scale = 0.95 })
+		end
+	end)
+	button.MouseButton1Up:Connect(function()
+		face.Position = UDim2.new()
+		tween(scale, 0.08, { Scale = 1 })
+	end)
+
 	if onClick then
-		button.Activated:Connect(onClick)
+		local armedUntil = 0
+		button.Activated:Connect(function()
+			if parts.Disabled then
+				return
+			end
+			if confirm then
+				local now = os.clock()
+				if now > armedUntil then
+					armedUntil = now + 3
+					label.Text = "Confirm?"
+					parts.Stroke.Color = P.Cyan
+					task.delay(3, function()
+						if os.clock() >= armedUntil and label.Parent then
+							label.Text = parts.Text
+							paint(parts)
+						end
+					end)
+					return
+				end
+				armedUntil = 0
+				label.Text = parts.Text
+				paint(parts)
+			end
+			onClick()
+		end)
 	end
 	return button
 end
 
+function C.SetText(button: Instance, text: string, subtext: string?)
+	local parts = buttons[button]
+	if not parts then
+		(button :: any).Text = text
+		return
+	end
+	parts.Text = text
+	parts.Label.Text = text
+	if subtext and parts.Sub then
+		parts.Sub.Text = subtext
+	end
+end
+
+function C.SetKind(button: Instance, kind: string)
+	local parts = buttons[button]
+	if parts then
+		parts.Kind = kind
+		paint(parts)
+	end
+end
+
+function C.SetDisabled(button: Instance, disabled: boolean)
+	local parts = buttons[button]
+	if parts then
+		parts.Disabled = disabled
+		paint(parts)
+	end
+end
+
+-- Cyan outline marking a selected/toggled button.
+function C.SetSelected(button: Instance, selected: boolean)
+	local parts = buttons[button]
+	if parts then
+		paint(parts)
+		if selected then
+			parts.Stroke.Color = P.Cyan
+		end
+	end
+end
+
 --[[
-	Round icon button with a caption underneath (menu, HUD actions).
-	Returns (container, button). `size` is the circle diameter.
+	Rounded-square icon button with a caption (menu, HUD actions). Returns (container, button).
+	`kindOrColor` is a button kind ("Primary"/"Accent"/...) — a Color3 is accepted for old call sites (=> Primary).
 ]]
-function C.IconButton(parent: Instance, icon: string, caption: string?, color: Color3, onClick: (() -> ())?, size: number?)
-	local d = size or 64
-	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d + 12, d + (if caption then 14 else 0)) })
-	local button = C.Create("TextButton", {
-		AutoButtonColor = true,
-		BackgroundColor3 = color,
-		Text = icon,
-		TextSize = math.floor(d * 0.46),
-		Font = Theme.Fonts.Bold,
-		TextColor3 = Theme.Colors.Text,
-		TextStrokeColor3 = Theme.Colors.Outline,
-		TextStrokeTransparency = 0.2,
+function C.IconButton(parent: Instance, icon: string, caption: string?, kindOrColor: any, onClick: (() -> ())?, size: number?)
+	local d = size or 68
+	local kind = if type(kindOrColor) == "string" then kindOrColor else "Primary"
+	local captionHeight = if caption then 20 else 0
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(math.max(d, 84), d + 4 + captionHeight) })
+	local button = C.Button(container, icon, onClick, {
+		Kind = kind,
+		TextSize = math.floor(d * 0.47),
+		Radius = math.floor(d * 0.3),
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromOffset(d, d),
-		Parent = container,
+		Size = UDim2.fromOffset(d, d + 4),
+		Confirm = false,
 	})
-	C.Corner(button, UDim.new(0.5, 0))
-	C.Stroke(button, Theme.Colors.Stroke, 3)
-	C.Gloss(button)
 	if caption then
 		C.Title(container, caption, {
+			Name = "Caption",
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.fromScale(0.5, 1),
-			Size = UDim2.new(1, 8, 0, 18),
+			Size = UDim2.new(1, 0, 0, 18),
 			TextSize = 14,
 			TextXAlignment = Enum.TextXAlignment.Center,
-			ZIndex = 3,
+			ZIndex = 4,
 		}, 1.5)
-	end
-	if onClick then
-		button.Activated:Connect(onClick)
 	end
 	return container, button
 end
 
+-- Small square toolbar button (sort/filter/modes). Use C.SetToolActive to toggle.
+function C.ToolButton(parent: Instance, glyph: string, onClick: (() -> ())?, props: { [string]: any }?)
+	local button = C.Button(parent, glyph, onClick, {
+		Kind = "Dark",
+		TextSize = 20,
+		Radius = Theme.Radius.Tool,
+		Size = UDim2.fromOffset(40, 44),
+		Confirm = false,
+	})
+	apply(button, props)
+	return button
+end
+
+function C.SetToolActive(button: Instance, active: boolean)
+	C.SetKind(button, if active then "Primary" else "Dark")
+	C.SetSelected(button, active)
+end
+
+-- HUD widgets -----------------------------------------------------------------------------------------------------
+
 --[[
-	Currency pill: coloured bar with a round icon badge overlapping its left edge.
+	Currency pill: dark pill with a round badge overlapping its left edge, big outlined number and an optional "+".
 	Returns { Frame, Set(text) }.
 ]]
-function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: number?)
-	local w = width or 190
-	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(w, 40) })
-	local bar = C.Frame(container, { BackgroundColor3 = color, Position = UDim2.fromOffset(18, 5), Size = UDim2.new(1, -18, 0, 30) })
-	C.Corner(bar, UDim.new(0, 10))
-	C.Stroke(bar, Theme.Colors.Stroke, 2.5)
-	C.Gloss(bar)
-	local badge = C.Frame(container, { BackgroundColor3 = Theme.Colors.Background, Size = UDim2.fromOffset(40, 40), ZIndex = 2 })
+function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: number?, options: { Plus: (() -> ())?, GlyphColor: Color3?, Height: number? }?)
+	local o = options or {}
+	local w, h = width or 200, o.Height or 40
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(w, h + 4) })
+	local bar = C.Frame(container, { BackgroundColor3 = P.Panel, BackgroundTransparency = 0.1, Position = UDim2.fromOffset(16, 2), Size = UDim2.new(1, -16, 0, h) })
+	C.Corner(bar, UDim.new(0.5, 0))
+	C.Stroke(bar, P.Ink, Theme.Stroke.Button)
+	local badgeSize = h + 4
+	local badge = C.Frame(container, { BackgroundColor3 = color, Size = UDim2.fromOffset(badgeSize, badgeSize), ZIndex = 3 })
 	C.Corner(badge, UDim.new(0.5, 0))
-	C.Stroke(badge, Theme.Colors.Stroke, 2.5)
-	C.Title(badge, icon, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 20, TextColor3 = color, ZIndex = 3 }, 1.5)
-	local value = C.Title(bar, "0", {
-		Position = UDim2.fromOffset(28, 0),
-		Size = UDim2.new(1, -36, 1, 0),
-		TextSize = 20,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 3,
+	C.Stroke(badge, P.Ink, Theme.Stroke.Button)
+	C.Shine(badge, badgeSize // 2, 0.8)
+	C.Title(badge, icon, {
+		Size = UDim2.fromScale(1, 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextSize = 22,
+		TextColor3 = o.GlyphColor or P.White,
+		ZIndex = 4,
 	}, 2)
+	local value = C.Number(bar, "0", {
+		Position = UDim2.fromOffset(badgeSize - 8, 0),
+		Size = UDim2.new(1, -(badgeSize - 8) - (if o.Plus then 40 else 10), 1, 0),
+		TextSize = 24,
+		ZIndex = 3,
+	})
+	if o.Plus then
+		local plus = C.Button(bar, Theme.Icons.Plus, o.Plus, {
+			Kind = "Primary",
+			TextSize = 22,
+			Radius = 15,
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -5, 0.5, 0),
+			Size = UDim2.fromOffset(30, 32),
+			StrokeThickness = 2.5,
+			Confirm = false,
+			ZIndex = 4,
+		})
+		plus.Name = "Plus"
+	end
 	return {
 		Frame = container,
 		Set = function(text: string)
@@ -205,13 +497,36 @@ function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: nu
 	}
 end
 
+-- Capacity counter pill ("▦ 87/120"). state: "Normal" | "Near" (≥90%) | "Full".
+function C.Counter(parent: Instance, glyph: string, props: { [string]: any }?)
+	local pill = C.Frame(parent, { BackgroundColor3 = P.PanelAlt, Size = UDim2.fromOffset(120, 34) })
+	apply(pill, props)
+	C.Corner(pill, UDim.new(0.5, 0))
+	local stroke = C.Stroke(pill, P.Ink, 2.5)
+	local icon = C.Title(pill, glyph, { Position = UDim2.fromOffset(10, 0), Size = UDim2.fromOffset(20, 34), TextSize = 16, TextXAlignment = Enum.TextXAlignment.Center }, 1.5)
+	local value = C.Number(pill, "0/0", { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 18 })
+	return {
+		Frame = pill,
+		Set = function(text: string, state: string?)
+			value.Text = text
+			local full = state == "Full"
+			pill.BackgroundColor3 = if full then P.Ice else P.PanelAlt
+			value.TextColor3 = if full then P.Ink else P.White
+			icon.TextColor3 = if full then P.Ink else P.White
+			stroke.Color = if state == "Near" then P.Cyan else P.Ink
+		end,
+	}
+end
+
+-- Lists, bars, tabs, toggles ---------------------------------------------------------------------------------------
+
 function C.Scroll(parent: Instance, props: { [string]: any }?)
 	local scroll = C.Create("ScrollingFrame", {
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
 		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar, -- content never sits under the scrollbar
-		ScrollBarImageColor3 = Theme.Colors.Accent,
+		ScrollBarImageColor3 = P.Blue400,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
 		Size = UDim2.fromScale(1, 1),
@@ -229,15 +544,17 @@ function C.Clear(container: Instance)
 	end
 end
 
-function C.ProgressBar(parent: Instance, color: Color3?, props: { [string]: any }?)
-	local back = C.Frame(parent, { BackgroundColor3 = Theme.Colors.Background, Size = UDim2.new(1, 0, 0, 16) })
+-- Pill progress bar: ink track, cyan -> blue fill with gloss, outlined caption.
+function C.ProgressBar(parent: Instance, _color: Color3?, props: { [string]: any }?)
+	local back = C.Frame(parent, { BackgroundColor3 = P.Ink, Size = UDim2.new(1, 0, 0, 18) })
 	apply(back, props)
 	C.Corner(back, UDim.new(0.5, 0))
-	C.Stroke(back, Theme.Colors.Stroke, 2)
-	local fill = C.Frame(back, { BackgroundColor3 = color or Theme.Colors.XP, Size = UDim2.fromScale(0, 1) })
+	C.Stroke(back, P.Ink, 2.5)
+	local fill = C.Frame(back, { BackgroundColor3 = P.White, Size = UDim2.fromScale(0, 1) })
 	C.Corner(fill, UDim.new(0.5, 0))
-	C.Gloss(fill)
-	local text = C.Title(back, "", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 13, ZIndex = 3 }, 1.5)
+	C.Gradient(fill, G.Progress.Top, G.Progress.Bottom, 0)
+	C.Shine(fill, 9, 0.75)
+	local text = C.Title(back, "", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 14, ZIndex = 3 }, 1.5)
 	return {
 		Frame = back,
 		Set = function(fraction: number, caption: string?)
@@ -248,64 +565,140 @@ function C.ProgressBar(parent: Instance, color: Color3?, props: { [string]: any 
 	}
 end
 
--- Horizontal tab strip. Returns { Select(name), Frame }.
+-- Segmented tab strip in an ink well. Returns { Select(name), Frame }.
 function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
-	local strip = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36) })
-	C.List(strip, Enum.FillDirection.Horizontal, 8)
-	local buttons = {}
+	local well = C.Frame(parent, { BackgroundColor3 = P.Bg, Size = UDim2.fromOffset(#names * 140 + 8, 44) })
+	C.Corner(well, Theme.Radius.Header)
+	C.Stroke(well, P.Ink, 3)
+	C.Padding(well, 4)
+	C.List(well, Enum.FillDirection.Horizontal, 4)
+	local tabs = {}
 	local api = {}
 	function api.Select(name: string)
-		for tabName, button in buttons do
-			button.BackgroundColor3 = if tabName == name then Theme.Colors.Cta else Theme.Colors.Button
+		for tabName, tab in tabs do
+			local active = tabName == name
+			tab.Button.BackgroundTransparency = if active then 0 else 1
+			tab.Gradient.Enabled = active
+			tab.Label.TextColor3 = if active then P.White else P.TextDim
+			tab.Stroke.Enabled = active
 		end
 		onSelect(name)
 	end
 	for i, name in names do
-		buttons[name] = C.Button(strip, name, function()
+		local button = C.Create("TextButton", {
+			AutoButtonColor = false,
+			Text = "",
+			BackgroundColor3 = P.White,
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(136, 36),
+			LayoutOrder = i,
+			Parent = well,
+		})
+		C.Corner(button, Theme.Radius.Tool)
+		local gradient = C.Gradient(button, G.Primary.Top, G.Primary.Bottom)
+		local label = C.Label(button, name, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Bold, TextSize = 18 })
+		local stroke = C.Outline(label, 2)
+		tabs[name] = { Button = button, Gradient = gradient, Label = label, Stroke = stroke }
+		button.Activated:Connect(function()
 			api.Select(name)
-		end, { LayoutOrder = i, Size = UDim2.fromOffset(130, 32), TextSize = 16 })
+		end)
 	end
-	api.Frame = strip
+	api.Frame = well
 	return api
 end
 
+-- Pill toggle (settings). Returns the button; onClick receives nothing (caller flips its own state).
+function C.Toggle(parent: Instance, on: boolean, onClick: (() -> ())?, props: { [string]: any }?)
+	local button = C.Create("TextButton", {
+		AutoButtonColor = false,
+		Text = "",
+		BackgroundColor3 = if on then P.Blue500 else P.PanelAlt,
+		Size = UDim2.fromOffset(64, 32),
+		Parent = parent,
+	})
+	apply(button, props)
+	C.Corner(button, UDim.new(0.5, 0))
+	C.Stroke(button, P.Ink, 3)
+	local knob = C.Frame(button, {
+		BackgroundColor3 = P.White,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = if on then UDim2.new(1, -28, 0.5, 0) else UDim2.new(0, 4, 0.5, 0),
+		Size = UDim2.fromOffset(24, 24),
+		ZIndex = 3,
+	})
+	C.Corner(knob, UDim.new(0.5, 0))
+	C.Stroke(knob, P.Ink, 2)
+	if onClick then
+		button.Activated:Connect(onClick)
+	end
+	return button
+end
+
+-- Windows -------------------------------------------------------------------------------------------------------------
+
 --[[
-	Standard window: centred panel with a gradient header band, outlined display title and a round close
-	button. Returns { Frame, Content, Title, Header, CloseButton }. Windows are registered in UIController.
+	Standard window: dark body with inner rim, straight blue header with speed-lines and a cyan energy line,
+	white title icon tile, LuckiestGuy title and a round white close button overlapping the corner.
+	Returns { Frame, Content, Title, Header, CloseButton }.
 ]]
-function C.Window(parent: Instance, title: string, size: UDim2?)
+function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	local frame = C.Frame(parent, {
 		Name = title,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.52),
 		Size = size or Theme.WindowSize,
 		Visible = false,
-		BackgroundColor3 = Theme.Colors.Panel,
+		BackgroundColor3 = P.White,
+		ZIndex = 10,
 	})
-	C.Corner(frame, UDim.new(0, 16))
-	C.Stroke(frame, Theme.Colors.Stroke, 3.5)
-	C.Create("UISizeConstraint", { MaxSize = Vector2.new(900, 640), Parent = frame })
-	local header = C.Frame(frame, { BackgroundColor3 = Theme.Colors.Header, Size = UDim2.new(1, 0, 0, 52) })
-	C.Corner(header, UDim.new(0, 16))
-	C.Gloss(header, ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 140, 200)))
+	C.Corner(frame, Theme.Radius.Window)
+	C.Stroke(frame, P.Ink, Theme.Stroke.Window)
+	C.Gradient(frame, G.WindowBody.Top, G.WindowBody.Bottom)
+	C.Create("UISizeConstraint", { MaxSize = Vector2.new(960, 640), Parent = frame })
+	local rim = C.Frame(frame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 11 })
+	C.Corner(rim, Theme.Radius.Window - 3)
+	C.Stroke(rim, P.Line, Theme.Stroke.Rim)
+
+	local header = C.Frame(frame, { Name = "Header", BackgroundColor3 = P.White, Size = UDim2.new(1, 0, 0, 56), ClipsDescendants = true, ZIndex = 12 })
+	C.Corner(header, Theme.Radius.Window)
+	C.Gradient(header, G.WindowHeader.Top, G.WindowHeader.Bottom)
+	-- Square off the header's bottom corners with a strip matching the bottom of the gradient.
+	local fill = C.Frame(header, { BackgroundColor3 = P.White, Position = UDim2.new(0, 0, 1, -20), Size = UDim2.new(1, 0, 0, 20), ZIndex = 12 })
+	C.Gradient(fill, G.WindowHeader.Top:Lerp(G.WindowHeader.Bottom, 0.64), G.WindowHeader.Bottom)
+	C.SpeedLines(header, 8, { Start = 0.62, Spacing = 28, ZIndex = 13 })
+	C.Frame(header, { Name = "EnergyLine", BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
+
+	local tile = C.Frame(header, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
+	C.Corner(tile, Theme.Radius.Tool)
+	C.Stroke(tile, P.Ink, 2.5)
+	C.Title(tile, icon or Theme.Icons.Inventory, {
+		Size = UDim2.fromScale(1, 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextSize = 24,
+		TextColor3 = P.Blue500,
+		ZIndex = 16,
+	}, 0.01)
 	local titleLabel = C.Label(header, title, {
 		Font = Theme.Fonts.Display,
-		TextSize = 30,
-		Position = UDim2.fromOffset(18, 2),
-		Size = UDim2.new(1, -90, 1, 0),
-		ZIndex = 2,
+		TextSize = Theme.TextSize.Display,
+		Position = UDim2.fromOffset(62, 1),
+		Size = UDim2.new(1, -120, 1, 0),
+		ZIndex = 15,
 	})
-	C.Outline(titleLabel, 2.5)
-	local close = C.Button(header, "✕", nil, {
+	C.Outline(titleLabel, 3)
+
+	local close = C.Button(frame, Theme.Icons.Close, nil, {
+		Kind = "Secondary",
+		TextSize = 24,
+		Radius = 22,
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -6, 0, 6),
-		Size = UDim2.fromOffset(44, 44),
-		BackgroundColor3 = Theme.Colors.Bad,
-		TextSize = 22,
-		ZIndex = 4,
+		Position = UDim2.new(1, -10, 0, 12),
+		Size = UDim2.fromOffset(44, 48),
+		Confirm = false,
+		ZIndex = 20,
 	})
-	close:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(0.5, 0)
-	local content = C.Frame(frame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 62), Size = UDim2.new(1, -28, 1, -76) })
+	close.Name = "Close"
+	local content = C.Frame(frame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 70), Size = UDim2.new(1, -32, 1, -84), ZIndex = 11 })
 	return {
 		Frame = frame,
 		Content = content,
@@ -314,6 +707,8 @@ function C.Window(parent: Instance, title: string, size: UDim2?)
 		CloseButton = close,
 	}
 end
+
+-- Unit cards ---------------------------------------------------------------------------------------------------------
 
 local function initials(name: string): string
 	local letters = {}
@@ -326,64 +721,119 @@ local function initials(name: string): string
 	return table.concat(letters)
 end
 
+-- Padlock drawn from primitives (emoji locks ignore TextColor3).
+function C.LockBadge(parent: Instance, position: UDim2, zIndex: number?)
+	local z = zIndex or 6
+	local badge = C.Frame(parent, { BackgroundColor3 = P.Ink, Position = position, Size = UDim2.fromOffset(22, 22), ZIndex = z })
+	C.Corner(badge, UDim.new(0.5, 0))
+	C.Stroke(badge, P.White, 2)
+	local shackle = C.Frame(badge, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 3), Size = UDim2.fromOffset(8, 9), ZIndex = z + 1 })
+	C.Corner(shackle, 4)
+	C.Stroke(shackle, P.White, 2)
+	local body = C.Frame(badge, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 9), Size = UDim2.fromOffset(12, 9), ZIndex = z + 2 })
+	C.Corner(body, 2)
+	return badge
+end
+
 --[[
-	Unit card for grids: rarity-coloured gradient tile, round portrait (initials until art exists),
-	level, stars, name, equipped check and lock badge.
+	Unit card: dark tile, portrait well (initials until art exists), thin rarity strip, level, stars, name,
+	equipped check, lock, optional NEW tag and footer (e.g. summon chance or reveal rarity).
+	info: { Name, Rarity, Level, Stars, Locked, Equipped, Trait?, New?, Footer?, FooterColor?, FooterFont?, Badge? }
+	(`Badge` is the legacy name of Footer.)
 ]]
 function C.UnitCard(
 	parent: Instance,
-	info: { Name: string, Rarity: string, Level: number, Stars: number, Locked: boolean, Equipped: boolean, Trait: string?, Badge: string? },
+	info: {
+		Name: string,
+		Rarity: string,
+		Level: number,
+		Stars: number,
+		Locked: boolean,
+		Equipped: boolean,
+		Trait: string?,
+		New: boolean?,
+		Footer: string?,
+		FooterColor: Color3?,
+		FooterFont: Enum.Font?,
+		Badge: string?,
+		HideLevel: boolean?,
+	},
 	onClick: (() -> ())?
 )
 	local rarityColor = Theme.Rarity(info.Rarity)
-	local card = C.Create("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = rarityColor, Parent = parent })
-	C.Corner(card, UDim.new(0, 12))
-	C.Stroke(card, Theme.Colors.Stroke, 2.5)
-	C.Gloss(card, CARD_SHADE)
+	local footer = info.Footer or info.Badge
+	local card = C.Create("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = P.PanelAlt, Parent = parent })
+	C.Corner(card, Theme.Radius.Card)
+	C.Stroke(card, P.Ink, Theme.Stroke.Card)
+	C.Create("UIScale", { Parent = card })
 
-	local portrait = C.Frame(card, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 14),
-		Size = UDim2.fromOffset(52, 52),
-		BackgroundColor3 = Theme.Darken(rarityColor, 0.55),
-	})
-	C.Corner(portrait, UDim.new(0.5, 0))
-	C.Stroke(portrait, Theme.Colors.Stroke, 2)
-	C.Title(portrait, initials(info.Name), { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 24, TextColor3 = rarityColor }, 1.5)
-
-	C.Title(card, info.Badge or ("Lv " .. info.Level), { Position = UDim2.fromOffset(6, 2), Size = UDim2.fromOffset(80, 16), TextSize = 13 }, 1.5)
+	local portrait = C.Frame(card, { Name = "Portrait", BackgroundColor3 = P.White, Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 76), ZIndex = 2 })
+	C.Corner(portrait, 10)
+	C.Gradient(portrait, Theme.Gradients.Portrait.Top, Theme.Gradients.Portrait.Bottom)
+	C.Title(portrait, initials(info.Name), {
+		Size = UDim2.fromScale(1, 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Font = Theme.Fonts.Display,
+		TextSize = 28,
+		TextColor3 = P.White,
+		ZIndex = 3,
+	}, 2.5)
+	if not info.HideLevel then
+		C.Title(portrait, "Lv " .. info.Level, { Position = UDim2.fromOffset(5, 3), Size = UDim2.fromOffset(60, 16), TextSize = 13, ZIndex = 4 }, 1.5)
+	end
 	if info.Stars > 0 then
-		C.Title(card, string.rep(Theme.Icons.Star, info.Stars), {
-			Position = UDim2.new(1, -66, 0, 2),
-			Size = UDim2.fromOffset(60, 16),
+		C.Title(portrait, string.rep(Theme.Icons.Star, info.Stars), {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -2),
+			Size = UDim2.new(1, 0, 0, 14),
 			TextSize = 12,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			TextColor3 = Theme.Colors.Yen,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextColor3 = if info.Stars >= 5 then P.Cyan else P.White,
+			ZIndex = 4,
 		}, 1.5)
 	end
+	-- Rarity accent: thin strip under the portrait.
+	local strip = C.Frame(card, { BackgroundColor3 = rarityColor, Position = UDim2.fromOffset(8, 87), Size = UDim2.new(1, -16, 0, 5), ZIndex = 2 })
+	C.Corner(strip, UDim.new(0.5, 0))
+
 	C.Title(card, info.Name, {
+		Font = Theme.Fonts.Body,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -4),
-		Size = UDim2.new(1, -8, 0, 30),
+		Position = UDim2.new(0.5, 0, 1, if footer then -26 else -6),
+		Size = UDim2.new(1, -8, 0, 20),
 		TextSize = 13,
-		TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		TextYAlignment = Enum.TextYAlignment.Bottom,
-	}, 1.5)
+		ZIndex = 3,
+	}, 1.5).UIStroke.Color = Theme.Darken(rarityColor, 0.4)
+	if footer then
+		C.Title(card, footer, {
+			Font = info.FooterFont or Theme.Fonts.Number,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -4),
+			Size = UDim2.new(1, -8, 0, 22),
+			TextSize = 19,
+			TextColor3 = info.FooterColor or P.White,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 3,
+		}, 2)
+	end
 
 	if info.Equipped then
-		local check = C.Frame(card, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -4, 0, 4), Size = UDim2.fromOffset(24, 24), BackgroundColor3 = Theme.Colors.Good, ZIndex = 3 })
+		local check = C.Frame(card, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -4, 0, 4), Size = UDim2.fromOffset(26, 26), ZIndex = 6 })
 		C.Corner(check, UDim.new(0.5, 0))
-		C.Stroke(check, Theme.Colors.Stroke, 2)
-		C.Title(check, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 14, ZIndex = 4 }, 1.5)
+		C.Stroke(check, P.Ink, 2.5)
+		C.Gradient(check, Theme.Gradients.Primary.Top, Theme.Gradients.Primary.Bottom)
+		C.Title(check, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 16, ZIndex = 7 }, 1.5)
 	end
 	if info.Locked then
-		C.Label(card, Theme.Icons.Lock, { Position = UDim2.new(0, 4, 0, 46), Size = UDim2.fromOffset(20, 20), TextSize = 14 })
+		C.LockBadge(card, UDim2.fromOffset(10, 60), 6)
 	end
-	if info.Trait then
-		local trait = C.Frame(card, { Position = UDim2.new(1, -20, 0, 50), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = Theme.Colors.Tokens })
-		C.Corner(trait, UDim.new(0.5, 0))
-		C.Stroke(trait, Theme.Colors.Stroke, 1.5)
+	if info.New then
+		local tag = C.Frame(card, { BackgroundColor3 = P.Cyan, Position = UDim2.new(1, -46, 0, 10), Size = UDim2.fromOffset(40, 16), ZIndex = 6 })
+		C.Corner(tag, UDim.new(0.5, 0))
+		C.Stroke(tag, P.Ink, 2)
+		C.Label(tag, "NEW", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 11, TextColor3 = P.Ink, Font = Theme.Fonts.Bold, ZIndex = 7 })
 	end
 	if onClick then
 		card.Activated:Connect(onClick)
@@ -394,16 +844,21 @@ end
 -- Selection feedback on a unit card: "Selected" (inspecting) or "Marked" (chosen for fuse/sell).
 function C.HighlightCard(card: Instance, mode: string?)
 	local stroke = card:FindFirstChildOfClass("UIStroke")
+	local scale = card:FindFirstChildOfClass("UIScale")
 	if not stroke then
 		return
 	end
 	if mode == "Selected" then
-		stroke.Color = Theme.Colors.Accent
-		stroke.Thickness = 4
+		stroke.Color = P.Cyan
+		stroke.Thickness = 3
+		if scale then
+			scale.Scale = 1.04
+		end
 	elseif mode == "Marked" then
-		stroke.Color = Theme.Colors.Cta
-		stroke.Thickness = 4
-		C.Frame(card, { BackgroundColor3 = Theme.Colors.Cta, BackgroundTransparency = 0.55, Size = UDim2.fromScale(1, 1), ZIndex = 5 })
+		stroke.Color = P.Cyan
+		local overlay = C.Frame(card, { BackgroundColor3 = P.Blue500, BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 8 })
+		C.Corner(overlay, Theme.Radius.Card)
+		C.Title(overlay, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 32, ZIndex = 9 }, 2.5)
 	end
 end
 

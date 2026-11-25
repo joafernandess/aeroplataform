@@ -26,8 +26,7 @@ local QuestController = {
 QuestController.Tab = "Quests"
 
 local function questRow(parent, order: number, title: string, description: string, progress: number, target: number, rewards, canClaim: boolean, claimed: boolean, onClaim: () -> ())
-	local row = C.Frame(parent, { Size = UDim2.new(1, -8, 0, 92), BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = order })
-	C.Corner(row)
+	local row = C.Row(parent, { Size = UDim2.new(1, -8, 0, 92), LayoutOrder = order })
 	C.Label(row, title, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -170, 0, 22), Font = Theme.Fonts.Bold, TextSize = 17 })
 	C.Label(row, description, { Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -170, 0, 18), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
 	C.Label(row, "Rewards: " .. Rewards.Describe(rewards), { Position = UDim2.fromOffset(12, 46), Size = UDim2.new(1, -170, 0, 18), TextSize = 12, TextColor3 = Theme.Colors.Accent })
@@ -37,7 +36,7 @@ local function questRow(parent, order: number, title: string, description: strin
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -12, 0.5, 0),
 		Size = UDim2.fromOffset(140, 40),
-		BackgroundColor3 = if canClaim and not claimed then Theme.Colors.Good else Theme.Colors.Panel,
+		Kind = if canClaim and not claimed then "Primary" else "Dark",
 	})
 	button.AutoButtonColor = canClaim and not claimed
 end

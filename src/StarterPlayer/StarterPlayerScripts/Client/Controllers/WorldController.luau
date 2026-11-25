@@ -29,9 +29,10 @@ function WorldController:Render()
 	for i, world in Worlds.List do
 		local unlocked = data.UnlockedWorlds[world.Id] == true
 		local current = data.CurrentWorld == world.Id
-		local row = C.Frame(self.List, { Size = UDim2.new(1, -8, 0, 70), BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = i })
-		C.Corner(row)
-		C.Stroke(row, Color3.fromRGB(world.Theme[1], world.Theme[2], world.Theme[3]), if current then 3 else 1.5)
+		local row = C.Row(self.List, { Size = UDim2.new(1, -8, 0, 70), LayoutOrder = i })
+		if current then
+			row:FindFirstChildOfClass("UIStroke").Color = Theme.Colors.Cyan
+		end
 		C.Label(row, ("%d. %s%s"):format(world.Order, world.Name, if current then "  (you are here)" else ""), { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -200, 0, 26), Font = Theme.Fonts.Bold, TextSize = 18 })
 		local status
 		if unlocked then
@@ -54,14 +55,14 @@ function WorldController:Render()
 				if response.ok then
 					self.Controllers.UIController:Close("Worlds")
 				end
-			end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 40), BackgroundColor3 = Theme.Colors.Info })
+			end, { Kind = "Secondary", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(150, 48) })
 		else
 			C.Button(row, "Unlock", function()
 				local response = State.Request("UnlockWorld", world.Id)
 				if response.ok and State.Notify then
 					State.Notify(world.Name .. " unlocked!", "Success")
 				end
-			end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 40), BackgroundColor3 = Theme.Colors.Cta })
+			end, { Kind = "Primary", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(150, 48) })
 		end
 	end
 end

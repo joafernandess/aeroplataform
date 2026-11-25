@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Luckiest+Guy&family=Noto+Color+Emoji&display=block" rel="stylesheet">
+<!-- Billboards mirror the game's styles: white enemy bars, white/cyan damage numbers, cyan coin popup. -->
 <style>
 html, body { margin: 0; padding: 0; width: 1280px; height: 720px; overflow: hidden; background: #8ccbf0; font-family: 'Fredoka', 'Noto Color Emoji', sans-serif; }
 canvas { position: absolute; left: 0; top: 0; }
 #labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); text-align: center; font-weight: 600; color: #fff; white-space: nowrap;
-  text-shadow: -2px -2px 0 #0c0a1a, 2px -2px 0 #0c0a1a, -2px 2px 0 #0c0a1a, 2px 2px 0 #0c0a1a, 0 2px 0 #0c0a1a, 0 -2px 0 #0c0a1a, 2px 0 0 #0c0a1a, -2px 0 0 #0c0a1a; }
-.bar { margin: 2px auto 0; height: 14px; border-radius: 8px; background: #141228; box-shadow: 0 0 0 2px #0c0a1a; position: relative; overflow: hidden; }
-.bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; background: linear-gradient(#ff7a9a, #d8365c); }
-.bar > b { position: absolute; inset: 0; font-size: 10px; line-height: 14px; font-weight: 600; }
+  text-shadow: -2px -2px 0 #05070D, 2px -2px 0 #05070D, -2px 2px 0 #05070D, 2px 2px 0 #05070D, 0 2px 0 #05070D, 0 -2px 0 #05070D, 2px 0 0 #05070D, -2px 0 0 #05070D; }
+.big { text-shadow: -3px -3px 0 #05070D, 3px -3px 0 #05070D, -3px 3px 0 #05070D, 3px 3px 0 #05070D, 0 3px 0 #05070D, 0 -3px 0 #05070D, 3px 0 0 #05070D, -3px 0 0 #05070D; }
+.bar { margin: 3px auto 0; height: 14px; border-radius: 8px; background: rgba(5,7,13,.85); box-shadow: 0 0 0 2px #05070D; position: relative; overflow: hidden; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; background: linear-gradient(#FFFFFF, #BFD6FF); }
+.bar > b { position: absolute; inset: 0; font: 800 10px/14px Inter, sans-serif; color: #fff; }
 #topbar { position: absolute; left: 0; top: 0; width: 100%; height: 58px; background: rgba(0,0,0,.35); color: #fff; font: 600 13px Inter, sans-serif; display: flex; align-items: center; padding-left: 16px; box-sizing: border-box; z-index: 5; }
 iframe { position: absolute; inset: 0; width: 1280px; height: 720px; border: 0; background: transparent; z-index: 4; }
 </style>
@@ -82,15 +84,15 @@ for (const l of DATA.Labels) {
   el.style.left = ((v.x + 1) / 2 * W) + 'px';
   el.style.top = ((1 - v.y) / 2 * H) + 'px';
   if (l.Kind === 'Enemy') {
-    const w = l.Boss ? 240 : 110;
+    const w = l.Boss ? 230 : 160;
     el.style.width = w + 'px';
-    el.innerHTML = `<div style="font-size:${l.Boss ? 20 : 13}px;color:rgb(${l.Color.join(',')})">${l.Text}</div>` +
+    el.innerHTML = `<div style="font-size:${l.Boss ? 22 : 14}px;${l.Boss ? "font-family:'Luckiest Guy'" : ''}">${l.Text}</div>` +
       `<div class="bar" style="width:${w}px;height:${l.Boss ? 18 : 12}px"><i style="width:${l.Fraction * 100}%"></i><b style="font-size:${l.Boss ? 11 : 9}px;line-height:${l.Boss ? 18 : 12}px">${abbr(l.Max * l.Fraction)} / ${abbr(l.Max)}</b></div>`;
   } else if (l.Kind === 'Fighter') {
-    el.style.fontSize = '13px'; el.style.color = `rgb(${l.Color.join(',')})`; el.textContent = l.Text;
+    el.style.fontSize = '13px'; el.textContent = l.Text;
   } else if (l.Kind === 'Damage') {
-    el.style.fontFamily = "'Luckiest Guy', sans-serif"; el.style.fontSize = l.Crit ? '30px' : '22px';
-    el.style.color = l.Crit ? '#ff4632' : '#fff'; el.textContent = l.Text;
+    el.className = 'lbl big'; el.style.fontFamily = "'Luckiest Guy', sans-serif"; el.style.fontSize = l.Crit ? '40px' : '28px';
+    el.style.color = l.Crit ? '#4FD2FF' : '#fff'; el.textContent = l.Text;
   } else if (l.Kind === 'Sign') {
     el.style.fontSize = l.Size + 'px'; el.style.color = `rgb(${l.Color.join(',')})`; el.style.whiteSpace = 'pre'; el.style.lineHeight = '1.05'; el.textContent = l.Text;
   } else if (l.Kind === 'Prompt') {
@@ -99,7 +101,7 @@ for (const l of DATA.Labels) {
       <div style="width:34px;height:34px;border-radius:8px;background:#fff;color:#222;font:700 18px Inter;display:flex;align-items:center;justify-content:center">E</div>
       <div style="text-align:left"><div style="font:500 13px Inter;color:#ddd">${l.Object}</div><div style="font:700 18px Inter;color:#fff">${l.Text}</div></div></div>`;
   } else if (l.Kind === 'Yen') {
-    el.style.fontSize = '24px'; el.style.color = '#ffcd32'; el.textContent = l.Text;
+    el.className = 'lbl big'; el.style.fontFamily = "'Luckiest Guy', sans-serif"; el.style.fontSize = '28px'; el.style.color = '#4FD2FF'; el.textContent = l.Text;
   }
   layer.appendChild(el);
 }

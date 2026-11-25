@@ -36,24 +36,26 @@ function DamageIndicatorController:Show(model: Model, amount: number, crit: bool
 	active += 1
 	local offset = Vector3.new(math.random(-20, 20) / 10, root.Size.Y / 2 + 1, math.random(-20, 20) / 10)
 	local gui = C.Create("BillboardGui", {
-		Size = UDim2.fromOffset(if crit then 120 else 90, if crit then 40 else 30),
+		Size = UDim2.fromOffset(if crit then 150 else 120, if crit then 56 else 46),
 		StudsOffsetWorldSpace = offset,
 		AlwaysOnTop = true,
 		MaxDistance = 150,
 		Adornee = root,
 		Parent = self.Folder,
 	})
-	local color = if crit then Theme.Colors.Crit elseif special then Theme.Colors.Accent else Color3.new(1, 1, 1)
+	-- Normal hits white, specials ice, crits cyan and bigger (§5.16).
+	local color = if crit then Theme.Colors.Cyan elseif special then Theme.Colors.Ice else Theme.Colors.White
 	local label = C.Label(gui, NumberFormat.Abbreviate(amount) .. (if crit then "!" else ""), {
 		Size = UDim2.fromScale(1, 1),
-		TextScaled = true,
+		TextSize = if crit then 42 else 30,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		Font = Theme.Fonts.Title,
+		Font = Theme.Fonts.Display,
 		TextColor3 = color,
-		TextStrokeTransparency = 0.3,
 	})
+	local outline = C.Outline(label, 3)
 	TweenService:Create(gui, TweenInfo.new(LIFETIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { StudsOffsetWorldSpace = offset + Vector3.new(0, 3, 0) }):Play()
-	TweenService:Create(label, TweenInfo.new(LIFETIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	TweenService:Create(label, TweenInfo.new(LIFETIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
+	TweenService:Create(outline, TweenInfo.new(LIFETIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1 }):Play()
 	task.delay(LIFETIME, function()
 		gui:Destroy()
 		active -= 1

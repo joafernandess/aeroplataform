@@ -30,8 +30,7 @@ function UpgradeController:Render()
 		local def = Progression.Upgrades[upgradeId]
 		local level = data.Upgrades[upgradeId] or 0
 		local cost = Formulas.UpgradeCost(upgradeId, level)
-		local row = C.Frame(self.List, { Size = UDim2.new(1, -8, 0, 62), BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = i })
-		C.Corner(row)
+		local row = C.Row(self.List, { Size = UDim2.new(1, -8, 0, 62), LayoutOrder = i })
 		C.Label(row, ("%s  (Lv %d/%d)"):format(def.Name, level, def.MaxLevel), { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -200, 0, 24), Font = Theme.Fonts.Bold })
 		C.Label(row, def.Description, { Position = UDim2.fromOffset(12, 32), Size = UDim2.new(1, -200, 0, 20), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
 		local affordable = cost ~= nil and (data.Currencies[def.Currency] or 0) >= cost
@@ -43,7 +42,7 @@ function UpgradeController:Render()
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
 			Size = UDim2.fromOffset(170, 40),
-			BackgroundColor3 = if affordable then Theme.Colors.Good else Theme.Colors.Panel,
+			Kind = if affordable then "Primary" else "Dark",
 		})
 	end
 end

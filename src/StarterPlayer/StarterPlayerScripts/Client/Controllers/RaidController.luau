@@ -32,8 +32,7 @@ function RaidController:Render()
 	C.Clear(self.List)
 	local now = math.floor(workspace:GetServerTimeNow())
 	for i, raid in Raids.List do
-		local row = C.Frame(self.List, { Size = UDim2.new(1, -8, 0, 96), BackgroundColor3 = Theme.Colors.PanelLight, LayoutOrder = i })
-		C.Corner(row)
+		local row = C.Row(self.List, { Size = UDim2.new(1, -8, 0, 96), LayoutOrder = i })
 		C.Label(row, raid.Name, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -180, 0, 24), Font = Theme.Fonts.Bold, TextSize = 18 })
 		C.Label(row, ("%d waves • %s limit • Entry: %s"):format(#raid.Waves, NumberFormat.Duration(raid.TimeLimit), if raid.EntryCost then NumberFormat.Abbreviate(raid.EntryCost.Amount) .. " " .. raid.EntryCost.Currency else "Free"), { Position = UDim2.fromOffset(12, 32), Size = UDim2.new(1, -180, 0, 18), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
 		C.Label(row, "Rewards: " .. Rewards.Describe(raid.Rewards), { Position = UDim2.fromOffset(12, 52), Size = UDim2.new(1, -180, 0, 18), TextSize = 12, TextColor3 = Theme.Colors.Accent })
@@ -46,7 +45,7 @@ function RaidController:Render()
 			if response.ok then
 				self.Controllers.UIController:Close("Raids")
 			end
-		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 44), BackgroundColor3 = if status == "Ready" then Theme.Colors.Accent else Theme.Colors.Panel })
+		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(140, 44), Kind = if status == "Ready" then "Primary" else "Dark" })
 	end
 end
 
@@ -79,7 +78,7 @@ function RaidController:Init(controllers)
 	self.HUDInfo = C.Label(self.HUD, "", { Position = UDim2.fromOffset(12, 34), Size = UDim2.new(1, -110, 0, 22), TextSize = 14, TextColor3 = Theme.Colors.TextDim })
 	C.Button(self.HUD, "Leave", function()
 		State.Request("LeaveRaid")
-	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(90, 40), BackgroundColor3 = Theme.Colors.Bad })
+	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(100, 44), Kind = "Danger", Confirm = false })
 end
 
 function RaidController:Start()

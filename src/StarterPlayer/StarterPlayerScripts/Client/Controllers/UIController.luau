@@ -37,9 +37,21 @@ local HOTKEY_FEATURE = { Quests = "Quests", Worlds = "MultipleWorlds", Shop = "S
 local DESIGN_SIZE = Vector2.new(1280, 720)
 local TOPBAR_INSET = 58 -- Roblox top bar height (ScreenGui.IgnoreGuiInset = false)
 local HUD_BOOST = 1.2
-local MIN_SCALE = 0.4
+local MIN_SCALE = 0.55 -- below this text becomes unreadable; windows scroll instead
 
 UIController.Scaled = {} :: { { Gui: GuiObject, Kind: string, Scale: UIScale } }
+
+-- Glyph shown in each window's header tile.
+local WINDOW_ICONS = {
+	Inventory = Theme.Icons.Inventory,
+	Summon = Theme.Icons.Summon,
+	Worlds = Theme.Icons.Worlds,
+	Quests = Theme.Icons.Quests,
+	Shop = Theme.Icons.Shop,
+	Upgrades = Theme.Icons.Upgrades,
+	Raids = Theme.Icons.Raids,
+	Settings = Theme.Icons.Settings,
+}
 
 local HOTKEYS = {
 	[Enum.KeyCode.I] = "Inventory",
@@ -86,7 +98,7 @@ function UIController:RefreshScale()
 end
 
 function UIController:CreateWindow(name: string, title: string, size: UDim2?, onOpen: ((...any) -> ())?)
-	local window = C.Window(self.Root, title, size)
+	local window = C.Window(self.Root, title, size, WINDOW_ICONS[name])
 	self:AddScaled(window.Frame, "Window")
 	window.Name = name
 	window.OnOpen = onOpen
@@ -112,6 +124,7 @@ function UIController:Open(name: string, ...: any)
 	end
 	self.Current = name
 	window.Frame.Visible = true
+	self.Scrim.Visible = true
 	UIController.WindowChanged:Fire(name)
 	if window.OnOpen then
 		task.spawn(window.OnOpen, ...)
@@ -132,6 +145,7 @@ function UIController:Close(name: string?)
 	end
 	if self.Current == target then
 		self.Current = nil
+		self.Scrim.Visible = false
 		UIController.WindowChanged:Fire(nil)
 	end
 end
@@ -145,9 +159,9 @@ function UIController:Toggle(name: string, ...: any)
 end
 
 function UIController:AddMenuButton(name: string, label: string, order: number)
-	local container = C.IconButton(self.Menu, Theme.Icons[name] or "?", label, Theme.MenuColors[name] or Theme.Colors.Button, function()
+	local container = C.IconButton(self.Menu, Theme.Icons[name] or "?", label, Theme.MenuKinds[name] or "Primary", function()
 		self:Toggle(name)
-	end, 58)
+	end, 68)
 	container.LayoutOrder = order
 end
 
@@ -164,10 +178,25 @@ function UIController:Init()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 12, 1, -12),
-		Size = UDim2.fromOffset(152, 324),
+		Size = UDim2.fromOffset(178, 404),
 	})
-	C.Grid(self.Menu, UDim2.fromOffset(72, 78), 4)
+	C.Grid(self.Menu, UDim2.fromOffset(84, 94), 10)
 	self:AddScaled(self.Menu, "Hud")
+	-- Dark scrim behind the open window; clicking it closes the window.
+	self.Scrim = C.Create("TextButton", {
+		Name = "Scrim",
+		AutoButtonColor = false,
+		Text = "",
+		BackgroundColor3 = Theme.Colors.Ink,
+		BackgroundTransparency = 0.55,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+		ZIndex = 5,
+		Parent = self.Root,
+	})
+	self.Scrim.Activated:Connect(function()
+		self:Close()
+	end)
 	-- Effects layer (popups that sit above windows, e.g. summon reveal)
 	self.Overlay = C.Frame(self.Root, { Name = "Overlay", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 50 })
 	local _ = Theme
@@ -185,11 +214,16 @@ function UIController:Start()
 		{ "Raids", "Raids", "Raids" },
 		{ "Settings", "Settings", nil },
 	}
+	local count = 0
 	for i, entry in order do
 		if self.Windows[entry[1]] and (entry[3] == nil or Features[entry[3]]) then
 			self:AddMenuButton(entry[1], entry[2], i)
+			count += 1
 		end
 	end
+	-- Fit the menu to its rows so the 2-column grid grows upward from the bottom-left corner.
+	local rows = math.max(1, math.ceil(count / 2))
+	self.Menu.Size = UDim2.fromOffset(178, rows * 94 + (rows - 1) * 10)
 	-- Re-scale when the screen size changes (rotation, window resize, camera replaced).
 	local cameraConnection = nil
 	local function watchCamera()

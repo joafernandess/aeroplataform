@@ -79,7 +79,7 @@ function UnitVisualController:CreateVisual(unit)
 	end
 	local head = model:FindFirstChild("Head") or model.PrimaryPart
 	local gui = C.Create("BillboardGui", { Size = UDim2.fromOffset(120, 22), StudsOffset = Vector3.new(0, 1.6, 0), MaxDistance = 70, Adornee = head, Parent = model })
-	C.Title(gui, def.Name, { Size = UDim2.fromScale(1, 1), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = rarity }, 1.5)
+	C.Title(gui, def.Name, { Size = UDim2.fromScale(1, 1), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Center }, 1.5)
 	model.Name = unit.Uid
 	model:SetAttribute("UnitId", unit.UnitId)
 	model.Parent = self.Folder

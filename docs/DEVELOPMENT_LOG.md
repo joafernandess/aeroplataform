@@ -96,6 +96,16 @@
 - Preview 3D (`tools/ui-preview/scene.luau` + three.js): o mapa real e os rigs, com a UI real sobreposta.
 - **179 testes passando.**
 
+### UI preto/branco/azul (agentes pesquisador + construtor)
+- Pesquisador: guia `docs/ui/UI_RESEARCH.md` (convenções do gênero, tokens da paleta, fontes, specs de componentes,
+  lista do que NÃO copiar de jogos existentes).
+- Construtor: `UI/Theme` e `UI/Components` refeitos (botões 3D com base que afunda, tipos Primary/Secondary/Accent/
+  Dark/Danger com confirmação em 2 toques, janelas com cabeçalho azul com speed-lines, cards escuros com faixa de
+  raridade, ✓ azul de equipado, pílulas de moeda, toggles), todos os controllers migrados, ícones em glifos
+  monocromáticos, barras de vida brancas, números de dano brancos/ciano. AUTO foi para o centro-direita
+  (fora do botão de pulo no celular); toasts no topo.
+- 179 testes passando, selene 0/0, preview sem warnings.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

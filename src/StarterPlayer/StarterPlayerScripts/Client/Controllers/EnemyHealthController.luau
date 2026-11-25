@@ -46,23 +46,45 @@ function EnemyHealthController:Attach(model: Instance)
 	if not root then
 		return
 	end
+	-- Enemy bars are WHITE: blue is reserved for everything that belongs to the player.
+	local P = Theme.Colors
+	local width = if isBoss then 240 else 170
 	local gui = C.Create("BillboardGui", {
 		Name = "HealthBar",
-		Size = UDim2.fromOffset(if isBoss then 240 else 110, if isBoss then 50 else 32),
+		Size = UDim2.fromOffset(width, if isBoss then 52 else 40),
 		StudsOffsetWorldSpace = Vector3.new(0, 3.2 * (if tier then tier.Scale else 1), 0),
-		MaxDistance = if isBoss then 250 else 65, -- only nearby enemies show bars, so crowds stay readable
+		MaxDistance = if isBoss then 250 else 65, -- 80 (brief) overlapped badly in crowds
 		AlwaysOnTop = true,
+		LightInfluence = 0,
 		Adornee = root,
 		Parent = model,
 	})
-	local tierColor = if tier and isBoss then Color3.fromRGB(tier.Color[1], tier.Color[2], tier.Color[3]) else Theme.Colors.Text
 	C.Title(gui, model:GetAttribute("DisplayName") or model.Name, {
-		Size = UDim2.new(1, 0, 0.5, 0),
+		Font = if isBoss then Theme.Fonts.Display else Theme.Fonts.Title,
+		Size = UDim2.new(1, 0, 0, if isBoss then 26 else 20),
 		TextXAlignment = Enum.TextXAlignment.Center,
-		TextScaled = true,
-		TextColor3 = tierColor,
-	}, 2)
-	local bar = C.ProgressBar(gui, Theme.Colors.Bad, { Position = UDim2.fromScale(0, 0.52), Size = UDim2.fromScale(1, 0.46) })
+		TextSize = if isBoss then 22 else 14,
+	}, if isBoss then 2.5 else 1.5)
+	local track = C.Frame(gui, {
+		BackgroundColor3 = P.Ink,
+		BackgroundTransparency = 0.15,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -2),
+		Size = UDim2.fromOffset(width - 10, if isBoss then 20 else 14),
+	})
+	C.Corner(track, UDim.new(0.5, 0))
+	C.Stroke(track, P.Ink, 2)
+	local fill = C.Frame(track, { BackgroundColor3 = P.White, Size = UDim2.fromScale(1, 1), ZIndex = 2 })
+	C.Corner(fill, UDim.new(0.5, 0))
+	C.Gradient(fill, Theme.Gradients.EnemyHealth.Top, Theme.Gradients.EnemyHealth.Bottom)
+	local hpText = C.Number(track, "", { Size = UDim2.fromScale(1, 1), TextSize = if isBoss then 13 else 11, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 3 })
+	local bar = {
+		Set = function(fraction: number, caption: string)
+			fill.Size = UDim2.fromScale(math.clamp(fraction, 0, 1), 1)
+			fill.Visible = fraction > 0.001
+			hpText.Text = caption
+		end,
+	}
 	local function update()
 		local health = model:GetAttribute("Health") or 0
 		local maxHealth = math.max(model:GetAttribute("MaxHealth") or 1, 1)
