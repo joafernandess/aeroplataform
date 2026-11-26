@@ -152,6 +152,15 @@
 - Preview: `lune run tools/ui-preview/preview <dir> --png-icons` mostra os PNGs onde o jogo mostrará as imagens.
 - **225 testes passando**, selene 0/0.
 
+### HUD no estilo da referência + ícone do Yen
+- `Icon_Yen.png` (moeda dourada com ¥, mesmo estilo 3D); moedas que voam e a carteira agora são douradas.
+- Contador de Yen virou um bloco arredondado da largura do menu e fica colado em cima dos botões da esquerda
+  (`UIController:AttachAboveNav`), escalando junto com eles.
+- Botões no estilo da imagem de referência: fundo escuro tingido e borda grossa na cor do ícone, aro escuro e sombra,
+  nome dentro do botão, tecla de atalho no canto (PC), botões largos (Shop, Teleport, Index) com brilho periódico,
+  hover/clique animados, badges vermelhos pulsando. Atalhos novos sem conflito com as teclas padrão do Roblox.
+- Preview: suporte a `UITextSizeConstraint` e a degradê só de transparência.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

@@ -51,7 +51,7 @@ return function(t)
 	local expect = t.expect
 
 	t.describe("side menus", function()
-		t.it("builds both icon-only grids in the requested order and every button opens a real window", function()
+		t.it("builds both menus in the requested order, in the reference style, and every button opens a real window", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
 			local Navigation = s.Runtime:Require(CLIENT .. "UI/Navigation")
@@ -87,36 +87,53 @@ return function(t)
 			local left, leftRows = order(UI.LeftNav)
 			local right, rightRows = order(UI.RightNav)
 			expect(left).toBe("Shop,Fighters,Settings,Codes,Quests,Teleport")
-			expect(leftRows).toBe("2,2,2")
+			expect(leftRows).toBe("1,2,2,1") -- wide Shop, 2x2, wide Teleport
 			expect(right).toBe("Items,Mounts,Achievements,Stats,Index")
-			expect(rightRows).toBe("2,2,1")
-			-- Icon only: no captions under the buttons.
-			expect(find(UI.LeftNav, "Caption")).toBeNil()
-			expect(find(UI.RightNav, "Caption")).toBeNil()
-			-- Monochrome tiles (charcoal face, light border, black shadow, no colour accent bar); the icon carries
-			-- the colour; hover lightens and press darkens the face.
+			expect(rightRows).toBe("2,2,1") -- 2x2, wide Index
+			-- Reference style: face tinted by the icon colour, border in that colour, dark rim + shadow, the name
+			-- inside the button and the key badge (PC).
 			local Theme = s.Runtime:Require(CLIENT .. "UI/Theme")
-			local M = Theme.MenuButton
-			for name, button in UI.MenuButtons do
-				local gradient = button:FindFirstChildOfClass("UIGradient")
-				expect(gradient.Color.Keypoints[1].Value).toBe(M.Top)
-				expect(button:FindFirstChildOfClass("UIStroke").Color).toBe(M.Border)
-				expect(button.Parent:FindFirstChild("Shadow") ~= nil).toBe(true)
-				expect(find(button, "Accent")).toBeNil()
-				expect(button:FindFirstChild("Icon") ~= nil).toBe(true)
-				local _ = name
+			local P = Theme.Colors
+			for _, side in { Navigation.Left, Navigation.Right } do
+				for _, entry in side do
+					local button = UI.MenuButtons[entry.Window]
+					local color = Theme.IconColors[entry.Icon]
+					expect(button:FindFirstChildOfClass("UIStroke").Color).toBe(color)
+					expect(button:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(color:Lerp(P.Ink, 0.6))
+					expect(button.Parent:FindFirstChild("Rim") ~= nil).toBe(true)
+					expect(button.Parent:FindFirstChild("Shadow") ~= nil).toBe(true)
+					expect(find(button, "Caption").Text).toBe(entry.Label)
+					local key = find(button, "KeyBadge")
+					expect(key ~= nil and key:FindFirstChildOfClass("TextLabel").Text == entry.Key.Name).toBe(true)
+					expect(find(button, "Icon") ~= nil).toBe(true)
+					-- wide buttons fill the row and get the idle light sweep
+					expect(find(button, "SweepClip") ~= nil).toBe(entry.Wide == true)
+				end
 			end
+			expect(UI.MenuButtons.Shop.Size.X.Offset).toBe(UI.LeftNav.Size.X.Offset)
+			-- Hotkeys: one per button, none on Roblox's default keys (WASD, I/O zoom) or X (clear target).
+			local count = 0
+			for key in Navigation.Hotkeys do
+				count += 1
+				expect(table.find({ "W", "A", "S", "D", "I", "O", "X" }, key.Name)).toBeNil()
+			end
+			expect(count).toBe(11)
+			-- hover lightens the face, press darkens it, leaving restores it
 			local shop = UI.MenuButtons.Shop
+			local function top()
+				return shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value
+			end
+			local color = Theme.IconColors.shop
 			shop.MouseEnter:Fire()
 			task.wait(0.02)
-			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.HoverTop)
+			expect(top()).toBe(color:Lerp(P.Ink, 0.44))
 			shop.MouseButton1Down:Fire()
 			task.wait(0.02)
-			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.PressTop)
+			expect(top()).toBe(color:Lerp(P.Ink, 0.78))
 			shop.MouseButton1Up:Fire()
 			shop.MouseLeave:Fire()
 			task.wait(0.02)
-			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.Top)
+			expect(top()).toBe(color:Lerp(P.Ink, 0.6))
 			expect(UI.LeftNav.AnchorPoint.X).toBe(0)
 			expect(UI.RightNav.AnchorPoint.X).toBe(1)
 			for _, side in { Navigation.Left, Navigation.Right } do

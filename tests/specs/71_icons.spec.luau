@@ -81,7 +81,7 @@ return function(t)
 			local serde = require("@lune/serde")
 			local manifest = serde.decode("json", fs.readFile("assets/UI_Icons/manifest.json"))
 			local seen = {}
-			for _, name in { "shop", "fighters", "settings", "codes", "quests", "teleport", "inventory", "mounts", "achievements", "stats", "index", "update" } do
+			for _, name in { "shop", "fighters", "settings", "codes", "quests", "teleport", "inventory", "mounts", "achievements", "stats", "index", "update", "yen" } do
 				local color = Theme.IconColors[name]
 				expect(color ~= nil).toBe(true)
 				local key = string.format("%.3f,%.3f,%.3f", color.R, color.G, color.B)

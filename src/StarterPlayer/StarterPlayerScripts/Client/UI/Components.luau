@@ -456,101 +456,208 @@ function C.SetSelected(button: Instance, selected: boolean)
 end
 
 --[[
-	Side-navigation button (HUD menus): square charcoal tile with a light border and a soft black shadow; the icon
-	is the only colour (Theme.IconColors / the full-colour PNG from UI/IconAssets). Optional caption under it.
-	Hover lightens the face and whitens the border, pressing darkens it and squashes the tile.
-	Returns (container, button). The FX use their own UIScale on the tile, so they never fight the responsive
-	UIScale that UIController puts on the whole grid.
+	HUD tile look (side menus, currency box, Update Log card, window title tiles).
+	With `color`: dark face tinted by the colour, thick border in the colour, a thin inner glow, a dark rim around
+	it and a soft shadow under it. Without: the monochrome version (Theme.MenuButton).
+	Returns paint(state) for "Idle" | "Hover" | "Press", and the shadow frame.
 ]]
-function C.MenuTile(button: GuiObject, radius: number)
+function C.MenuTile(button: GuiObject, radius: number, color: Color3?)
 	local M = Theme.MenuButton
+	local ink = P.Ink
+	local faces = if color
+		then {
+			Idle = { color:Lerp(ink, 0.6), color:Lerp(ink, 0.86) },
+			Hover = { color:Lerp(ink, 0.44), color:Lerp(ink, 0.76) },
+			Press = { color:Lerp(ink, 0.78), color:Lerp(ink, 0.92) },
+		}
+		else { Idle = { M.Top, M.Bottom }, Hover = { M.HoverTop, M.HoverBottom }, Press = { M.PressTop, M.PressBottom } }
+	local border = color or M.Border
+	local borderHover = if color then color:Lerp(P.White, 0.35) else M.BorderHover
 	C.Corner(button, UDim.new(0, radius))
-	local gradient = C.Gradient(button, M.Top, M.Bottom)
-	local stroke = C.Stroke(button, M.Border, 2.5)
-	local shadow = C.Frame(button.Parent :: Instance, {
+	local gradient = C.Gradient(button, faces.Idle[1], faces.Idle[2])
+	local stroke = C.Stroke(button, border, if color then 3 else 2.5)
+	local parent = button.Parent :: Instance
+	local z = math.max(button.ZIndex - 1, 1)
+	local shadow = C.Frame(parent, {
 		Name = "Shadow",
 		BackgroundColor3 = M.Shadow,
 		BackgroundTransparency = M.ShadowTransparency,
 		AnchorPoint = button.AnchorPoint,
-		Position = button.Position + UDim2.fromOffset(0, 4),
-		Size = button.Size,
-		ZIndex = math.max(button.ZIndex - 1, 1),
+		Position = button.Position + UDim2.fromOffset(0, 5),
+		Size = button.Size + UDim2.fromOffset(4, 4),
+		ZIndex = z,
 	})
-	C.Corner(shadow, UDim.new(0, radius))
+	C.Corner(shadow, UDim.new(0, radius + 2))
+	if color then
+		-- dark rim outside the coloured border, then a faint inner glow line
+		local rim = C.Frame(parent, {
+			Name = "Rim",
+			BackgroundColor3 = ink,
+			AnchorPoint = button.AnchorPoint,
+			Position = button.Position,
+			Size = button.Size + UDim2.fromOffset(10, 10),
+			ZIndex = z,
+		})
+		rim.Position = button.Position - UDim2.fromOffset(5 - 10 * button.AnchorPoint.X, 5 - 10 * button.AnchorPoint.Y)
+		C.Corner(rim, UDim.new(0, radius + 5))
+		local glow = C.Frame(button, {
+			Name = "InnerGlow",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(3, 3),
+			Size = UDim2.new(1, -6, 1, -6),
+			ZIndex = button.ZIndex,
+		})
+		C.Corner(glow, UDim.new(0, math.max(radius - 3, 2)))
+		local glowStroke = C.Stroke(glow, color:Lerp(P.White, 0.5), 1.5)
+		glowStroke.Transparency = 0.55
+	end
 	local function paint(state: string)
-		if state == "Hover" then
-			gradient.Color = ColorSequence.new(M.HoverTop, M.HoverBottom)
-			stroke.Color = M.BorderHover
-		elseif state == "Press" then
-			gradient.Color = ColorSequence.new(M.PressTop, M.PressBottom)
-			stroke.Color = M.BorderHover
-		else
-			gradient.Color = ColorSequence.new(M.Top, M.Bottom)
-			stroke.Color = M.Border
-		end
+		local face = faces[state] or faces.Idle
+		gradient.Color = ColorSequence.new(face[1], face[2])
+		stroke.Color = if state == "Idle" then border else borderHover
 	end
 	return paint, shadow
 end
 
-function C.NavButton(parent: Instance, icon: string, caption: string?, _accent: Color3?, onClick: (() -> ())?, size: number?)
-	local d = size or 58
-	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d, if caption then d + 22 else d) })
+-- Light sweep that crosses a tile every few seconds (idle "shine"). Kept off the rounded corners.
+function C.ShineSweep(tile: GuiObject, every: number?)
+	-- Inner clipping frame (inset past the rounded corners), so the tile itself never clips its badges.
+	local clipper = C.Frame(tile, {
+		Name = "SweepClip",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(6, 6),
+		Size = UDim2.new(1, -12, 1, -12),
+		ClipsDescendants = true,
+		ZIndex = tile.ZIndex + 1,
+	})
+	local sweep = C.Frame(clipper, {
+		Name = "Sweep",
+		BackgroundColor3 = P.White,
+		BackgroundTransparency = 0.45,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(-0.3, 0, 0.5, 0),
+		Size = UDim2.new(0, 22, 1, 0),
+		ZIndex = tile.ZIndex + 2,
+	})
+	C.Create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0.2),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = sweep,
+	})
+	task.spawn(function()
+		while sweep.Parent do
+			task.wait((every or 3.5) + math.random() * 1.5)
+			sweep.Position = UDim2.new(-0.3, 0, 0.5, 0)
+			TweenService:Create(sweep, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(1.3, 0, 0.5, 0) }):Play()
+		end
+	end)
+	return sweep
+end
+
+--[[
+	Side-menu button. info = { Icon, Label?, Key?, Wide?, Width, Height, ShowLabel?, ShowKey? }
+	Square: big icon with the name inside at the bottom. Wide (full row): icon on the left, big name beside it,
+	plus an idle light sweep. The icon's colour (Theme.IconColors) tints the face and draws the border.
+	Animations: hover grows the tile and lifts/enlarges the icon, press squashes and darkens it.
+	Returns (container, button). The FX use their own UIScales, so they never fight the responsive UIScale that
+	UIController puts on the whole menu.
+]]
+function C.NavButton(parent: Instance, info, onClick: (() -> ())?)
+	local w, h = info.Width or 70, info.Height or info.Width or 70
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(w, h) })
 	local button = C.Create("TextButton", {
 		Name = "Button",
 		AutoButtonColor = false,
 		Text = "",
 		BackgroundColor3 = P.White,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromOffset(d, d),
-		ZIndex = 2,
+		Size = UDim2.fromOffset(w, h),
+		ZIndex = 3,
 		Parent = container,
 	})
-	C.Create("UIAspectRatioConstraint", { AspectRatio = 1, Parent = button })
-	local paint = C.MenuTile(button, 18)
-	local color = Theme.IconColors[icon] or P.White
-	C.Icon(button, icon, {
+	local color = Theme.IconColors[info.Icon] or P.White
+	local paint = C.MenuTile(button, 14, color)
+	local iconSize = if info.Wide then h - 12 elseif info.ShowLabel then math.floor(h * 0.6) else math.floor(h * 0.74)
+	local iconHolder = C.Frame(button, {
+		Name = "IconHolder",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = if info.Wide then UDim2.new(0, 6 + iconSize / 2, 0.5, 0) elseif info.ShowLabel then UDim2.new(0.5, 0, 0.41, 0) else UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(iconSize, iconSize),
+		ZIndex = 4,
+	})
+	local iconFx = C.Create("UIScale", { Name = "IconFX", Parent = iconHolder })
+	C.Icon(iconHolder, info.Icon, {
 		Name = "Icon",
-		Size = math.floor(d * 0.76),
+		Size = iconSize,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Color = color,
 		Accent = color:Lerp(P.White, 0.55),
-		ZIndex = 3,
+		ZIndex = 5,
 	})
-	if caption then
-		C.Title(container, caption, {
+	if info.ShowLabel and info.Label then
+		local label = C.Title(button, info.Label, {
 			Name = "Caption",
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.fromScale(0.5, 1),
-			Size = UDim2.new(1, 16, 0, 18),
-			TextSize = 14,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			ZIndex = 3,
-		}, 2)
+			AnchorPoint = if info.Wide then Vector2.new(0, 0.5) else Vector2.new(0.5, 1),
+			Position = if info.Wide then UDim2.new(0, iconSize + 12, 0.5, 0) else UDim2.new(0.5, 0, 1, -4),
+			Size = if info.Wide then UDim2.new(1, -(iconSize + 20), 0, 30) else UDim2.new(1, -8, 0, 16),
+			TextSize = if info.Wide then 26 else 14,
+			TextScaled = true,
+			TextXAlignment = if info.Wide then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
+			ZIndex = 6,
+		}, if info.Wide then 2.5 else 2)
+		C.Create("UITextSizeConstraint", { MaxTextSize = if info.Wide then 26 else 14, MinTextSize = 8, Parent = label })
 	end
+	if info.ShowKey and info.Key then
+		local key = C.Frame(button, {
+			Name = "KeyBadge",
+			BackgroundColor3 = P.Ink,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.fromOffset(20, 20),
+			ZIndex = 8,
+		})
+		C.Corner(key, 5)
+		C.Stroke(key, P.White, 1.5)
+		C.Title(key, info.Key, { Size = UDim2.fromScale(1, 1), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 9 }, 0.01)
+	end
+	if info.Wide then
+		C.ShineSweep(button)
+	end
+
 	local fx = C.Create("UIScale", { Name = "FX", Parent = button })
 	local hovering = false
-	local function to(scale: number, time: number)
-		TweenService:Create(fx, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = scale }):Play()
+	local function to(target: Instance, goals: { [string]: any }, time: number, style: Enum.EasingStyle?)
+		TweenService:Create(target, TweenInfo.new(time, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
 	end
+	local rest = iconHolder.Position
+	local lifted = rest - UDim2.fromOffset(0, 3)
 	button.MouseEnter:Connect(function()
 		hovering = true
 		paint("Hover")
-		to(1.06, 0.12)
+		to(fx, { Scale = 1.06 }, 0.16, Enum.EasingStyle.Back)
+		to(iconFx, { Scale = 1.12 }, 0.16, Enum.EasingStyle.Back)
+		to(iconHolder, { Position = lifted }, 0.16)
 	end)
 	button.MouseLeave:Connect(function()
 		hovering = false
 		paint("Idle")
-		to(1, 0.12)
+		to(fx, { Scale = 1 }, 0.14)
+		to(iconFx, { Scale = 1 }, 0.14)
+		to(iconHolder, { Position = rest }, 0.14)
 	end)
 	button.MouseButton1Down:Connect(function()
 		paint("Press")
-		to(0.9, 0.06)
+		to(fx, { Scale = 0.9 }, 0.06)
+		to(iconFx, { Scale = 0.94 }, 0.06)
 	end)
 	button.MouseButton1Up:Connect(function()
 		paint(if hovering then "Hover" else "Idle")
-		to(if hovering then 1.06 else 1, 0.1)
+		to(fx, { Scale = if hovering then 1.06 else 1 }, 0.18, Enum.EasingStyle.Back)
+		to(iconFx, { Scale = if hovering then 1.12 else 1 }, 0.18, Enum.EasingStyle.Back)
 	end)
 	if onClick then
 		button.Activated:Connect(onClick)
@@ -675,6 +782,63 @@ function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: nu
 	end
 	return {
 		Frame = container,
+		Icon = glyph,
+		Set = function(text: string)
+			value.Text = text
+		end,
+	}
+end
+
+--[[
+	Currency counter box (HUD): a rounded-square charcoal tile like the side menu buttons (light border, soft black
+	shadow) with the currency icon on the left (full-colour PNG from UI/IconAssets, else the vector coin, in
+	Theme.IconColors) and the amount on the right (scaled down to fit long numbers).
+	Same API as C.CurrencyPill: { Frame, Box, Icon, Set(text) }. options: { Height, Plus }.
+]]
+function C.CurrencyBox(parent: Instance, icon: string, width: number?, options: { Height: number?, Plus: (() -> ())? }?)
+	local o = options or {}
+	local w, h = width or 156, o.Height or 58
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(w, h + 4) })
+	local box = C.Frame(container, { Name = "Box", BackgroundColor3 = P.White, Size = UDim2.fromOffset(w, h), ZIndex = 2 })
+	local name = Icons.Resolve(icon) or icon
+	local tint = Theme.IconColors[name] or P.White
+	C.MenuTile(box, 16, tint)
+	local glyph = C.Icon(box, name, {
+		Size = h - 12,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 7, 0.5, 0),
+		Color = tint,
+		Accent = tint:Lerp(P.White, 0.55),
+		ZIndex = 3,
+	})
+	local right = if o.Plus then 44 else 12
+	local value = C.Number(box, "0", {
+		Name = "Value",
+		Position = UDim2.fromOffset(h + 2, 0),
+		Size = UDim2.new(1, -(h + 2) - right, 1, 0),
+		TextSize = 28,
+		TextScaled = true,
+		ZIndex = 3,
+	})
+	C.Create("UITextSizeConstraint", { MaxTextSize = 28, MinTextSize = 12, Parent = value })
+	if o.Plus then
+		local plus = C.Button(box, "", o.Plus, {
+			Kind = "Dark",
+			Radius = 12,
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -7, 0.5, 0),
+			Size = UDim2.fromOffset(32, 34),
+			StrokeThickness = 2,
+			Confirm = false,
+			ZIndex = 4,
+			Icon = "plus",
+			IconSize = 18,
+		})
+		plus.Name = "Plus"
+	end
+	return {
+		Frame = container,
+		Box = box,
 		Icon = glyph,
 		Set = function(text: string)
 			value.Text = text
@@ -984,13 +1148,10 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	C.SpeedLines(header, 8, { Start = 0.62, Spacing = 28, ZIndex = 13 })
 	C.Frame(header, { Name = "EnergyLine", BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
 
-	-- Title tile: same monochrome look as the HUD menu buttons, icon in its own colour.
-	local M = Theme.MenuButton
-	local tile = C.Frame(header, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, -1), Size = UDim2.fromOffset(42, 42), ZIndex = 15 })
-	C.Corner(tile, Theme.Radius.Tool)
-	C.Gradient(tile, M.Top, M.Bottom)
-	C.Stroke(tile, M.Border, 2)
+	-- Title tile: same look as the HUD menu buttons (tinted face, border in the icon's colour).
+	local tile = C.Frame(header, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
 	local tileIcon = Icons.Resolve(icon or "fighters")
+	C.MenuTile(tile, Theme.Radius.Tool, if tileIcon then Theme.IconColors[tileIcon] else nil)
 	if tileIcon then
 		local tint = Theme.IconColors[tileIcon] or P.White
 		centeredIcon(tile, tileIcon, 32, { Color = tint, Accent = tint:Lerp(P.White, 0.55), ZIndex = 16 })

@@ -129,18 +129,21 @@ Estado: **implementado e testado**.
 
 ## K. UI — `Client/Controllers/*`
 Interfaces criadas por código (`UI/Components` + `UI/Theme` + `UI/Icons`), cada uma com controller próprio.
-HUD (mínimo): pílula de Yen no canto superior esquerdo (+X animado ao ganhar) e boosts ativos embaixo dela;
-card **UPDATE LOG** no canto superior direito (abre a janela; selo NEW até o jogador ler, salvo em
-`Settings.LastSeenUpdate`); menus laterais em **grade 2×N só com ícones** montados a partir de `UI/Navigation`:
-- esquerda: Shop, Fighters, Settings, Codes, Quests, TP
-- direita: Inventory (carteira + itens), Mounts, Achievements, Stats, Index
-As grades ficam abaixo das infos do jogador / do card de Update Log e encolhem em telas pequenas
-(`UIController:LayoutNav`). Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
+HUD (estilo de botões de simulador): contador de Yen (bloco arredondado com moeda dourada, +X animado ao ganhar)
+colado em cima do menu esquerdo, boosts ativos embaixo dele; card **UPDATE LOG** no canto superior direito (selo NEW
+pulsando até o jogador ler, salvo em `Settings.LastSeenUpdate`); menus laterais montados a partir de `UI/Navigation`:
+- esquerda: [Shop largo] · Fighters, Settings · Codes, Quests · [Teleport largo]
+- direita: Inventory, Mounts · Achievements, Stats · [Index largo]
+Cada botão: fundo escuro tingido e borda na cor do ícone, nome dentro, tecla de atalho no canto (PC), badge vermelho
+de notificação; hover cresce e levanta o ícone, clique afunda, botões largos têm um brilho que passa de tempos em
+tempos. Os menus (com o Yen) ficam centralizados na altura e encolhem em telas pequenas (`UIController:LayoutNav`).
+Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
 Janelas: Fighters (grade, ordenação, venda em massa, detalhes), Summon (orbe), Quests, Achievements, Codes,
 Teleport, Index (descobertos × silhuetas "???"), Inventory, Stats (poder do time por lutador, sessão, totais),
 Update Log (`Config/UpdateLog`, mais nova primeiro), Settings (inclui o auto-ataque), Mounts (preparada: o
 sistema ainda não existe e a janela diz isso), Shop (diz que está fechada enquanto `Features.Shop` = false).
 Também: Mundos, Upgrades e Raids (desligados no jogo base), notificações, números de dano, barras de vida,
 painel do alvo, indicador de zona, moedas voando.
-Atalhos: F (Fighters), I (Inventory), Q (Quests), T (Teleport), B (Shop), X / botão direito (limpar alvo).
+Atalhos: B Shop, F Fighters, P Settings, C Codes, Q Quests, T Teleport, K Inventory, N Mounts, J Achievements,
+V Stats, G Index; X / botão direito limpa o alvo.
 Estado: **implementado, compila, passa no linter e nos testes de cliente (Lune); não testado no Studio**.

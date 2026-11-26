@@ -47,10 +47,11 @@ Theme.Colors.Button = palette.Blue700
 Theme.Colors.Good = palette.Cyan
 Theme.Colors.Bad = palette.Ice -- attention text on dark panels (destructive buttons use the inverted "Danger" kind)
 Theme.Colors.Info = palette.Blue500
+Theme.Colors.Alert = hex("FF3B4E") -- notification badges (count, NEW)
 Theme.Colors.XP = palette.Cyan
 Theme.Colors.Crit = palette.Cyan
 -- Currency badges: one shade of the palette each (§6 of the brief)
-Theme.Colors.Yen = palette.Blue500
+Theme.Colors.Yen = hex("FFC21A") -- gold coin (HUD counter, flying coins, wallet)
 Theme.Colors.Gems = palette.Cyan
 Theme.Colors.Gold = palette.White
 Theme.Colors.Tokens = palette.Blue900
@@ -161,6 +162,7 @@ Theme.IconColors = {
 	stats = hex("FF4545"), -- red
 	index = hex("7C5CFF"), -- violet
 	update = hex("34E3A5"), -- mint
+	yen = hex("FFC21A"), -- gold coin
 }
 
 -- Monochrome HUD buttons (side menus, Update Log card, window title tiles): charcoal face, light border,

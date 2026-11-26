@@ -25,6 +25,7 @@ const ICONS = [
 	["Icon_Stats", "stats", "Right menu · Stats"],
 	["Icon_Index", "index", "Right menu · Index"],
 	["Icon_UpdateLog", "update", "Top-right · Update Log card"],
+	["Icon_Yen", "yen", "Top-left · Yen counter (and the coins)"],
 ];
 
 function lint(name, svg) {

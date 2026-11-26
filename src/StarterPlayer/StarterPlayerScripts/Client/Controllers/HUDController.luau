@@ -1,13 +1,13 @@
 --[[
 	HUDController
-	Always-visible player info (top-left), kept minimal:
-	  Yen pill (Gems/Gold/Tokens pills too when Features.PremiumCurrencies is on)
+	Always-visible player info, kept minimal and docked right above the left menu grid:
+	  Yen counter box (Gems/Gold/Tokens boxes too when Features.PremiumCurrencies is on)
 	  active boosts/events under it (only while there are any)
 	  bottom-centre level badge + XP bar (only when Features.PlayerLevel is on)
 	Side menus belong to UIController (UI/Navigation); the top-right corner belongs to UpdateLogController.
 	Team power lives in the Stats window; auto-attack is a toggle in Settings.
 
-	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency goes up, the pill pops (UIScale
+	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency goes up, its box pops (UIScale
 	on the pill itself, not on the scaled column), its number counts up in ~0.4s and a floating "+X" ticker rises
 	next to it and fades. Gains that arrive while a ticker is still showing merge into it.
 	Decreases (spending) only count down: no pop, no ticker.
@@ -26,6 +26,7 @@ local Client = script.Parent.Parent
 local C = require(Client.UI.Components)
 local Theme = require(Client.UI.Theme)
 local State = require(Client.State)
+local Navigation = require(Client.UI.Navigation)
 
 local HUDController = {
 	Name = "HUDController",
@@ -38,7 +39,10 @@ local TICKER_RISE_TIME = 0.6
 local TICKER_HOLD = 0.75 -- a ticker stays fully visible this long after its last (merged) gain
 local TICKER_FADE = 0.3
 
-local PILL_HEIGHT = 44 -- C.CurrencyPill container height (40px bar + 4)
+-- C.CurrencyBox (rounded-square counter): exactly as wide as the left menu grid it sits on.
+local BOX_W = Navigation.PerRow * Navigation.ButtonSize + (Navigation.PerRow - 1) * Navigation.Gap
+local BOX_H = 58
+local PILL_HEIGHT = BOX_H + 4 -- row height (box + its shadow)
 local BUFF_HEIGHT = 30
 
 local function tween(instance: Instance, seconds: number, goals: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?)
@@ -63,7 +67,7 @@ local function bump(scale: UIScale)
 end
 
 --[[
-	Wraps a C.CurrencyPill so it can count up, pop and show "+X" tickers.
+	Wraps a C.CurrencyBox so it can count up, pop and show "+X" tickers.
 	options: { Holder, Format(n) -> text, TickerText(n) -> text, TickerAnchor, TickerFrom, TickerTo, TickerAlign }
 ]]
 local function animated(pill, options)
@@ -84,7 +88,8 @@ function HUDController:Init(controllers)
 	local P = Theme.Colors
 
 	-- Currencies (top-left column). Each pill sits in a fixed-size row so its pop never shifts the column.
-	local currencies = C.Frame(root, { Name = "PlayerInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 10), Size = UDim2.fromOffset(220, 260) })
+	-- Placed by UIController:LayoutNav right above the left menu grid (same left edge, same scale).
+	local currencies = C.Frame(root, { Name = "PlayerInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 10), Size = UDim2.fromOffset(220, 260) })
 	C.List(currencies, Enum.FillDirection.Vertical, 6)
 	self.CurrencyPills = {}
 	self.Animated = {}
@@ -95,11 +100,11 @@ function HUDController:Init(controllers)
 		local row = C.Frame(currencies, {
 			Name = currency .. "Row",
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(200, PILL_HEIGHT),
+			Size = UDim2.fromOffset(BOX_W, PILL_HEIGHT),
 			LayoutOrder = i,
 		})
-		local pill = C.CurrencyPill(row, Theme.Icons[currency] or "?", Theme.Currency(currency), 200, {
-			GlyphColor = Theme.CurrencyGlyphColor[currency],
+		local pill = C.CurrencyBox(row, Theme.Icons[currency] or "?", BOX_W, {
+			Height = BOX_H,
 			Plus = if currency == "Gems" and Features.Shop
 				then function()
 					ui:Open("Shop")
@@ -120,8 +125,8 @@ function HUDController:Init(controllers)
 				return "+" .. NumberFormat.Abbreviate(amount) .. " " .. glyph
 			end,
 			TickerAnchor = Vector2.new(0, 0.5),
-			TickerFrom = UDim2.fromOffset(208, PILL_HEIGHT / 2 + 10),
-			TickerTo = UDim2.fromOffset(208, PILL_HEIGHT / 2 - 3),
+			TickerFrom = UDim2.fromOffset(BOX_W + 10, PILL_HEIGHT / 2 + 10),
+			TickerTo = UDim2.fromOffset(BOX_W + 10, PILL_HEIGHT / 2 - 3),
 			TickerAlign = Enum.TextXAlignment.Left,
 		})
 	end
@@ -130,8 +135,8 @@ function HUDController:Init(controllers)
 	C.List(self.BuffList, Enum.FillDirection.Vertical, 6)
 
 	self.InfoFrame = currencies
-	ui:AvoidForNav("Left", function()
-		return self:InfoBottom()
+	ui:AttachAboveNav("Left", currencies, function()
+		return self:InfoHeight()
 	end)
 
 	-- Level badge + XP bar (bottom centre)
@@ -145,13 +150,12 @@ function HUDController:Init(controllers)
 	C.Outline(self.LevelLabel, 2.5)
 
 	-- Responsive scaling (phones/tablets): every HUD block keeps its anchor and shrinks with the screen.
-	for _, gui in { currencies, levelFrame } do
-		ui:AddScaled(gui, "Hud")
-	end
+	-- (the player info is scaled together with the left menu by UIController:LayoutNav)
+	ui:AddScaled(levelFrame, "Hud")
 end
 
--- Bottom edge of the player-info stack (root pixels): the left menu column stays below it.
-function HUDController:InfoBottom(): number
+-- Unscaled height of the player-info stack (currency boxes + boosts).
+function HUDController:InfoHeight(): number
 	local frame = self.InfoFrame
 	local height, count = 0, 0
 	for _, child in frame:GetChildren() do
@@ -164,9 +168,14 @@ function HUDController:InfoBottom(): number
 			end
 		end
 	end
-	height += math.max(count - 1, 0) * 6
+	return height + math.max(count - 1, 0) * 6
+end
+
+-- Bottom edge of the player-info stack in root pixels.
+function HUDController:InfoBottom(): number
+	local frame = self.InfoFrame
 	local scale = frame:FindFirstChildOfClass("UIScale")
-	return frame.Position.Y.Offset + height * (if scale then scale.Scale else 1)
+	return frame.Position.Y.Offset + self:InfoHeight() * (if scale then scale.Scale else 1)
 end
 
 -- Reward feedback ------------------------------------------------------------------------------------------------

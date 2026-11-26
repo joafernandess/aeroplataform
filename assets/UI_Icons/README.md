@@ -1,6 +1,6 @@
 # UI_Icons — ícones dos menus do HUD
 
-12 ícones PNG **512×512, fundo transparente (RGBA)**, prontos para `ImageLabel` no Roblox.
+13 ícones PNG **512×512, fundo transparente (RGBA)**, prontos para `ImageLabel` no Roblox.
 Arte original, estilo minimalista arredondado em 3D: formas simples e grossas com cantos bem redondos, cor própria
 de cada ícone, contorno preto pesado, faces "infladas" com luz de cima/esquerda (brilho e sombra nas bordas),
 reflexos em degradê e lateral extrudada mais escura. Sem texto, sem fundo
@@ -20,11 +20,12 @@ quadrado/redondo; legível a 32×32 e 48×48 px (ver `preview.png`).
 | `Icon_Stats.png` | Menu direito · Stats | vermelho `#FF4545` | `stats` |
 | `Icon_Index.png` | Menu direito · Index | violeta `#7C5CFF` | `index` |
 | `Icon_UpdateLog.png` | Card "UPDATE LOG" (canto superior direito) | menta `#34E3A5` | `update` |
+| `Icon_Yen.png` | Contador de Yen (em cima do menu esquerdo) e carteira do Inventory | dourado `#FFC21A` | `yen` |
 
 Os mesmos ícones aparecem no ladrilho do título de cada janela.
 
 ## Colocar no jogo
-1. Roblox Studio → **View → Asset Manager → Bulk Import** → selecione os 12 PNGs
+1. Roblox Studio → **View → Asset Manager → Bulk Import** → selecione os 13 PNGs
    (ou Creator Hub → Development Items → Images → Upload).
 2. Em cada imagem: botão direito → **Copy Asset ID**.
 3. Cole em `src/StarterPlayer/StarterPlayerScripts/Client/UI/IconAssets.luau`, por exemplo

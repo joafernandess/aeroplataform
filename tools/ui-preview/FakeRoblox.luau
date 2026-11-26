@@ -63,6 +63,7 @@ local PARENTS = {
 	UIScale = { "UIComponent" },
 	UIGradient = { "UIComponent" },
 	UIAspectRatioConstraint = { "UIConstraint", "UIComponent" },
+	UITextSizeConstraint = { "UIConstraint", "UIComponent" },
 	Part = { "BasePart", "PVInstance" },
 	SpawnLocation = { "Part", "BasePart", "PVInstance" },
 	Model = { "PVInstance" },
@@ -410,7 +411,7 @@ function Fake.CreateClientServices(serverTime: () -> number)
 		Players = { LocalPlayer = localPlayer, PlayerAdded = Fake.Signal(), PlayerRemoving = Fake.Signal(), GetPlayers = function()
 			return { localPlayer }
 		end },
-		UserInputService = { InputBegan = Fake.Signal(), InputEnded = Fake.Signal(), TouchEnabled = false },
+		UserInputService = { InputBegan = Fake.Signal(), InputEnded = Fake.Signal(), TouchEnabled = false, KeyboardEnabled = true },
 		TweenService = tweenService,
 		RunService = {
 			RenderStepped = Fake.Signal(),

@@ -13,9 +13,10 @@
 	  Hud    - follows the screen size relative to 1280x720 (slightly boosted so text stays readable)
 	UIScale keeps each element's anchor point fixed, so corner-anchored HUD blocks stay in their corners.
 
-	Side menus (UI:LayoutNav) are laid out separately: each grid is centred at Navigation.CenterY but kept below
-	the HUD blocks registered with UI:AvoidForNav(side, bottomFn) (player info on the left, Update Log card on the
-	right) and above the bottom edge; on short screens it shrinks further so it always fits. LayoutChanged fires
+	Side menus (UI:LayoutNav) are laid out separately: each grid, together with the block docked above it
+	(UI:AttachAboveNav — the player's Yen counter on the left), is centred at Navigation.CenterY but kept below the
+	HUD blocks registered with UI:AvoidForNav(side, bottomFn) (the Update Log card on the right) and above the
+	bottom edge; on short screens it shrinks further so it always fits. LayoutChanged fires
 	after every re-layout.
 ]]
 
@@ -41,6 +42,7 @@ UIController.Current = nil :: string?
 UIController.WindowChanged = Signal.new() -- (currentWindowName?)
 UIController.LayoutChanged = Signal.new() -- side menus were re-laid out (screen size or HUD blocks changed)
 UIController.NavAvoid = { Left = {}, Right = {} } :: { [string]: { () -> number } }
+UIController.NavAttach = {} :: { [string]: { Gui: GuiObject, Height: () -> number } }
 
 local DESIGN_SIZE = Vector2.new(1280, 720)
 local TOPBAR_INSET = 58 -- Roblox top bar height (ScreenGui.IgnoreGuiInset = false)
@@ -48,6 +50,7 @@ local HUD_BOOST = 1.2
 local MIN_SCALE = 0.55 -- below this text becomes unreadable; windows scroll instead
 local NAV_EDGE = 10 -- gap between a side menu and whatever it must stay clear of
 local NAV_MIN_SCALE = 0.42
+local NAV_ATTACH_GAP = 12 -- between a block docked above a grid (player info) and the grid
 
 UIController.Scaled = {} :: { { Gui: GuiObject, Kind: string, Scale: UIScale } }
 UIController.MenuButtons = {} :: { [string]: GuiObject } -- window name -> nav tile (TextButton)
@@ -130,6 +133,20 @@ function UIController:AvoidForNav(side: string, bottom: () -> number)
 	end
 end
 
+--[[
+	Docks `gui` right above a side menu grid: same edge, same scale, moved with the grid as one block (the block is
+	what LayoutNav centres and fits). `height()` returns the block's unscaled height (it may change, e.g. boosts).
+]]
+function UIController:AttachAboveNav(side: string, gui: GuiObject, height: () -> number)
+	if not gui:FindFirstChild("NavScale") then
+		C.Create("UIScale", { Name = "NavScale", Parent = gui })
+	end
+	self.NavAttach[side] = { Gui = gui, Height = height }
+	if self.LeftNav or self.RightNav then
+		self:LayoutNav()
+	end
+end
+
 -- Places and scales both side menus (see the header).
 function UIController:LayoutNav()
 	local root = self:GetRootSize()
@@ -144,11 +161,24 @@ function UIController:LayoutNav()
 			end
 		end
 		local maxBottom = root.Y - NAV_EDGE
-		local s = math.max(math.min(self:_scaleFor(column, "Hud"), (maxBottom - minTop) / height), NAV_MIN_SCALE)
-		local h = height * s
+		local attach = self.NavAttach[side]
+		local extra = 0
+		if attach then
+			local ok, value = pcall(attach.Height)
+			extra = (if ok and type(value) == "number" then value else 0) + NAV_ATTACH_GAP
+		end
+		local total = height + extra
+		local s = math.max(math.min(self:_scaleFor(column, "Hud"), (maxBottom - minTop) / total), NAV_MIN_SCALE)
+		local h = total * s
 		local top = math.clamp(root.Y * Navigation.CenterY - h / 2, minTop, math.max(minTop, maxBottom - h))
+		if attach then
+			attach.Gui.AnchorPoint = Vector2.new(column.AnchorPoint.X, 0)
+			attach.Gui.Position = UDim2.new(column.Position.X.Scale, column.Position.X.Offset, 0, top)
+			attach.Gui.NavScale.Scale = s
+			top += extra * s
+		end
 		scale.Scale = s
-		column.Position = UDim2.new(column.Position.X.Scale, column.Position.X.Offset, 0, top + h / 2)
+		column.Position = UDim2.new(column.Position.X.Scale, column.Position.X.Offset, 0, top + height * s / 2)
 	end
 	self.LayoutChanged:Fire()
 end
@@ -230,14 +260,29 @@ function UIController:Toggle(name: string, ...: any)
 end
 
 -- Builds one side column from UI/Navigation entries. side = "Left" | "Right".
--- One side menu: icon-only buttons in rows of Navigation.PerRow, pushed against its screen edge.
+-- One side menu: square buttons in rows of Navigation.PerRow, Wide buttons on a row of their own; pushed against
+-- its screen edge (a short row hugs the edge).
 function UIController:_buildColumn(side: string, entries)
 	local left = side == "Left"
-	local perRow = Navigation.PerRow
-	local d, gap = Navigation.ButtonSize, Navigation.Gap
-	local rows = math.ceil(#entries / perRow)
+	local perRow, d, gap = Navigation.PerRow, Navigation.ButtonSize, Navigation.Gap
 	local width = perRow * d + (perRow - 1) * gap
-	local height = rows * d + (rows - 1) * gap
+	local rows, current = {}, nil
+	for _, entry in entries do
+		if entry.Wide then
+			table.insert(rows, { entry })
+			current = nil
+		else
+			if not current or #current >= perRow then
+				current = {}
+				table.insert(rows, current)
+			end
+			table.insert(current, entry)
+		end
+	end
+	local height = 0
+	for r, row in rows do
+		height += (if row[1].Wide then Navigation.WideHeight else d) + (if r > 1 then gap else 0)
+	end
 	local grid = C.Frame(self.Root, {
 		Name = side .. "Navigation",
 		BackgroundTransparency = 1,
@@ -247,19 +292,27 @@ function UIController:_buildColumn(side: string, entries)
 	})
 	C.Create("UISizeConstraint", { MaxSize = Vector2.new(width, height), Parent = grid })
 	C.List(grid, Enum.FillDirection.Vertical, gap)
-	for r = 1, rows do
-		local row = C.Frame(grid, { Name = "Row" .. r, BackgroundTransparency = 1, Size = UDim2.fromOffset(width, d), LayoutOrder = r })
-		-- A short last row hugs the screen edge.
+	local showKeys = Navigation.ShowKeys and UserInputService.KeyboardEnabled == true
+	local order = 0
+	for r, rowEntries in rows do
+		local wide = rowEntries[1].Wide == true
+		local rowHeight = if wide then Navigation.WideHeight else d
+		local row = C.Frame(grid, { Name = "Row" .. r, BackgroundTransparency = 1, Size = UDim2.fromOffset(width, rowHeight), LayoutOrder = r })
 		C.List(row, Enum.FillDirection.Horizontal, gap, if left then Enum.HorizontalAlignment.Left else Enum.HorizontalAlignment.Right)
-		for k = 1, perRow do
-			local order = (r - 1) * perRow + k
-			local entry = entries[order]
-			if not entry then
-				break
-			end
-			local container, button = C.NavButton(row, entry.Icon, nil, nil, function()
+		for _, entry in rowEntries do
+			order += 1
+			local container, button = C.NavButton(row, {
+				Icon = entry.Icon,
+				Label = entry.Label,
+				Key = entry.Key and entry.Key.Name,
+				Wide = wide,
+				Width = if wide then width else d,
+				Height = rowHeight,
+				ShowLabel = Navigation.ShowLabels,
+				ShowKey = showKeys,
+			}, function()
 				self:Toggle(entry.Window)
-			end, d)
+			end)
 			container.Name = entry.Window
 			container.LayoutOrder = order
 			self.MenuButtons[entry.Window] = button
@@ -270,7 +323,7 @@ function UIController:_buildColumn(side: string, entries)
 	return grid
 end
 
--- Notification badge: white circle, ink border and ink count over the tile's top-right corner.
+-- Notification badge: red circle, ink border and white count over the tile's top-right corner; pulses gently.
 function UIController:_paintMenuBadge(name: string, pop: boolean)
 	local button = self.MenuButtons[name]
 	if not button then
@@ -288,9 +341,9 @@ function UIController:_paintMenuBadge(name: string, pop: boolean)
 		local P = Theme.Colors
 		badge = C.Frame(button, {
 			Name = "Badge",
-			BackgroundColor3 = P.White, -- monochrome HUD: white count badge with an ink rim
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(1, -4, 0, 4),
+			BackgroundColor3 = Theme.Colors.Alert, -- red count badge with an ink rim
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 4, 0, 2), -- top-right corner, clear of the next button's key badge
 			Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE),
 			ZIndex = 8,
 		})
@@ -303,9 +356,14 @@ function UIController:_paintMenuBadge(name: string, pop: boolean)
 			TextXAlignment = Enum.TextXAlignment.Center,
 			Font = Theme.Fonts.Bold,
 			TextSize = 14,
-			TextColor3 = P.Ink,
+			TextColor3 = P.White,
 			ZIndex = 9,
 		})
+		C.Outline(badge.Count, 1.5)
+		-- Gentle colour pulse while it is shown.
+		TweenService:Create(badge, TweenInfo.new(0.75, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+			BackgroundColor3 = Theme.Colors.Alert:Lerp(P.White, 0.3),
+		}):Play()
 	end
 	local text = if count > 99 then "99+" else tostring(count)
 	badge.Count.Text = text

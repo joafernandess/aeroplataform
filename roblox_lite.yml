@@ -23,6 +23,7 @@ globals:
   RaycastParams: { any: true }
   NumberRange: { any: true }
   NumberSequence: { any: true }
+  NumberSequenceKeypoint: { any: true }
   ColorSequence: { any: true }
   DateTime: { any: true }
   warn: { any: true }

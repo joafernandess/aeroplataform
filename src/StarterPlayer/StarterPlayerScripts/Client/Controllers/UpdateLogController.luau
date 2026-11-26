@@ -148,7 +148,7 @@ function UpdateLogController:_buildCard(root: Instance)
 		Parent = holder,
 	})
 	-- Same monochrome look as the side menu buttons; the bell is the only colour.
-	local paint = C.MenuTile(card, Theme.Radius.Card)
+	local paint = C.MenuTile(card, Theme.Radius.Card, Theme.IconColors.update)
 	local scale = C.Create("UIScale", { Name = "FX", Parent = card })
 	local bell = Theme.IconColors.update
 	C.Icon(card, "update", {
@@ -169,11 +169,14 @@ function UpdateLogController:_buildCard(root: Instance)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, 2)
 
-	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 4, 0, 2), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
+	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = Theme.Colors.Alert, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 4, 0, 2), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
 	C.Corner(new, UDim.new(0.5, 0))
 	C.Stroke(new, P.Ink, 2)
-	C.Title(new, "NEW", { Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = P.Ink, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 0.01)
+	C.Title(new, "NEW", { Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = P.White, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 1.5)
 	self.NewTag = new
+	local newScale = C.Create("UIScale", { Parent = new })
+	TweenService:Create(newScale, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.12 }):Play()
+	C.ShineSweep(card, 4.5)
 
 	local hovering = false
 	card.MouseEnter:Connect(function()

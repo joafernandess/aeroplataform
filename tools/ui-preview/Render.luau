@@ -221,6 +221,11 @@ local function textHtml(inst, rect, placeholder: boolean?): string
 			longest = math.max(longest, utf8.len(line) or #line)
 		end
 		size = math.min(rect.h * 0.82, rect.w / math.max(longest, 1) * 1.75, 100)
+		for _, child in inst:GetChildren() do
+			if Fake.Data(child).ClassName == "UITextSizeConstraint" then
+				size = math.clamp(size, child.MinTextSize or 1, child.MaxTextSize or 100)
+			end
+		end
 	end
 	local stroke = ""
 	local _, textStroke = strokes(inst)
@@ -307,10 +312,18 @@ local function nodeHtml(inst, rect, parentRect): string
 			-- UIGradient multiplies the background colour; Rotation 0 = left->right, 90 = top->bottom.
 			local bg = inst.BackgroundColor3
 			local stops = {}
-			for _, keypoint in gradient.Color.Keypoints do
-				local c = keypoint.Value
-				local mixed = { R = bg.R * c.R, G = bg.G * c.G, B = bg.B * c.B }
-				table.insert(stops, string.format("%s %.1f%%", rgba(mixed, inst.BackgroundTransparency), keypoint.Time * 100))
+			if gradient.Color then
+				for _, keypoint in gradient.Color.Keypoints do
+					local c = keypoint.Value
+					local mixed = { R = bg.R * c.R, G = bg.G * c.G, B = bg.B * c.B }
+					table.insert(stops, string.format("%s %.1f%%", rgba(mixed, inst.BackgroundTransparency), keypoint.Time * 100))
+				end
+			else
+				-- Transparency-only gradient: alpha = (1 - BackgroundTransparency) * (1 - keypoint).
+				for _, keypoint in gradient.Transparency.Keypoints do
+					local t = 1 - (1 - inst.BackgroundTransparency) * (1 - keypoint.Value)
+					table.insert(stops, string.format("%s %.1f%%", rgba(bg, t), keypoint.Time * 100))
+				end
 			end
 			table.insert(styles, string.format("background:linear-gradient(%ddeg,%s);", (gradient.Rotation or 0) + 90, table.concat(stops, ",")))
 		else

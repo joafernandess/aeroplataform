@@ -26,9 +26,9 @@ return {
 	stats = "", --         Icon_Stats.png          right menu · Stats
 	index = "", --         Icon_Index.png          right menu · Index
 	update = "", --        Icon_UpdateLog.png      top-right Update Log card
+	yen = "", --           Icon_Yen.png            Yen counter above the left menu (also the Inventory wallet)
 
 	-- Other icons (currencies, small tools, window details) · assets/icons/png -----------------------------------
-	yen = "",
 	gems = "",
 	gold = "",
 	tokens = "",
