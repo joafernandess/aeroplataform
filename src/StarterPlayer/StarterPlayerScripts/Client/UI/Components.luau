@@ -7,13 +7,19 @@
 	is a child TextLabel with its own outline, so use C.SetText(button, text) / C.SetKind(button, kind) /
 	C.SetDisabled(button, bool) instead of touching button.Text or button.BackgroundColor3.
 	Kinds: "Primary" (blue) · "Secondary" (white) · "Accent" (cyan) · "Dark" · "Danger" (inverted, 2-tap confirm).
+
+	Icons come from UI/Icons (vector drawings, or uploaded images listed in Theme.IconAssets). Every component
+	that used to take a glyph (Theme.Icons.X) also accepts an icon name ("summon"); unknown text still renders
+	as text. C.Icon(parent, nameOrGlyph, props) creates a standalone icon; C.Button takes an `Icon` prop.
 ]]
 
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
+local Icons = require(script.Parent.Icons)
 
 local C = {}
+C.Icons = Icons
 
 local P = Theme.Colors
 local G = Theme.Gradients
@@ -49,6 +55,20 @@ local function tween(instance: Instance, seconds: number, goals: { [string]: any
 end
 
 -- Primitives -----------------------------------------------------------------------------------------------------
+
+-- Standalone icon (see UI/Icons.luau): props = Size (number px or UDim2), Position, AnchorPoint, ZIndex, Color...
+function C.Icon(parent: Instance, nameOrGlyph: string, props: { [string]: any }?)
+	return Icons.Create(nameOrGlyph, parent, props)
+end
+
+-- Square icon centred in `parent` (badges, tiles, button faces).
+local function centeredIcon(parent: Instance, name: string, px: number, props: { [string]: any }?)
+	local p = table.clone(props or {})
+	p.Size = px
+	p.AnchorPoint = Vector2.new(0.5, 0.5)
+	p.Position = p.Position or UDim2.fromScale(0.5, 0.5)
+	return Icons.Create(name, parent, p)
+end
 
 function C.Corner(parent: Instance, radius: UDim | number | nil)
 	local value = if typeof(radius) == "number" then UDim.new(0, radius :: number) else (radius :: UDim?) or Theme.CornerRadius
@@ -218,6 +238,17 @@ local function paint(parts)
 		parts.Sub.TextColor3 = color
 		parts.SubStroke.Enabled = outline > 0
 	end
+	if parts.Icon then
+		Icons.SetColors(parts.Icon, { Color = if kind == "Secondary" then P.SecondaryText else color })
+	end
+end
+
+-- Pixel size of an offset-based UDim2 (`fallback` for scale-based sizes).
+local function offsetOf(size: UDim2?, fallback: number): (number, number)
+	if not size or size.X.Scale ~= 0 or size.Y.Scale ~= 0 then
+		return fallback, fallback
+	end
+	return size.X.Offset, size.Y.Offset
 end
 
 --[[
@@ -228,6 +259,8 @@ end
 	  Subtext    optional second line (e.g. a price)
 	  Radius     corner radius (default 12)
 	  Confirm    Danger buttons ask "Confirm?" for 3s before running onClick (default true for Danger)
+	  Icon       icon name or glyph: centred when text is "", otherwise drawn left of the label
+	  IconSize   icon size in px (default 62% of the face when alone, 56% of its height next to text)
 ]]
 function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: { [string]: any }?)
 	props = table.clone(props or {})
@@ -237,7 +270,9 @@ function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: {
 	local radius = props.Radius or Theme.Radius.Button
 	local confirm = if props.Confirm == nil then kind == "Danger" else props.Confirm
 	local strokeThickness = props.StrokeThickness or Theme.Stroke.Button
-	for _, key in { "Kind", "TextSize", "Subtext", "Radius", "Confirm", "StrokeThickness", "TextColor3", "Font", "TextWrapped" } do
+	local iconName = if props.Icon then Icons.Resolve(props.Icon) or props.Icon else nil
+	local iconSize = props.IconSize
+	for _, key in { "Kind", "TextSize", "Subtext", "Radius", "Confirm", "StrokeThickness", "TextColor3", "Font", "TextWrapped", "Icon", "IconSize" } do
 		props[key] = nil
 	end
 
@@ -284,6 +319,19 @@ function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: {
 		})
 		subStroke = C.Outline(sub, 1.5)
 	end
+	local icon = nil
+	if iconName then
+		local w, h = offsetOf(button.Size, 48)
+		local faceH = h - 4
+		if text == "" then
+			icon = centeredIcon(face, iconName, iconSize or math.floor(math.min(w, faceH) * 0.62 + 0.5), { ZIndex = face.ZIndex + 2 })
+		else
+			local px = iconSize or math.floor(faceH * 0.56 + 0.5)
+			icon = centeredIcon(face, iconName, px, { ZIndex = face.ZIndex + 2, Position = UDim2.new(0, 10 + px / 2, 0.5, 0) })
+			label.Position = UDim2.fromOffset(px + 14, 0)
+			label.Size = UDim2.new(1, -(px + 18), label.Size.Y.Scale, label.Size.Y.Offset)
+		end
+	end
 
 	local parts = {
 		Face = face,
@@ -299,6 +347,8 @@ function C.Button(parent: Instance, text: string, onClick: (() -> ())?, props: {
 		Text = text,
 		Disabled = false,
 		StrokeThickness = strokeThickness,
+		Icon = icon,
+		IconOnly = icon ~= nil and text == "",
 	}
 	buttons[button] = parts
 	paint(parts)
@@ -360,6 +410,17 @@ function C.SetText(button: Instance, text: string, subtext: string?)
 		(button :: any).Text = text
 		return
 	end
+	if parts.IconOnly and parts.Icon then
+		-- Icon buttons: a glyph/icon name swaps the icon; any other text replaces it.
+		local name = Icons.Resolve(text)
+		if name then
+			parts.Icon = Icons.Swap(parts.Icon, name)
+			paint(parts)
+			return
+		end
+		parts.Icon:Destroy()
+		parts.Icon, parts.IconOnly = nil, false
+	end
 	parts.Text = text
 	parts.Label.Text = text
 	if subtext and parts.Sub then
@@ -403,7 +464,8 @@ function C.IconButton(parent: Instance, icon: string, caption: string?, kindOrCo
 	local kind = if type(kindOrColor) == "string" then kindOrColor else "Primary"
 	local captionHeight = if caption then 20 else 0
 	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(math.max(d, 84), d + 4 + captionHeight) })
-	local button = C.Button(container, icon, onClick, {
+	local iconName = Icons.Resolve(icon)
+	local button = C.Button(container, if iconName then "" else icon, onClick, {
 		Kind = kind,
 		TextSize = math.floor(d * 0.47),
 		Radius = math.floor(d * 0.3),
@@ -411,6 +473,8 @@ function C.IconButton(parent: Instance, icon: string, caption: string?, kindOrCo
 		Position = UDim2.fromScale(0.5, 0),
 		Size = UDim2.fromOffset(d, d + 4),
 		Confirm = false,
+		Icon = iconName,
+		IconSize = math.floor(d * 0.6 + 0.5),
 	})
 	if caption then
 		C.Title(container, caption, {
@@ -428,12 +492,15 @@ end
 
 -- Small square toolbar button (sort/filter/modes). Use C.SetToolActive to toggle.
 function C.ToolButton(parent: Instance, glyph: string, onClick: (() -> ())?, props: { [string]: any }?)
-	local button = C.Button(parent, glyph, onClick, {
+	local iconName = Icons.Resolve(glyph)
+	local button = C.Button(parent, if iconName then "" else glyph, onClick, {
 		Kind = "Dark",
 		TextSize = 20,
 		Radius = Theme.Radius.Tool,
 		Size = UDim2.fromOffset(40, 44),
 		Confirm = false,
+		Icon = iconName,
+		IconSize = 26,
 	})
 	apply(button, props)
 	return button
@@ -448,7 +515,8 @@ end
 
 --[[
 	Currency pill: dark pill with a round badge overlapping its left edge, big outlined number and an optional "+".
-	Returns { Frame, Set(text) }.
+	`icon` is a glyph (Theme.Icons.Yen) or icon name ("yen"). GlyphColor tints the icon; an Ink GlyphColor (a dark
+	glyph on a light badge, e.g. Gold) keeps the outlined icon white. Returns { Frame, Set(text), Icon }.
 ]]
 function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: number?, options: { Plus: (() -> ())?, GlyphColor: Color3?, Height: number? }?)
 	local o = options or {}
@@ -462,13 +530,24 @@ function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: nu
 	C.Corner(badge, UDim.new(0.5, 0))
 	C.Stroke(badge, P.Ink, Theme.Stroke.Button)
 	C.Shine(badge, badgeSize // 2, 0.8)
-	C.Title(badge, icon, {
-		Size = UDim2.fromScale(1, 1),
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextSize = 22,
-		TextColor3 = o.GlyphColor or P.White,
-		ZIndex = 4,
-	}, 2)
+	local iconName = Icons.Resolve(icon)
+	local glyph
+	if iconName then
+		local color = if o.GlyphColor and o.GlyphColor ~= P.Ink then o.GlyphColor else P.White
+		glyph = centeredIcon(badge, iconName, math.floor(badgeSize * 0.74 + 0.5), {
+			ZIndex = 4,
+			Color = color,
+			Accent = if color == P.Cyan then P.White else nil,
+		})
+	else
+		glyph = C.Title(badge, icon, {
+			Size = UDim2.fromScale(1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextSize = 22,
+			TextColor3 = o.GlyphColor or P.White,
+			ZIndex = 4,
+		}, 2)
+	end
 	local value = C.Number(bar, "0", {
 		Position = UDim2.fromOffset(badgeSize - 8, 0),
 		Size = UDim2.new(1, -(badgeSize - 8) - (if o.Plus then 40 else 10), 1, 0),
@@ -476,7 +555,7 @@ function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: nu
 		ZIndex = 3,
 	})
 	if o.Plus then
-		local plus = C.Button(bar, Theme.Icons.Plus, o.Plus, {
+		local plus = C.Button(bar, "", o.Plus, {
 			Kind = "Primary",
 			TextSize = 22,
 			Radius = 15,
@@ -486,11 +565,14 @@ function C.CurrencyPill(parent: Instance, icon: string, color: Color3, width: nu
 			StrokeThickness = 2.5,
 			Confirm = false,
 			ZIndex = 4,
+			Icon = "plus",
+			IconSize = 18,
 		})
 		plus.Name = "Plus"
 	end
 	return {
 		Frame = container,
+		Icon = glyph,
 		Set = function(text: string)
 			value.Text = text
 		end,
@@ -503,7 +585,10 @@ function C.Counter(parent: Instance, glyph: string, props: { [string]: any }?)
 	apply(pill, props)
 	C.Corner(pill, UDim.new(0.5, 0))
 	local stroke = C.Stroke(pill, P.Ink, 2.5)
-	local icon = C.Title(pill, glyph, { Position = UDim2.fromOffset(10, 0), Size = UDim2.fromOffset(20, 34), TextSize = 16, TextXAlignment = Enum.TextXAlignment.Center }, 1.5)
+	local iconName = Icons.Resolve(glyph)
+	local icon = if iconName
+		then Icons.Create(iconName, pill, { Size = 20, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.5, 0) })
+		else C.Title(pill, glyph, { Position = UDim2.fromOffset(10, 0), Size = UDim2.fromOffset(20, 34), TextSize = 16, TextXAlignment = Enum.TextXAlignment.Center }, 1.5)
 	local value = C.Number(pill, "0/0", { Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0), TextSize = 18 })
 	return {
 		Frame = pill,
@@ -512,7 +597,11 @@ function C.Counter(parent: Instance, glyph: string, props: { [string]: any }?)
 			local full = state == "Full"
 			pill.BackgroundColor3 = if full then P.Ice else P.PanelAlt
 			value.TextColor3 = if full then P.Ink else P.White
-			icon.TextColor3 = if full then P.Ink else P.White
+			if iconName then
+				Icons.SetColors(icon, { Color = if full then P.Blue500 else P.White })
+			else
+				icon.TextColor3 = if full then P.Ink else P.White
+			end
 			stroke.Color = if state == "Near" then P.Cyan else P.Ink
 		end,
 	}
@@ -671,13 +760,18 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	local tile = C.Frame(header, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
 	C.Corner(tile, Theme.Radius.Tool)
 	C.Stroke(tile, P.Ink, 2.5)
-	C.Title(tile, icon or Theme.Icons.Inventory, {
-		Size = UDim2.fromScale(1, 1),
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextSize = 24,
-		TextColor3 = P.Blue500,
-		ZIndex = 16,
-	}, 0.01)
+	local tileIcon = Icons.Resolve(icon or "fighters")
+	if tileIcon then
+		centeredIcon(tile, tileIcon, 30, { Color = P.Blue500, ZIndex = 16 })
+	else
+		C.Title(tile, icon :: string, {
+			Size = UDim2.fromScale(1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextSize = 24,
+			TextColor3 = P.Blue500,
+			ZIndex = 16,
+		}, 0.01)
+	end
 	local titleLabel = C.Label(header, title, {
 		Font = Theme.Fonts.Display,
 		TextSize = Theme.TextSize.Display,
@@ -687,8 +781,10 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	})
 	C.Outline(titleLabel, 3)
 
-	local close = C.Button(frame, Theme.Icons.Close, nil, {
+	local close = C.Button(frame, "", nil, {
 		Kind = "Secondary",
+		Icon = "close",
+		IconSize = 22,
 		TextSize = 24,
 		Radius = 22,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -727,11 +823,7 @@ function C.LockBadge(parent: Instance, position: UDim2, zIndex: number?)
 	local badge = C.Frame(parent, { BackgroundColor3 = P.Ink, Position = position, Size = UDim2.fromOffset(22, 22), ZIndex = z })
 	C.Corner(badge, UDim.new(0.5, 0))
 	C.Stroke(badge, P.White, 2)
-	local shackle = C.Frame(badge, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 3), Size = UDim2.fromOffset(8, 9), ZIndex = z + 1 })
-	C.Corner(shackle, 4)
-	C.Stroke(shackle, P.White, 2)
-	local body = C.Frame(badge, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 9), Size = UDim2.fromOffset(12, 9), ZIndex = z + 2 })
-	C.Corner(body, 2)
+	centeredIcon(badge, "lock", 16, { ZIndex = z + 1, Position = UDim2.fromScale(0.5, 0.47) })
 	return badge
 end
 
@@ -782,15 +874,19 @@ function C.UnitCard(
 		C.Title(portrait, "Lv " .. info.Level, { Position = UDim2.fromOffset(5, 3), Size = UDim2.fromOffset(60, 16), TextSize = 13, ZIndex = 4 }, 1.5)
 	end
 	if info.Stars > 0 then
-		C.Title(portrait, string.rep(Theme.Icons.Star, info.Stars), {
+		local stars = C.Frame(portrait, {
+			Name = "Stars",
+			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -2),
 			Size = UDim2.new(1, 0, 0, 14),
-			TextSize = 12,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextColor3 = if info.Stars >= 5 then P.Cyan else P.White,
 			ZIndex = 4,
-		}, 1.5)
+		})
+		C.List(stars, Enum.FillDirection.Horizontal, 1, Enum.HorizontalAlignment.Center)
+		-- No outline: the portrait is already dark, and it halves the instances on big inventories.
+		for i = 1, info.Stars do
+			Icons.Create("star", stars, { Size = 14, LayoutOrder = i, ZIndex = 4, Outline = false, Color = if info.Stars >= 5 then P.Cyan else P.White })
+		end
 	end
 	-- Rarity accent: thin strip under the portrait.
 	local strip = C.Frame(card, { BackgroundColor3 = rarityColor, Position = UDim2.fromOffset(8, 87), Size = UDim2.new(1, -16, 0, 5), ZIndex = 2 })
@@ -824,10 +920,10 @@ function C.UnitCard(
 		C.Corner(check, UDim.new(0.5, 0))
 		C.Stroke(check, P.Ink, 2.5)
 		C.Gradient(check, Theme.Gradients.Primary.Top, Theme.Gradients.Primary.Bottom)
-		C.Title(check, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 16, ZIndex = 7 }, 1.5)
+		centeredIcon(check, "check", 18, { ZIndex = 7 })
 	end
 	if info.Locked then
-		C.LockBadge(card, UDim2.fromOffset(10, 60), 6)
+		C.LockBadge(card, UDim2.fromOffset(6, 38), 6) -- left edge of the portrait, clear of the star row
 	end
 	if info.New then
 		local tag = C.Frame(card, { BackgroundColor3 = P.Cyan, Position = UDim2.new(1, -46, 0, 10), Size = UDim2.fromOffset(40, 16), ZIndex = 6 })
@@ -858,7 +954,7 @@ function C.HighlightCard(card: Instance, mode: string?)
 		stroke.Color = P.Cyan
 		local overlay = C.Frame(card, { BackgroundColor3 = P.Blue500, BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 8 })
 		C.Corner(overlay, Theme.Radius.Card)
-		C.Title(overlay, Theme.Icons.Equipped, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 32, ZIndex = 9 }, 2.5)
+		centeredIcon(overlay, "check", 40, { ZIndex = 9 })
 	end
 end
 

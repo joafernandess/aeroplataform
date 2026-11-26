@@ -95,7 +95,11 @@ function Theme.OutlineFor(textSize: number): number
 	return 1.5
 end
 
--- Single-colour glyphs (respect TextColor3). Replace menu/currency/lock icons with ImageLabels when art exists.
+--[[
+	Single-colour glyphs. UI/Icons.luau draws a real vector icon for each of these (Icons.Resolve maps a glyph or
+	key to its icon name), so the glyphs are only a last-resort fallback and plain-text currency marks (e.g. "¥").
+	Every glyph must be unique: components pass glyphs around and the icon is looked up by glyph.
+]]
 Theme.Icons = {
 	Yen = "¥",
 	Gems = "◆",
@@ -108,8 +112,8 @@ Theme.Icons = {
 	Quests = "☰",
 	Shop = "$",
 	Upgrades = "▲",
-	Raids = "✕",
-	Settings = "≡",
+	Raids = "⚔",
+	Settings = "⚙",
 	Auto = "↻",
 	Lock = "■",
 	Equipped = "✓",
@@ -119,7 +123,54 @@ Theme.Icons = {
 	Filter = "≡",
 	Fuse = "✚",
 	Plus = "+",
+	Boss = "☠",
+	Zone = "⌖",
+	Target = "⊕",
+	Team = "⁂",
+	Timer = "◴",
+	Sell = "⊖",
+	New = "!",
+	Kills = "†",
 }
+
+--[[
+	Uploaded icon images, by icon name (see docs/ui/ICONS.md for the art spec and upload steps).
+	Leave a name "" to use the vector drawing from UI/Icons.luau; set it to "rbxassetid://<id>" once the PNG is
+	uploaded and Icons.Create returns an ImageLabel (tinted by the icon's Color) instead.
+]]
+Theme.IconAssets = {
+	yen = "",
+	gems = "",
+	gold = "",
+	tokens = "",
+	power = "",
+	fighters = "",
+	summon = "",
+	settings = "",
+	auto = "",
+	sort = "",
+	lock = "",
+	check = "",
+	close = "",
+	plus = "",
+	quests = "",
+	shop = "",
+	upgrades = "",
+	worlds = "",
+	raids = "",
+	boss = "",
+	zone = "",
+	target = "",
+	team = "",
+	timer = "",
+	sell = "",
+	new = "",
+	star = "",
+	kills = "",
+}
+
+-- Currency -> icon name (HUD currency pills).
+Theme.CurrencyIcons = { Yen = "yen", Gems = "gems", Gold = "gold", Tokens = "tokens", Power = "power" }
 
 -- Menu buttons: all Primary except Summon (Accent).
 Theme.MenuKinds = {

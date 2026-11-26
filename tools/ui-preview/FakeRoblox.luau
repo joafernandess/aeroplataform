@@ -61,6 +61,7 @@ local PARENTS = {
 	UISizeConstraint = { "UIConstraint", "UIComponent" },
 	UIScale = { "UIComponent" },
 	UIGradient = { "UIComponent" },
+	UIAspectRatioConstraint = { "UIConstraint", "UIComponent" },
 	Part = { "BasePart", "PVInstance" },
 	SpawnLocation = { "Part", "BasePart", "PVInstance" },
 	Model = { "PVInstance" },
@@ -78,6 +79,13 @@ local GUI_DEFAULTS = {
 	LayoutOrder = 0,
 	ClipsDescendants = false,
 	AutomaticSize = roblox.Enum.AutomaticSize.None,
+	Rotation = 0,
+}
+local IMAGE_DEFAULTS = {
+	Image = "",
+	ImageColor3 = roblox.Color3.new(1, 1, 1),
+	ImageTransparency = 0,
+	ScaleType = roblox.Enum.ScaleType.Stretch,
 }
 local TEXT_DEFAULTS = {
 	Text = "Label",
@@ -162,6 +170,9 @@ local function defaultFor(className: string, key: string)
 	end
 	if (className == "TextLabel" or className == "TextButton") and TEXT_DEFAULTS[key] ~= nil then
 		return TEXT_DEFAULTS[key]
+	end
+	if (className == "ImageLabel" or className == "ImageButton") and IMAGE_DEFAULTS[key] ~= nil then
+		return IMAGE_DEFAULTS[key]
 	end
 	return nil
 end
