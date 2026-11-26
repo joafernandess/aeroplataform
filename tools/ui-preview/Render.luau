@@ -2,9 +2,13 @@
 	Render (Lune)
 	Approximates Roblox's 2D GUI layout for the subset the game uses and emits absolutely-positioned HTML.
 	Supported: UDim2 Size/Position, AnchorPoint, Visible, ZIndex (sibling), UIListLayout, UIGridLayout,
-	UIPadding, UICorner, UIStroke, UISizeConstraint, AutomaticSize, ScrollingFrame clipping, text props.
-	Not supported (not used by the 2D UI): images, rotation, gradients, BillboardGuis (3D).
+	UIPadding, UICorner, UIStroke, UISizeConstraint, AutomaticSize, ClipsDescendants/ScrollingFrame clipping,
+	UIGradient colours, Rotation (around the centre, also combined with a UIScale on the same object), text props,
+	ImageLabel/ImageButton (a local file path renders as <img>, tinted by ImageColor3; an rbxassetid:// shows a
+	dashed placeholder box). Not supported: BillboardGuis (3D), UIGradient transparency.
 ]]
+
+local process = require("@lune/process")
 
 local Fake = require("./FakeRoblox")
 
@@ -250,6 +254,48 @@ local function textHtml(inst, rect): string
 	)
 end
 
+local FIT = { Fit = "contain", Crop = "cover", Stretch = "fill" }
+
+-- ImageLabel content: local files render (tinted like Roblox's ImageColor3 multiply); asset ids can't be
+-- fetched offline, so they show a dashed placeholder box.
+local function imageHtml(inst): string
+	local image = tostring(inst.Image or "")
+	if image == "" then
+		return ""
+	end
+	local opacity = 1 - (inst.ImageTransparency or 0)
+	if string.match(image, "^rbxasset") or string.match(image, "^https?:") then
+		return string.format(
+			'<div class="t" style="border:1.5px dashed rgba(255,255,255,%.2f);border-radius:inherit;justify-content:center;align-items:center;font:700 9px Inter,sans-serif;color:rgba(255,255,255,.8);box-sizing:border-box" title="%s">IMG</div>',
+			0.9 * opacity,
+			escape(image)
+		)
+	end
+	local path = if string.sub(image, 1, 1) == "/" then image else process.cwd .. "/" .. image
+	local url = "file://" .. path:gsub("^file://", "")
+	local fit = FIT[enumName(inst.ScaleType)] or "fill"
+	local parts = {
+		string.format('<img src="%s" style="position:absolute;inset:0;width:100%%;height:100%%;object-fit:%s;opacity:%.3f">', url, fit, opacity),
+	}
+	local tint = inst.ImageColor3
+	if tint and (tint.R < 0.999 or tint.G < 0.999 or tint.B < 0.999) then
+		local size = if fit == "fill" then "100% 100%" else fit
+		table.insert(
+			parts,
+			string.format(
+				'<div style="position:absolute;inset:0;background:%s;mix-blend-mode:multiply;opacity:%.3f;-webkit-mask:url(%s) center/%s no-repeat;mask:url(%s) center/%s no-repeat"></div>',
+				rgba(tint),
+				opacity,
+				url,
+				size,
+				url,
+				size
+			)
+		)
+	end
+	return table.concat(parts)
+end
+
 local function nodeHtml(inst, rect, parentRect): string
 	local styles = {
 		string.format("left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx;", rect.x - parentRect.x, rect.y - parentRect.y, rect.w, rect.h),
@@ -279,21 +325,23 @@ local function nodeHtml(inst, rect, parentRect): string
 	if stroke then
 		table.insert(styles, string.format("box-shadow:0 0 0 %.1fpx %s;", stroke.Thickness, rgba(stroke.Color, stroke.Transparency)))
 	end
-	local transforms = {}
 	local uiScale = findComponent(inst, "UIScale")
-	if uiScale and math.abs(uiScale.Scale - 1) > 1e-3 then
-		table.insert(transforms, string.format("scale(%.4f)", uiScale.Scale))
-	end
+	local scale = if uiScale then uiScale.Scale else 1
 	local rotation = tonumber(inst.Rotation) or 0
-	if math.abs(rotation) > 1e-3 then
-		table.insert(transforms, string.format("rotate(%.2fdeg)", rotation))
-	end
-	if #transforms > 0 then
-		-- Roblox scales around the AnchorPoint (Position stays fixed) and rotates around the centre.
-		local origin = if #transforms == 1 and rotation ~= 0 and not uiScale
-			then "50% 50%"
-			else string.format("%.1f%% %.1f%%", inst.AnchorPoint.X * 100, inst.AnchorPoint.Y * 100)
-		table.insert(styles, "transform:" .. table.concat(transforms, " ") .. ";transform-origin:" .. origin .. ";")
+	local scaled, rotated = math.abs(scale - 1) > 1e-3, math.abs(rotation) > 1e-3
+	if scaled or rotated then
+		-- Roblox scales around the AnchorPoint (Position stays fixed) and rotates around the (scaled) centre.
+		-- CSS applies the list right to left with the origin at the top-left corner of the box.
+		local ax, ay = inst.AnchorPoint.X * rect.w, inst.AnchorPoint.Y * rect.h
+		local cx, cy = ax + scale * (rect.w / 2 - ax), ay + scale * (rect.h / 2 - ay)
+		local list = {}
+		if rotated then
+			table.insert(list, string.format("translate(%.2fpx,%.2fpx) rotate(%.2fdeg) translate(%.2fpx,%.2fpx)", cx, cy, rotation, -cx, -cy))
+		end
+		if scaled then
+			table.insert(list, string.format("translate(%.2fpx,%.2fpx) scale(%.4f) translate(%.2fpx,%.2fpx)", ax, ay, scale, -ax, -ay))
+		end
+		table.insert(styles, "transform:" .. table.concat(list, " ") .. ";transform-origin:0 0;")
 	end
 	local className = Fake.Data(inst).ClassName
 	local clips = className == "ScrollingFrame" or inst.ClipsDescendants == true
@@ -303,6 +351,8 @@ local function nodeHtml(inst, rect, parentRect): string
 	local parts = { '<div class="g" style="' .. table.concat(styles) .. '">' }
 	if className == "TextLabel" or className == "TextButton" then
 		table.insert(parts, textHtml(inst, rect))
+	elseif className == "ImageLabel" or className == "ImageButton" then
+		table.insert(parts, imageHtml(inst))
 	end
 	local childRects, extent = computeChildRects(inst, rect)
 	if className == "ScrollingFrame" and extent > rect.h + 1 and enumName(inst.VerticalScrollBarInset) == "ScrollBar" then
