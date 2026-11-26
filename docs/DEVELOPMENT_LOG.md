@@ -142,6 +142,9 @@
 - Redesenhados com base em referências de ícones de jogos: Fighters = punho fechado com faixa (mais legível que
   um busto em 32 px), Teleport = portão de pedra em arco com redemoinho dentro, Mounts = cabeça de cavalo de perfil
   com crina e cabresto (deixa claro que é montaria).
+- Depois: Teleport virou o próprio portal azul (aro arredondado com vórtice em espiral afundado e núcleo
+  brilhante, sem portão); todos ficaram mais redondos (arredondamento maior) e mais 3D (faces com iluminação
+  difusa + especular via filtro SVG, reflexos em degradê, detalhes também iluminados).
 - `Client/UI/IconAssets.luau`: único arquivo a editar depois do upload (ícone → `rbxassetid://`). Imagens enviadas
   são mostradas sem tingir; sem ID, o desenho vetorial aparece na mesma cor (`Theme.IconColors`).
 - Botões dos menus, card do Update Log e ladrilho do título das janelas: face grafite, borda clara, sombra preta
