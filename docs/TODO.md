@@ -23,8 +23,10 @@ Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 - [ ] [Código] Layouts dedicados para celular (no celular as janelas encolhem para ~60% e o texto fica pequeno;
       os botões dos menus laterais ficam com ~30 px em telas de 375 px de altura).
 - [ ] [Código/Arte] Ícones e retratos das unidades nos cards (hoje só texto).
-- [ ] [Arte] SVG/PNG dos 8 ícones novos (codes, mounts, index, achievements, stats, teleport, update,
-      inventory) em `assets/icons/`; hoje eles existem só desenhados em código (`UI/Icons.luau`).
+- [ ] [Studio] Enviar os 12 PNGs de `assets/UI_Icons/` (Asset Manager → Bulk Import) e colar os IDs em
+      `Client/UI/IconAssets.luau` (passo a passo em `assets/UI_Icons/README.md`).
+- [ ] [Código] Os desenhos vetoriais de reserva de Codes (presente) e Mounts (ferradura) não têm o mesmo formato
+      dos PNGs (ticket / cabeça de cavalo); só aparecem até os PNGs serem enviados.
 
 ## Conteúdo / arte
 - [ ] [Studio] Mapas reais dos 5 mundos (`Workspace.Worlds.*`, ver convenções em `STUDIO_SETUP.md`).

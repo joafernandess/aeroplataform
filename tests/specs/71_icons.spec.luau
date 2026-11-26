@@ -61,16 +61,36 @@ return function(t)
 			end
 		end)
 
-		t.it("uses an uploaded image when Theme.IconAssets has an asset id", function()
+		t.it("uses an uploaded full-colour image (untinted) when Theme.IconAssets has an asset id", function()
 			local Icons, Theme = load()
 			Theme.IconAssets.yen = "rbxassetid://1234567"
 			local icon = Icons.Create("yen", screen(), { Size = 40, Color = Theme.Colors.Cyan })
 			expect(icon.ClassName).toBe("ImageLabel")
 			expect(icon.Image).toBe("rbxassetid://1234567")
-			expect(icon.ImageColor3).toBe(Theme.Colors.Cyan)
+			expect(icon.ImageColor3).toBe(Theme.Colors.White) -- the PNG keeps its own colours
+			expect(icon.BackgroundTransparency).toBe(1)
 			expect(icon.Size).toBe(roblox.UDim2.fromOffset(40, 40))
+			expect(Icons.Create("yen", screen(), { Color = Theme.Colors.Cyan, Tint = true }).ImageColor3).toBe(Theme.Colors.Cyan)
 			Theme.IconAssets.yen = ""
 			expect(Icons.Create("yen", screen()).ClassName).toBe("Frame")
+		end)
+
+		t.it("gives every HUD menu icon its own colour, a PNG in assets/UI_Icons and an IconAssets slot", function()
+			local _, Theme = load()
+			local fs = require("@lune/fs")
+			local serde = require("@lune/serde")
+			local manifest = serde.decode("json", fs.readFile("assets/UI_Icons/manifest.json"))
+			local seen = {}
+			for _, name in { "shop", "fighters", "settings", "codes", "quests", "teleport", "inventory", "mounts", "achievements", "stats", "index", "update" } do
+				local color = Theme.IconColors[name]
+				expect(color ~= nil).toBe(true)
+				local key = string.format("%.3f,%.3f,%.3f", color.R, color.G, color.B)
+				expect(seen[key]).toBeNil() -- no two icons share a colour
+				seen[key] = true
+				expect(Theme.IconAssets[name]).toBe("")
+				expect(manifest[name] ~= nil).toBe(true)
+				expect(fs.isFile("assets/UI_Icons/" .. manifest[name].png)).toBe(true)
+			end
 		end)
 
 		t.it("resolves names, Theme.Icons keys and glyphs (reverse lookup)", function()

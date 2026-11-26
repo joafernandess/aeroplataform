@@ -456,12 +456,43 @@ function C.SetSelected(button: Instance, selected: boolean)
 end
 
 --[[
-	Side-navigation button: dark rounded tile with a light outline, a big icon and a small accent bar for identity
-	(optional caption under it; the HUD menus are icon-only). Hover grows it a little and lights the outline cyan,
-	pressing squashes it. Returns (container, button). The FX use their own UIScale on the tile, so they never
-	fight the responsive UIScale that UIController puts on the whole grid.
+	Side-navigation button (HUD menus): square charcoal tile with a light border and a soft black shadow; the icon
+	is the only colour (Theme.IconColors / the full-colour PNG from UI/IconAssets). Optional caption under it.
+	Hover lightens the face and whitens the border, pressing darkens it and squashes the tile.
+	Returns (container, button). The FX use their own UIScale on the tile, so they never fight the responsive
+	UIScale that UIController puts on the whole grid.
 ]]
-function C.NavButton(parent: Instance, icon: string, caption: string?, accent: Color3?, onClick: (() -> ())?, size: number?)
+function C.MenuTile(button: GuiObject, radius: number)
+	local M = Theme.MenuButton
+	C.Corner(button, UDim.new(0, radius))
+	local gradient = C.Gradient(button, M.Top, M.Bottom)
+	local stroke = C.Stroke(button, M.Border, 2.5)
+	local shadow = C.Frame(button.Parent :: Instance, {
+		Name = "Shadow",
+		BackgroundColor3 = M.Shadow,
+		BackgroundTransparency = M.ShadowTransparency,
+		AnchorPoint = button.AnchorPoint,
+		Position = button.Position + UDim2.fromOffset(0, 4),
+		Size = button.Size,
+		ZIndex = math.max(button.ZIndex - 1, 1),
+	})
+	C.Corner(shadow, UDim.new(0, radius))
+	local function paint(state: string)
+		if state == "Hover" then
+			gradient.Color = ColorSequence.new(M.HoverTop, M.HoverBottom)
+			stroke.Color = M.BorderHover
+		elseif state == "Press" then
+			gradient.Color = ColorSequence.new(M.PressTop, M.PressBottom)
+			stroke.Color = M.BorderHover
+		else
+			gradient.Color = ColorSequence.new(M.Top, M.Bottom)
+			stroke.Color = M.Border
+		end
+	end
+	return paint, shadow
+end
+
+function C.NavButton(parent: Instance, icon: string, caption: string?, _accent: Color3?, onClick: (() -> ())?, size: number?)
 	local d = size or 58
 	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d, if caption then d + 22 else d) })
 	local button = C.Create("TextButton", {
@@ -472,23 +503,21 @@ function C.NavButton(parent: Instance, icon: string, caption: string?, accent: C
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
 		Size = UDim2.fromOffset(d, d),
+		ZIndex = 2,
 		Parent = container,
 	})
 	C.Create("UIAspectRatioConstraint", { AspectRatio = 1, Parent = button })
-	C.Corner(button, UDim.new(0, 14))
-	C.Gradient(button, P.PanelLight, P.Bg)
-	local stroke = C.Stroke(button, P.White, 2.5)
-	stroke.Transparency = 0.15
-	local bar = C.Frame(button, {
-		Name = "Accent",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -5),
-		Size = UDim2.new(0.42, 0, 0, 4),
-		BackgroundColor3 = accent or P.Cyan,
+	local paint = C.MenuTile(button, 14)
+	local color = Theme.IconColors[icon] or P.White
+	C.Icon(button, icon, {
+		Name = "Icon",
+		Size = math.floor(d * 0.76),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Color = color,
+		Accent = color:Lerp(P.White, 0.55),
 		ZIndex = 3,
 	})
-	C.Corner(bar, UDim.new(0.5, 0))
-	C.Icon(button, icon, { Name = "Icon", Size = math.floor(d * 0.6), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 3 })
 	if caption then
 		C.Title(container, caption, {
 			Name = "Caption",
@@ -507,19 +536,21 @@ function C.NavButton(parent: Instance, icon: string, caption: string?, accent: C
 	end
 	button.MouseEnter:Connect(function()
 		hovering = true
-		stroke.Color = P.Cyan
-		to(1.08, 0.12)
+		paint("Hover")
+		to(1.06, 0.12)
 	end)
 	button.MouseLeave:Connect(function()
 		hovering = false
-		stroke.Color = P.White
+		paint("Idle")
 		to(1, 0.12)
 	end)
 	button.MouseButton1Down:Connect(function()
-		to(0.92, 0.06)
+		paint("Press")
+		to(0.9, 0.06)
 	end)
 	button.MouseButton1Up:Connect(function()
-		to(if hovering then 1.08 else 1, 0.1)
+		paint(if hovering then "Hover" else "Idle")
+		to(if hovering then 1.06 else 1, 0.1)
 	end)
 	if onClick then
 		button.Activated:Connect(onClick)
@@ -953,12 +984,16 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	C.SpeedLines(header, 8, { Start = 0.62, Spacing = 28, ZIndex = 13 })
 	C.Frame(header, { Name = "EnergyLine", BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
 
-	local tile = C.Frame(header, { BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
+	-- Title tile: same monochrome look as the HUD menu buttons, icon in its own colour.
+	local M = Theme.MenuButton
+	local tile = C.Frame(header, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, -1), Size = UDim2.fromOffset(42, 42), ZIndex = 15 })
 	C.Corner(tile, Theme.Radius.Tool)
-	C.Stroke(tile, P.Ink, 2.5)
+	C.Gradient(tile, M.Top, M.Bottom)
+	C.Stroke(tile, M.Border, 2)
 	local tileIcon = Icons.Resolve(icon or "fighters")
 	if tileIcon then
-		centeredIcon(tile, tileIcon, 30, { Color = P.Blue500, ZIndex = 16 })
+		local tint = Theme.IconColors[tileIcon] or P.White
+		centeredIcon(tile, tileIcon, 32, { Color = tint, Accent = tint:Lerp(P.White, 0.55), ZIndex = 16 })
 	else
 		C.Title(tile, icon :: string, {
 			Size = UDim2.fromScale(1, 1),

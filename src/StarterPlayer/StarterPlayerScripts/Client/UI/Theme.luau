@@ -141,48 +141,41 @@ Theme.Icons = {
 	Bag = "▣",
 }
 
+-- Uploaded icon images (asset ids), by icon name: see UI/IconAssets.luau (the file to edit after uploading).
+Theme.IconAssets = require(script.Parent.IconAssets)
+
 --[[
-	Uploaded icon images, by icon name (see docs/ui/ICONS.md for the art spec and upload steps).
-	Leave a name "" to use the vector drawing from UI/Icons.luau; set it to "rbxassetid://<id>" once the PNG is
-	uploaded and Icons.Create returns an ImageLabel (tinted by the icon's Color) instead.
+	Each HUD menu icon has its own colour (the buttons themselves stay black and white). Used by the vector
+	fallback drawings and matches the full-colour PNGs in assets/UI_Icons.
 ]]
-Theme.IconAssets = {
-	yen = "",
-	gems = "",
-	gold = "",
-	tokens = "",
-	power = "",
-	fighters = "",
-	summon = "",
-	settings = "",
-	auto = "",
-	sort = "",
-	lock = "",
-	check = "",
-	close = "",
-	plus = "",
-	quests = "",
-	shop = "",
-	upgrades = "",
-	worlds = "",
-	raids = "",
-	boss = "",
-	zone = "",
-	target = "",
-	team = "",
-	timer = "",
-	sell = "",
-	new = "",
-	star = "",
-	kills = "",
-	codes = "",
-	mounts = "",
-	index = "",
-	achievements = "",
-	stats = "",
-	teleport = "",
-	update = "",
-	inventory = "",
+Theme.IconColors = {
+	shop = hex("FFD23F"), -- gold / yellow
+	fighters = hex("FF8A1F"), -- orange
+	settings = hex("E9EDF3"), -- silver / white
+	codes = hex("B04DFF"), -- purple
+	quests = hex("3ED45E"), -- green
+	teleport = hex("2ED3FF"), -- cyan
+	inventory = hex("3D8BFF"), -- blue
+	mounts = hex("FF4FB8"), -- pink / magenta
+	achievements = hex("FFB81C"), -- gold
+	stats = hex("FF4545"), -- red
+	index = hex("7C5CFF"), -- violet
+	update = hex("34E3A5"), -- mint
+}
+
+-- Monochrome HUD buttons (side menus, Update Log card, window title tiles): charcoal face, light border,
+-- soft black shadow; hover lifts to a lighter gray, press sinks to near-black.
+Theme.MenuButton = {
+	Top = hex("2A2B31"),
+	Bottom = hex("0E0E11"),
+	HoverTop = hex("3A3C43"),
+	HoverBottom = hex("1C1D22"),
+	PressTop = hex("0A0A0C"),
+	PressBottom = hex("040405"),
+	Border = hex("E6E7EB"),
+	BorderHover = hex("FFFFFF"),
+	Shadow = hex("000000"),
+	ShadowTransparency = 0.45,
 }
 
 -- Currency -> icon name (HUD currency pills).

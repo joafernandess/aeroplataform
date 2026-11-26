@@ -6,36 +6,31 @@
 
 	  Window   id of the window opened by the button (created by the window's controller)
 	  Label    the menu's name (accessibility / tests; buttons show only the icon)
-	  Icon     UI/Icons name
-	  Accent   small identity detail on the button (palette only)
+	  Icon     UI/Icons name; its colour comes from Theme.IconColors and its PNG from UI/IconAssets
 	A system that is switched off in Config/Features keeps its button: its window shows its own "not available
 	yet" state instead (no fake functionality, no dead buttons).
 	Left  = main menus;  Right = the player's own management screens (Index is always the last one).
 ]]
 
-local Theme = require(script.Parent.Theme)
-
-local P = Theme.Colors
-
-export type Entry = { Window: string, Label: string, Icon: string, Accent: Color3 }
+export type Entry = { Window: string, Label: string, Icon: string }
 
 local Navigation = {}
 
 Navigation.Left = {
-	{ Window = "Shop", Label = "Shop", Icon = "shop", Accent = P.Cyan },
-	{ Window = "Fighters", Label = "Fighters", Icon = "fighters", Accent = P.Blue400 },
-	{ Window = "Settings", Label = "Settings", Icon = "settings", Accent = P.TextDim },
-	{ Window = "Codes", Label = "Codes", Icon = "codes", Accent = P.Cyan },
-	{ Window = "Quests", Label = "Quests", Icon = "quests", Accent = P.Blue400 },
-	{ Window = "Teleport", Label = "TP", Icon = "teleport", Accent = P.Cyan },
+	{ Window = "Shop", Label = "Shop", Icon = "shop" },
+	{ Window = "Fighters", Label = "Fighters", Icon = "fighters" },
+	{ Window = "Settings", Label = "Settings", Icon = "settings" },
+	{ Window = "Codes", Label = "Codes", Icon = "codes" },
+	{ Window = "Quests", Label = "Quests", Icon = "quests" },
+	{ Window = "Teleport", Label = "TP", Icon = "teleport" },
 } :: { Entry }
 
 Navigation.Right = {
-	{ Window = "Items", Label = "Inventory", Icon = "inventory", Accent = P.Blue400 },
-	{ Window = "Mounts", Label = "Mounts", Icon = "mounts", Accent = P.TextDim },
-	{ Window = "Achievements", Label = "Achievements", Icon = "achievements", Accent = P.Cyan },
-	{ Window = "Stats", Label = "Stats", Icon = "stats", Accent = P.Blue400 },
-	{ Window = "Index", Label = "Index", Icon = "index", Accent = P.Cyan },
+	{ Window = "Items", Label = "Inventory", Icon = "inventory" },
+	{ Window = "Mounts", Label = "Mounts", Icon = "mounts" },
+	{ Window = "Achievements", Label = "Achievements", Icon = "achievements" },
+	{ Window = "Stats", Label = "Stats", Icon = "stats" },
+	{ Window = "Index", Label = "Index", Icon = "index" },
 } :: { Entry }
 
 -- Keyboard shortcuts (PC). Windows that aren't created are ignored.

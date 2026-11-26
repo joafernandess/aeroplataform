@@ -134,6 +134,18 @@
 - 8 ícones novos (codes, mounts, index, achievements, stats, teleport, update, inventory).
 - **223 testes passando**, selene 0/0, preview sem warnings.
 
+### Ícones PNG + botões preto/branco
+- `assets/UI_Icons/`: 12 ícones originais em PNG 512×512 com fundo transparente (Shop, Fighters, Settings, Codes,
+  Quests, Teleport, Inventory, Mounts, Achievements, Stats, Index, UpdateLog), cada um com cor própria, contorno
+  escuro grosso e realce branco; fontes SVG em `src/`, exportador `tools/export.js` (Chromium), folha de
+  revisão `preview.png` (512/48/32 px), `manifest.json`, `README.md` com o mapeamento; `assets/UI_Icons.zip`.
+- `Client/UI/IconAssets.luau`: único arquivo a editar depois do upload (ícone → `rbxassetid://`). Imagens enviadas
+  são mostradas sem tingir; sem ID, o desenho vetorial aparece na mesma cor (`Theme.IconColors`).
+- Botões dos menus, card do Update Log e ladrilho do título das janelas: face grafite, borda clara, sombra preta
+  suave; hover clareia, clique escurece e encolhe. Sem barras de cor e sem fundo ciano; badges brancos.
+- Preview: `lune run tools/ui-preview/preview <dir> --png-icons` mostra os PNGs onde o jogo mostrará as imagens.
+- **225 testes passando**, selene 0/0.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

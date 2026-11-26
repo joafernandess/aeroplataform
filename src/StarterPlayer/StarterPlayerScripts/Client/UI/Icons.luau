@@ -17,7 +17,8 @@
 	  Icons.Swap(icon, nameOrGlyph) -> GuiObject   replaces an icon in place, keeping its props
 	  Icons.Names                            every drawable name (contract shared with docs/ui/ICONS.md)
 
-	Resolution order: Theme.IconAssets[name] (uploaded image -> ImageLabel tinted by Color) -> vector drawing
+	Resolution order: Theme.IconAssets[name] (uploaded full-colour image -> ImageLabel, untinted unless
+	props.Tint) -> vector drawing
 	-> Theme.Icons glyph (TextLabel) -> the raw text.
 
 	Drawing model: every primitive is placed on a 100x100 unit grid. Shapes are drawn twice: first an
@@ -826,7 +827,7 @@ end
 
 -- Creation ----------------------------------------------------------------------------------------------------------
 
-local SPECIAL = { Color = true, Accent = true, Outline = true, OutlineScale = true, Size = true, Px = true }
+local SPECIAL = { Color = true, Accent = true, Outline = true, OutlineScale = true, Size = true, Px = true, Tint = true }
 
 local function sizeOf(value: any): UDim2
 	if type(value) == "number" then
@@ -894,8 +895,13 @@ function Icons.Create(nameOrGlyph: string, parent: Instance?, props: { [string]:
 		icon.BackgroundTransparency = 1
 		icon.Image = asset
 		icon.ScaleType = Enum.ScaleType.Fit
-		icon.ImageColor3 = colors.Color
-		table.insert(entry.Parts, { icon, "ImageColor3", "Color" })
+		-- Uploaded icons are full-colour art (assets/UI_Icons): shown as-is unless the caller asks for a tint.
+		if p.Tint then
+			icon.ImageColor3 = colors.Color
+			table.insert(entry.Parts, { icon, "ImageColor3", "Color" })
+		else
+			icon.ImageColor3 = Theme.Colors.White
+		end
 	elseif name and Drawings[name] then
 		icon = Instance.new("Frame")
 		icon.BackgroundTransparency = 1

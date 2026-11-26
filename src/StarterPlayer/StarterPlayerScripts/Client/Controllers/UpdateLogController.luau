@@ -144,21 +144,23 @@ function UpdateLogController:_buildCard(root: Instance)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(CARD_W, CARD_H),
+		ZIndex = 2,
 		Parent = holder,
 	})
-	C.Corner(card, Theme.Radius.Card)
-	C.Gradient(card, P.PanelLight, P.Bg)
-	local stroke = C.Stroke(card, P.White, 2.5)
-	stroke.Transparency = 0.15
+	-- Same monochrome look as the side menu buttons; the bell is the only colour.
+	local paint = C.MenuTile(card, Theme.Radius.Card)
 	local scale = C.Create("UIScale", { Name = "FX", Parent = card })
+	local bell = Theme.IconColors.update
+	C.Icon(card, "update", {
+		Size = 44,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 10, 0.5, 0),
+		Color = bell,
+		Accent = bell:Lerp(P.White, 0.55),
+		ZIndex = 3,
+	})
 
-	local tile = C.Frame(card, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 9, 0.5, 0), Size = UDim2.fromOffset(44, 44) })
-	C.Corner(tile, Theme.Radius.Tool)
-	C.Gradient(tile, Theme.Gradients.Primary.Top, Theme.Gradients.Primary.Bottom)
-	C.Stroke(tile, P.Ink, 2)
-	C.Icon(tile, "update", { Size = 30, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Color = P.White })
-
-	C.Title(card, "UPDATE LOG", { Name = "Heading", Position = UDim2.fromOffset(62, 8), Size = UDim2.new(1, -70, 0, 18), TextSize = 14, TextColor3 = P.Cyan }, 1.5)
+	C.Title(card, "UPDATE LOG", { Name = "Heading", Position = UDim2.fromOffset(62, 8), Size = UDim2.new(1, -70, 0, 18), TextSize = 14, TextColor3 = bell }, 1.5)
 	self.CardTitle = C.Title(card, "", {
 		Name = "Latest",
 		Position = UDim2.fromOffset(62, 26),
@@ -167,25 +169,30 @@ function UpdateLogController:_buildCard(root: Instance)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, 2)
 
-	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = P.Cyan, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 4, 0, 2), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
+	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 4, 0, 2), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
 	C.Corner(new, UDim.new(0.5, 0))
 	C.Stroke(new, P.Ink, 2)
 	C.Title(new, "NEW", { Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = P.Ink, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 0.01)
 	self.NewTag = new
 
+	local hovering = false
 	card.MouseEnter:Connect(function()
-		tween(scale, 0.12, { Scale = 1.05 })
-		stroke.Color = P.Cyan
+		hovering = true
+		paint("Hover")
+		tween(scale, 0.12, { Scale = 1.04 })
 	end)
 	card.MouseLeave:Connect(function()
+		hovering = false
+		paint("Idle")
 		tween(scale, 0.12, { Scale = 1 })
-		stroke.Color = P.White
 	end)
 	card.MouseButton1Down:Connect(function()
-		tween(scale, 0.06, { Scale = 0.94 })
+		paint("Press")
+		tween(scale, 0.06, { Scale = 0.95 })
 	end)
 	card.MouseButton1Up:Connect(function()
-		tween(scale, 0.14, { Scale = 1 }, Enum.EasingStyle.Back)
+		paint(if hovering then "Hover" else "Idle")
+		tween(scale, 0.14, { Scale = if hovering then 1.04 else 1 }, Enum.EasingStyle.Back)
 	end)
 	card.Activated:Connect(function()
 		ui:Toggle("UpdateLog")

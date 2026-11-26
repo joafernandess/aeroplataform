@@ -26,7 +26,8 @@ local function deepCopy(value)
 	return out
 end
 
-function Session.new()
+-- options.IconAssets: { [iconName] = local PNG path } shown instead of rbxassetids (preview of uploaded icons).
+function Session.new(options: { IconAssets: { [string]: string }? }?)
 	-- 1. Server with a world-1 player a few minutes into the game --------------------------------------------
 	local h = ServerHarness.new({ BaseGame = true })
 	local V = h.Vector3
@@ -98,6 +99,12 @@ function Session.new()
 	rt.Globals.TweenInfo = Fake.TweenInfo
 	rt.Globals.RaycastParams = Fake.RaycastParams
 	rt:Mock("ReplicatedStorage/Shared/Remotes/Net", clientNet)
+	if options and options.IconAssets then
+		local assets = rt:Require("StarterPlayer/StarterPlayerScripts/Client/UI/IconAssets")
+		for name, path in options.IconAssets do
+			assets[name] = path
+		end
+	end
 
 	rt:Run("StarterPlayer/StarterPlayerScripts/Client/Main")
 	task.wait(0.3)

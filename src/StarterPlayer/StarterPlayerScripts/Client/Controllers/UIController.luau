@@ -257,7 +257,7 @@ function UIController:_buildColumn(side: string, entries)
 			if not entry then
 				break
 			end
-			local container, button = C.NavButton(row, entry.Icon, nil, entry.Accent, function()
+			local container, button = C.NavButton(row, entry.Icon, nil, nil, function()
 				self:Toggle(entry.Window)
 			end, d)
 			container.Name = entry.Window
@@ -270,7 +270,7 @@ function UIController:_buildColumn(side: string, entries)
 	return grid
 end
 
--- Notification badge (brief §5.2): cyan circle, ink border and ink count over the tile's top-right corner.
+-- Notification badge: white circle, ink border and ink count over the tile's top-right corner.
 function UIController:_paintMenuBadge(name: string, pop: boolean)
 	local button = self.MenuButtons[name]
 	if not button then
@@ -288,7 +288,7 @@ function UIController:_paintMenuBadge(name: string, pop: boolean)
 		local P = Theme.Colors
 		badge = C.Frame(button, {
 			Name = "Badge",
-			BackgroundColor3 = P.Cyan,
+			BackgroundColor3 = P.White, -- monochrome HUD: white count badge with an ink rim
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(1, -4, 0, 4),
 			Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE),

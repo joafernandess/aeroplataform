@@ -1,0 +1,62 @@
+{
+	"shop": {
+		"png": "Icon_Shop.png",
+		"button": "Left menu · Shop",
+		"rbxassetid": ""
+	},
+	"fighters": {
+		"png": "Icon_Fighters.png",
+		"button": "Left menu · Fighters",
+		"rbxassetid": ""
+	},
+	"settings": {
+		"png": "Icon_Settings.png",
+		"button": "Left menu · Settings",
+		"rbxassetid": ""
+	},
+	"codes": {
+		"png": "Icon_Codes.png",
+		"button": "Left menu · Codes",
+		"rbxassetid": ""
+	},
+	"quests": {
+		"png": "Icon_Quests.png",
+		"button": "Left menu · Quests",
+		"rbxassetid": ""
+	},
+	"teleport": {
+		"png": "Icon_Teleport.png",
+		"button": "Left menu · TP",
+		"rbxassetid": ""
+	},
+	"inventory": {
+		"png": "Icon_Inventory.png",
+		"button": "Right menu · Inventory",
+		"rbxassetid": ""
+	},
+	"mounts": {
+		"png": "Icon_Mounts.png",
+		"button": "Right menu · Mounts",
+		"rbxassetid": ""
+	},
+	"achievements": {
+		"png": "Icon_Achievements.png",
+		"button": "Right menu · Achievements",
+		"rbxassetid": ""
+	},
+	"stats": {
+		"png": "Icon_Stats.png",
+		"button": "Right menu · Stats",
+		"rbxassetid": ""
+	},
+	"index": {
+		"png": "Icon_Index.png",
+		"button": "Right menu · Index",
+		"rbxassetid": ""
+	},
+	"update": {
+		"png": "Icon_UpdateLog.png",
+		"button": "Top-right · Update Log card",
+		"rbxassetid": ""
+	}
+}

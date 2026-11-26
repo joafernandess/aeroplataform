@@ -93,6 +93,30 @@ return function(t)
 			-- Icon only: no captions under the buttons.
 			expect(find(UI.LeftNav, "Caption")).toBeNil()
 			expect(find(UI.RightNav, "Caption")).toBeNil()
+			-- Monochrome tiles (charcoal face, light border, black shadow, no colour accent bar); the icon carries
+			-- the colour; hover lightens and press darkens the face.
+			local Theme = s.Runtime:Require(CLIENT .. "UI/Theme")
+			local M = Theme.MenuButton
+			for name, button in UI.MenuButtons do
+				local gradient = button:FindFirstChildOfClass("UIGradient")
+				expect(gradient.Color.Keypoints[1].Value).toBe(M.Top)
+				expect(button:FindFirstChildOfClass("UIStroke").Color).toBe(M.Border)
+				expect(button.Parent:FindFirstChild("Shadow") ~= nil).toBe(true)
+				expect(find(button, "Accent")).toBeNil()
+				expect(button:FindFirstChild("Icon") ~= nil).toBe(true)
+				local _ = name
+			end
+			local shop = UI.MenuButtons.Shop
+			shop.MouseEnter:Fire()
+			task.wait(0.02)
+			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.HoverTop)
+			shop.MouseButton1Down:Fire()
+			task.wait(0.02)
+			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.PressTop)
+			shop.MouseButton1Up:Fire()
+			shop.MouseLeave:Fire()
+			task.wait(0.02)
+			expect(shop:FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(M.Top)
 			expect(UI.LeftNav.AnchorPoint.X).toBe(0)
 			expect(UI.RightNav.AnchorPoint.X).toBe(1)
 			for _, side in { Navigation.Left, Navigation.Right } do

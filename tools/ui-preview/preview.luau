@@ -4,7 +4,8 @@
 	fake Instances, connected by an in-process network bridge, then renders each screen to HTML.
 
 	Usage (repo root):
-	  lune run tools/ui-preview/preview [outputDir]
+	  lune run tools/ui-preview/preview [outputDir] [--png-icons]
+	    --png-icons  show the PNGs of assets/UI_Icons where the game will show the uploaded images
 	  node tools/ui-preview/screenshot.js [outputDir]
 
 	This is an approximation of Roblox's renderer (fonts differ: Inter instead of Gotham; no 3D world).
@@ -20,11 +21,20 @@ local Render = require("./Render")
 local Session = require("./Session")
 
 local OUT = process.args[1] or "ui-preview-out"
+local PNG_ICONS = table.find(process.args, "--png-icons") ~= nil
 if not fs.isDir(OUT) then
 	fs.writeDir(OUT)
 end
 
-local session = Session.new()
+local iconAssets = nil
+if PNG_ICONS then
+	local serde = require("@lune/serde")
+	iconAssets = {}
+	for name, entry in serde.decode("json", fs.readFile("assets/UI_Icons/manifest.json")) do
+		iconAssets[name] = "assets/UI_Icons/" .. entry.png
+	end
+end
+local session = Session.new({ IconAssets = iconAssets })
 local services, playerGui, rt = session.Services, session.PlayerGui, session.Runtime
 local raizen = session.Units.Raizen
 local controller = session.Controller
