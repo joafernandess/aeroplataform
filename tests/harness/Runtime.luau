@@ -178,7 +178,11 @@ function Runtime.new(options: { IsServer: boolean?, Root: string? }?)
 			self.Services[map.Service] = service
 		end
 		local childNode = newNode(map.Child, "Folder", service)
-		buildDirectory(self.Root .. "/" .. map.Path, childNode)
+		-- Empty folders are not tracked by git, so a fresh clone may lack some of them.
+		local dir = self.Root .. "/" .. map.Path
+		if fs.isDir(dir) then
+			buildDirectory(dir, childNode)
+		end
 	end
 
 	self.Mocks = Mocks.create(self)
