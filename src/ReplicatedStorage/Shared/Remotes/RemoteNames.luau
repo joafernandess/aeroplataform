@@ -27,6 +27,9 @@ return {
 		-- Worlds
 		"UnlockWorld",
 		"TeleportWorld",
+		"TeleportToPoint",
+		-- Codes
+		"RedeemCode",
 		-- Quests / achievements
 		"ClaimQuest",
 		"ClaimAchievement",

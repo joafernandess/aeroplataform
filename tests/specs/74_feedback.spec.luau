@@ -1,4 +1,4 @@
--- Reward feedback (HUD pops, count-up, "+X" tickers, ¥/min, AUTO orbit) and the session stats panel, on the REAL
+-- Reward feedback (HUD pops, count-up, "+X" tickers, ¥/min, AUTO orbit) and the Stats window, on the REAL
 -- client bridged to the REAL server (tools/ui-preview/Session).
 local task = require("@lune/task")
 local Session = require("../../tools/ui-preview/Session")
@@ -122,21 +122,31 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("keeps the stats panel collapsed by default and toggles it from the STATS button", function()
-			local s, _, Stats = setup()
-			expect(Stats.Expanded).toBe(false)
-			expect(Stats.Body.Visible).toBe(false)
+		t.it("shows session, lifetime and team power stats in the Stats window", function()
+			local s, _, Stats, State = setup()
+			local UI = s.Controller("UIController")
 			kill(s, "W1_Bandit", 2)
 			task.wait(0.1)
-			Stats.ToggleButton.Activated:Fire()
-			task.wait(0.02)
-			expect(Stats.Expanded).toBe(true)
-			expect(Stats.Body.Visible).toBe(true)
-			expect(Stats.KillsValue.Text).toBe("2")
-			expect(Stats.BestName.Text == "—").toBe(false)
-			Stats.ToggleButton.Activated:Fire()
-			task.wait(0.02)
-			expect(Stats.Body.Visible).toBe(false)
+			UI:Open("Stats")
+			task.wait(0.05)
+			expect(UI:IsOpen("Stats")).toBe(true)
+			expect(Stats.SessionLabels.Kills.Text).toBe("2")
+			expect(Stats.Best ~= nil).toBe(true)
+			-- One row per equipped fighter, plus the best-fighter row.
+			local rows = 0
+			for _, child in Stats.List:GetChildren() do
+				if child.Name == "Fighter" then
+					rows += 1
+				end
+			end
+			expect(rows).toBe(#State.Data.EquippedUnits + 1)
+			-- The team total matches the HUD Power pill.
+			local _, total = Stats.TeamBreakdown(State.Data)
+			expect(s.Controller("HUDController").Animated.Power.Target).toBe(total)
+			-- Live update without reopening.
+			kill(s, "W1_Bandit", 1)
+			task.wait(0.1)
+			expect(Stats.SessionLabels.Kills.Text).toBe("3")
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 	end)

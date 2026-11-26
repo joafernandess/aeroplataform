@@ -43,6 +43,7 @@ function DataTemplate.Create()
 			LockedItems = {},
 		},
 		EquippedUnits = {},
+		Discovered = {}, -- [unitId] = true for every fighter ever obtained (Index menu)
 		NextUnitSerial = 1,
 
 		Quests = {
@@ -62,6 +63,7 @@ function DataTemplate.Create()
 			ShowOtherUnits = true,
 			AutoDeleteCommon = false,
 			AutoDeleteRare = false,
+			LastSeenUpdate = "", -- UpdateLog entry id the player last opened
 		},
 
 		Stats = {

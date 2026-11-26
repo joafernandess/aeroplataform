@@ -1,14 +1,16 @@
 --[[
 	QuestController
-	Main quest, daily quests (with reset countdown) and achievements, each with progress and Claim.
+	"Quests" window: the current main quest and the daily quests (with the reset countdown), each with progress
+	and Claim (ClaimQuest). Achievements have their own window (AchievementsController).
+	The Quests menu button shows a badge with the number of quests ready to claim.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
+local Features = require(Shared.Config.Features)
 local Quests = require(Shared.Config.Quests)
-local Achievements = require(Shared.Config.Achievements)
 local Rewards = require(Shared.Modules.Rewards)
 local Clock = require(Shared.Modules.Clock)
 local NumberFormat = require(Shared.Modules.NumberFormat)
@@ -23,41 +25,12 @@ local QuestController = {
 	Priority = 24,
 }
 
-QuestController.Tab = "Quests"
-
-local function questRow(parent, order: number, title: string, description: string, progress: number, target: number, rewards, canClaim: boolean, claimed: boolean, onClaim: () -> ())
-	local row = C.Row(parent, { Size = UDim2.new(1, -8, 0, 92), LayoutOrder = order })
-	C.Label(row, title, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -170, 0, 22), Font = Theme.Fonts.Bold, TextSize = 17 })
-	C.Label(row, description, { Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -170, 0, 18), TextSize = 13, TextColor3 = Theme.Colors.TextDim })
-	C.Label(row, "Rewards: " .. Rewards.Describe(rewards), { Position = UDim2.fromOffset(12, 46), Size = UDim2.new(1, -170, 0, 18), TextSize = 12, TextColor3 = Theme.Colors.Accent })
-	local bar = C.ProgressBar(row, Theme.Colors.Good, { Position = UDim2.fromOffset(12, 68), Size = UDim2.new(1, -170, 0, 14) })
-	bar.Set(progress / target, ("%s / %s"):format(NumberFormat.Abbreviate(progress), NumberFormat.Abbreviate(target)))
-	local button = C.Button(row, if claimed then "Claimed" elseif canClaim then "Claim" else "In progress", if canClaim and not claimed then onClaim else nil, {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.5, 0),
-		Size = UDim2.fromOffset(140, 40),
-		Kind = if canClaim and not claimed then "Primary" else "Dark",
-	})
-	button.AutoButtonColor = canClaim and not claimed
+local function progressText(progress: number, target: number): string
+	return ("%s / %s"):format(NumberFormat.Abbreviate(math.min(progress, target)), NumberFormat.Abbreviate(target))
 end
 
-function QuestController:RenderQuests(data)
-	local order = 0
-	local main = data.Quests.MainCurrent
-	local mainDef = main ~= "" and Quests.Get(main)
-	C.Label(self.List, "Main Quest", { Font = Theme.Fonts.Title, TextSize = 18, LayoutOrder = 0 })
-	if mainDef then
-		local entry = data.Quests.Active[main] or { Progress = 0, Completed = false, Claimed = false }
-		order += 1
-		questRow(self.List, order, mainDef.Title, mainDef.Description, entry.Progress, mainDef.Target, mainDef.Rewards, entry.Completed, entry.Claimed, function()
-			State.Request("ClaimQuest", main)
-		end)
-	else
-		C.Label(self.List, "All main quests completed!", { TextColor3 = Theme.Colors.Good, LayoutOrder = 1 })
-	end
-
-	local resetIn = Clock.SecondsUntilNextDay(math.floor(workspace:GetServerTimeNow()), GameConfig.Quests.DailyResetOffsetSeconds)
-	C.Label(self.List, "Daily Quests  (reset in " .. NumberFormat.Duration(resetIn) .. ")", { Font = Theme.Fonts.Title, TextSize = 18, LayoutOrder = 10 })
+-- Sorted ids of the active daily quests.
+local function dailyIds(data): { string }
 	local ids = {}
 	for questId in data.Quests.Active do
 		local def = Quests.Get(questId)
@@ -66,28 +39,35 @@ function QuestController:RenderQuests(data)
 		end
 	end
 	table.sort(ids)
-	for i, questId in ids do
-		local def = Quests.Get(questId)
-		local entry = data.Quests.Active[questId]
-		questRow(self.List, 10 + i, def.Title, def.Description, entry.Progress, def.Target, def.Rewards, entry.Completed, entry.Claimed, function()
-			State.Request("ClaimQuest", questId)
-		end)
-	end
+	return ids
 end
 
-function QuestController:RenderAchievements(data)
-	for i, def in Achievements.List do
-		local claimedTier = data.Achievements[def.Id] or 0
-		local tier = def.Tiers[claimedTier + 1]
-		local value = if def.Stat == "Level" then data.Level else (data.Stats[def.Stat] or 0)
-		if tier then
-			questRow(self.List, i, ("%s (%d/%d)"):format(def.Name, claimedTier, #def.Tiers), def.Description, math.min(value, tier.Goal), tier.Goal, tier.Rewards, value >= tier.Goal, false, function()
-				State.Request("ClaimAchievement", def.Id)
-			end)
-		else
-			C.Label(self.List, def.Name .. " — all tiers completed!", { TextColor3 = Theme.Colors.Good, LayoutOrder = i, Font = Theme.Fonts.Bold })
+-- Quests completed but not claimed yet (main + daily).
+function QuestController.ClaimableCount(data): number
+	local count = 0
+	for questId, entry in data.Quests.Active do
+		if entry.Completed and not entry.Claimed and Quests.Get(questId) then
+			count += 1
 		end
 	end
+	return count
+end
+
+function QuestController:_row(order: number, questId: string, def, entry)
+	C.ClaimRow(self.List, {
+		Name = questId,
+		Order = order,
+		Title = def.Title,
+		Description = def.Description,
+		Rewards = Rewards.Describe(def.Rewards),
+		Progress = entry.Progress,
+		Target = def.Target,
+		ProgressText = progressText(entry.Progress, def.Target),
+		CanClaim = entry.Completed,
+		Claimed = entry.Claimed,
+	}, function()
+		State.Request("ClaimQuest", questId)
+	end)
 end
 
 function QuestController:Render()
@@ -96,10 +76,28 @@ function QuestController:Render()
 		return
 	end
 	C.Clear(self.List)
-	if self.Tab == "Quests" then
-		self:RenderQuests(data)
+	if not Features.Quests then
+		C.EmptyState(self.List, "quests", "Quests are not available yet", "Quests will appear here once they are added to the game.")
+		return
+	end
+	C.Section(self.List, "Main quest", 0)
+	local main = data.Quests.MainCurrent
+	local mainDef = main ~= "" and Quests.Get(main)
+	if mainDef then
+		local entry = data.Quests.Active[main] or { Progress = 0, Completed = false, Claimed = false }
+		self:_row(1, main, mainDef, entry)
 	else
-		self:RenderAchievements(data)
+		C.Label(self.List, "All main quests completed!", { TextColor3 = Theme.Colors.Cyan, LayoutOrder = 1, Font = Theme.Fonts.Bold })
+	end
+
+	local resetIn = Clock.SecondsUntilNextDay(math.floor(workspace:GetServerTimeNow()), GameConfig.Quests.DailyResetOffsetSeconds)
+	C.Section(self.List, "Daily quests  ·  reset in " .. NumberFormat.Duration(resetIn), 10)
+	local ids = dailyIds(data)
+	if #ids == 0 then
+		C.Label(self.List, "No daily quests right now.", { TextColor3 = Theme.Colors.TextDim, LayoutOrder = 11 })
+	end
+	for i, questId in ids do
+		self:_row(10 + i, questId, Quests.Get(questId), data.Quests.Active[questId])
 	end
 end
 
@@ -108,17 +106,14 @@ function QuestController:Init(controllers)
 	self.Window = controllers.UIController:CreateWindow("Quests", "Quests", UDim2.fromOffset(680, 500), function()
 		self:Render()
 	end)
-	local tabs = C.Tabs(self.Window.Content, { "Quests", "Achievements" }, function(name)
-		self.Tab = name
-		self:Render()
-	end)
-	self.List = C.Scroll(self.Window.Content, { Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 1, -40) })
+	self.List = C.Scroll(self.Window.Content)
 	C.List(self.List, Enum.FillDirection.Vertical, 8)
-	tabs.Select("Quests")
+	C.Create("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 4), Parent = self.List })
 end
 
 function QuestController:Start()
-	State.Observe({ "Quests", "Achievements", "Stats", "Level" }, function()
+	State.Observe({ "Quests" }, function(data)
+		self.Controllers.UIController:SetMenuBadge("Quests", if Features.Quests then QuestController.ClaimableCount(data) else 0)
 		self:Render()
 	end)
 end

@@ -456,6 +456,76 @@ function C.SetSelected(button: Instance, selected: boolean)
 end
 
 --[[
+	Side-navigation button: dark rounded tile with a light outline, a big icon, the caption under it and a small
+	accent bar for identity. Hover grows it a little and lights the outline cyan, pressing squashes it.
+	Returns (container, button). The FX use their own UIScale on the tile, so they never fight the responsive
+	UIScale that UIController puts on the whole column.
+]]
+function C.NavButton(parent: Instance, icon: string, caption: string, accent: Color3?, onClick: (() -> ())?, size: number?)
+	local d = size or 58
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d + 22, d + 22) })
+	local button = C.Create("TextButton", {
+		Name = "Button",
+		AutoButtonColor = false,
+		Text = "",
+		BackgroundColor3 = P.White,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(d, d),
+		Parent = container,
+	})
+	C.Create("UIAspectRatioConstraint", { AspectRatio = 1, Parent = button })
+	C.Corner(button, UDim.new(0, 14))
+	C.Gradient(button, P.PanelLight, P.Bg)
+	local stroke = C.Stroke(button, P.White, 2.5)
+	stroke.Transparency = 0.15
+	local bar = C.Frame(button, {
+		Name = "Accent",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -5),
+		Size = UDim2.new(0.42, 0, 0, 4),
+		BackgroundColor3 = accent or P.Cyan,
+		ZIndex = 3,
+	})
+	C.Corner(bar, UDim.new(0.5, 0))
+	C.Icon(button, icon, { Name = "Icon", Size = math.floor(d * 0.6), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 3 })
+	C.Title(container, caption, {
+		Name = "Caption",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, 16, 0, 18),
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		ZIndex = 3,
+	}, 2)
+	local fx = C.Create("UIScale", { Name = "FX", Parent = button })
+	local hovering = false
+	local function to(scale: number, time: number)
+		TweenService:Create(fx, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = scale }):Play()
+	end
+	button.MouseEnter:Connect(function()
+		hovering = true
+		stroke.Color = P.Cyan
+		to(1.08, 0.12)
+	end)
+	button.MouseLeave:Connect(function()
+		hovering = false
+		stroke.Color = P.White
+		to(1, 0.12)
+	end)
+	button.MouseButton1Down:Connect(function()
+		to(0.92, 0.06)
+	end)
+	button.MouseButton1Up:Connect(function()
+		to(if hovering then 1.08 else 1, 0.1)
+	end)
+	if onClick then
+		button.Activated:Connect(onClick)
+	end
+	return container, button
+end
+
+--[[
 	Rounded-square icon button with a caption (menu, HUD actions). Returns (container, button).
 	`kindOrColor` is a button kind ("Primary"/"Accent"/...) — a Color3 is accepted for old call sites (=> Primary).
 ]]
@@ -721,6 +791,130 @@ function C.Toggle(parent: Instance, on: boolean, onClick: (() -> ())?, props: { 
 		button.Activated:Connect(onClick)
 	end
 	return button
+end
+
+-- Window building blocks -------------------------------------------------------------------------------------------
+
+-- Section heading inside list windows: upper-case title over a short cyan underline.
+function C.Section(parent: Instance, text: string, order: number?, props: { [string]: any }?)
+	local holder = C.Frame(parent, { Name = "Section", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 32), LayoutOrder = order or 0 })
+	apply(holder, props)
+	C.Title(holder, string.upper(text), { Name = "Text", Size = UDim2.new(1, 0, 0, 26), TextSize = 18, TextColor3 = P.Ice }, 2)
+	local line = C.Frame(holder, { Name = "Underline", BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -4), Size = UDim2.fromOffset(44, 3) })
+	C.Corner(line, UDim.new(0.5, 0))
+	return holder
+end
+
+--[[
+	Empty / "not available yet" state: dim icon in a round well, a title and a short message, centred.
+	Used whenever a window has nothing real to show, so a menu button never opens a blank or fake screen.
+]]
+function C.EmptyState(parent: Instance, icon: string, title: string, message: string, props: { [string]: any }?)
+	local holder = C.Frame(parent, { Name = "EmptyState", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 236) })
+	apply(holder, props)
+	local well = C.Frame(holder, { Name = "Well", BackgroundColor3 = P.PanelAlt, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), Size = UDim2.fromOffset(96, 96) })
+	C.Corner(well, UDim.new(0.5, 0))
+	C.Stroke(well, P.Line, 3)
+	centeredIcon(well, icon, 56, { Color = P.TextDim })
+	C.Title(holder, title, {
+		Name = "Title",
+		Position = UDim2.fromOffset(0, 122),
+		Size = UDim2.new(1, 0, 0, 32),
+		TextSize = 26,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	}, 2.5)
+	C.Label(holder, message, {
+		Name = "Message",
+		Position = UDim2.new(0.1, 0, 0, 158),
+		Size = UDim2.new(0.8, 0, 0, 66),
+		TextSize = 17,
+		TextColor3 = P.TextDim,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	})
+	return holder
+end
+
+-- Stat tile: small caption on top, big number under it. Returns (frame, value label).
+function C.StatTile(parent: Instance, caption: string, value: string, props: { [string]: any }?)
+	local frame = C.Frame(parent, { Name = "Stat", BackgroundColor3 = P.PanelAlt, Size = UDim2.fromOffset(150, 60) })
+	apply(frame, props)
+	C.Corner(frame, 10)
+	C.Stroke(frame, P.Ink, 2)
+	C.Title(frame, string.upper(caption), { Name = "Caption", Position = UDim2.fromOffset(10, 5), Size = UDim2.new(1, -16, 0, 16), TextSize = 12, TextColor3 = P.TextDim }, 1.5)
+	local label = C.Number(frame, value, {
+		Name = "Value",
+		Position = UDim2.fromOffset(10, 22),
+		Size = UDim2.new(1, -16, 0, 32),
+		TextSize = 22,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	return frame, label
+end
+
+--[[
+	Progress row with a claim button (quests, achievements).
+	info = { Title, Description, Rewards (text), Progress, Target, ProgressText?, CanClaim, Claimed, Order, Name? }
+]]
+function C.ClaimRow(parent: Instance, info, onClaim: (() -> ())?)
+	local row = C.Row(parent, { Name = info.Name or "ClaimRow", Size = UDim2.new(1, -8, 0, 92), LayoutOrder = info.Order or 0 })
+	if info.CanClaim and not info.Claimed then
+		row:FindFirstChildOfClass("UIStroke").Color = P.Cyan
+	end
+	C.Title(row, info.Title, { Name = "RowTitle", Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -170, 0, 22), TextSize = 18, TextTruncate = Enum.TextTruncate.AtEnd }, 2)
+	C.Label(row, info.Description, { Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -170, 0, 18), TextSize = 14, TextColor3 = P.TextDim, TextTruncate = Enum.TextTruncate.AtEnd })
+	C.Label(row, "Rewards: " .. info.Rewards, { Position = UDim2.fromOffset(12, 46), Size = UDim2.new(1, -170, 0, 18), TextSize = 13, TextColor3 = P.Cyan })
+	local bar = C.ProgressBar(row, nil, { Position = UDim2.fromOffset(12, 68), Size = UDim2.new(1, -170, 0, 14) })
+	local target = math.max(info.Target, 1)
+	bar.Set(math.min(info.Progress, target) / target, info.ProgressText or ("%d / %d"):format(math.min(info.Progress, target), target))
+	local claimable = info.CanClaim and not info.Claimed
+	local button = C.Button(row, if info.Claimed then "Claimed" elseif info.CanClaim then "Claim" else "In progress", if claimable then onClaim else nil, {
+		Name = "Claim",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Size = UDim2.fromOffset(140, 44),
+		TextSize = 18,
+		Kind = if claimable then "Primary" else "Dark",
+		Confirm = false,
+	})
+	if not claimable then
+		C.SetDisabled(button, true)
+	end
+	return row
+end
+
+-- Text input: dark rounded box with a light outline (cyan while focused) and a dim placeholder.
+function C.TextInput(parent: Instance, placeholder: string, props: { [string]: any }?)
+	local box = C.Create("TextBox", {
+		Name = "Input",
+		BackgroundColor3 = P.Bg,
+		BorderSizePixel = 0,
+		Text = "",
+		PlaceholderText = placeholder,
+		PlaceholderColor3 = P.TextMuted,
+		TextColor3 = P.White,
+		Font = Theme.Fonts.Title,
+		TextSize = 22,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ClearTextOnFocus = false,
+		Size = UDim2.fromOffset(320, 52),
+		Parent = parent,
+	})
+	apply(box, props)
+	C.Corner(box, Theme.Radius.Button)
+	local stroke = C.Stroke(box, P.White, 2.5)
+	stroke.Transparency = 0.35
+	C.Create("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = box })
+	box.Focused:Connect(function()
+		stroke.Color = P.Cyan
+		stroke.Transparency = 0
+	end)
+	box.FocusLost:Connect(function()
+		stroke.Color = P.White
+		stroke.Transparency = 0.35
+	end)
+	return box
 end
 
 -- Windows -------------------------------------------------------------------------------------------------------------

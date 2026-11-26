@@ -63,6 +63,14 @@ Icons.Names = {
 	"new",
 	"star",
 	"kills",
+	"codes",
+	"mounts",
+	"index",
+	"achievements",
+	"stats",
+	"teleport",
+	"update",
+	"inventory",
 }
 
 -- Theme.Icons key -> icon name (keys without an entry, e.g. Filter, stay glyph-only).
@@ -98,6 +106,14 @@ local THEME_KEYS = {
 	New = "new",
 	Star = "star",
 	Kills = "kills",
+	Codes = "codes",
+	Mounts = "mounts",
+	Index = "index",
+	Achievements = "achievements",
+	Stats = "stats",
+	Teleport = "teleport",
+	Update = "update",
+	Bag = "inventory",
 }
 
 type Opts = {
@@ -689,6 +705,90 @@ local function glyphMap(): { [string]: string }
 	return map
 end
 
+-- Navigation icons (side menus) -------------------------------------------------------------------------------------
+
+Drawings.codes = function(d)
+	-- Gift box: body, lid, ribbon and a two-loop bow.
+	d:Box(50, 66, 68, 44, { Radius = 0.12 })
+	d:Box(50, 40, 80, 18, { Fill = "Accent", Radius = 0.18, Layer = 1 })
+	d:Box(50, 66, 12, 44, { Fill = "Accent", Layer = 1, Outline = false })
+	d:Box(50, 40, 12, 18, { Fill = "Color", Layer = 2, Outline = false })
+	d:Box(38, 24, 22, 14, { Radius = 0.5, Rot = -28, Layer = 3 })
+	d:Box(62, 24, 22, 14, { Radius = 0.5, Rot = 28, Layer = 3 })
+	d:Disc(50, 28, 12, { Fill = "Accent", Layer = 4 })
+end
+
+Drawings.mounts = function(d)
+	-- Horseshoe: bottom half of a thick ring plus two straight arms, with nail holes.
+	d:Clip(0, 46, 100, 100, 0, function()
+		d:Ring(50, 52, 72, 72, 20, {})
+	end)
+	d:Box(24, 34, 20, 34, { Radius = 0.25 })
+	d:Box(76, 34, 20, 34, { Radius = 0.25 })
+	local nail = { Fill = "Accent", Layer = 1, Outline = false, Radius = 0.5 }
+	for _, p in { { 24, 30 }, { 76, 30 }, { 22, 52 }, { 78, 52 }, { 33, 74 }, { 67, 74 } } do
+		d:Box(p[1], p[2], 7, 7, nail)
+	end
+end
+
+Drawings.index = function(d)
+	-- Book: cover with a cyan spine, page block and text lines.
+	d:Box(52, 50, 70, 84, { Radius = 0.1 })
+	d:Box(22, 50, 14, 84, { Fill = "Accent", Radius = 0.25, Layer = 1 })
+	local line = { Fill = "Outline", Layer = 2, Outline = false, Radius = 0.5 }
+	d:Box(58, 30, 36, 5, line)
+	d:Box(58, 44, 36, 5, line)
+	d:Box(58, 58, 28, 5, line)
+	d:Star5(58, 74, 11, { Fill = "Accent", Layer = 2, OutlineScale = 0.6 })
+end
+
+Drawings.achievements = function(d)
+	-- Trophy: handles, cup, stem and base, with a star on the cup.
+	-- Handles: short rounded bars angled into the cup (rings render as solid squares at small sizes).
+	d:Box(26, 34, 22, 9, { Radius = 0.5, Rot = 20 })
+	d:Box(74, 34, 22, 9, { Radius = 0.5, Rot = -20 })
+	d:Box(22, 44, 9, 20, { Radius = 0.5 })
+	d:Box(78, 44, 9, 20, { Radius = 0.5 })
+	d:Box(50, 38, 52, 46, { Radius = 0.42, Layer = 1 })
+	d:Box(50, 66, 14, 16, { Layer = 1 })
+	d:Box(50, 82, 48, 14, { Fill = "Accent", Radius = 0.3, Layer = 2 })
+	d:Star5(50, 37, 13, { Fill = "Accent", Layer = 2, OutlineScale = 0.6 })
+end
+
+Drawings.stats = function(d)
+	-- Rising bar chart on a base line.
+	d:Box(26, 66, 16, 30, { Radius = 0.2 })
+	d:Box(50, 54, 16, 54, { Radius = 0.2 })
+	d:Box(74, 40, 16, 82, { Fill = "Accent", Radius = 0.2 })
+	d:Box(50, 86, 84, 7, { Radius = 0.5, Layer = 1 })
+end
+
+Drawings.teleport = function(d)
+	-- Portal: cyan ring with a bright core and a sparkle.
+	d:Ring(50, 50, 80, 88, 14, { Fill = "Accent" })
+	d:Box(50, 50, 42, 52, { Radius = 0.5, Layer = 1 })
+	d:Spike4(50, 50, 16, 5, 2, { Fill = "Accent" })
+end
+
+Drawings.update = function(d)
+	-- Bell: dome, rim, clapper and top knob.
+	d:Disc(50, 18, 14, {})
+	d:Box(50, 46, 56, 52, { Radius = 0.46, Layer = 1 })
+	d:Box(50, 70, 74, 14, { Radius = 0.5, Layer = 2 })
+	d:Disc(50, 84, 16, { Fill = "Accent", Layer = 1 })
+	d:Box(38, 42, 7, 22, { Fill = "Accent", Layer = 2, Outline = false, Radius = 0.5 })
+end
+
+Drawings.inventory = function(d)
+	-- Backpack: body, top handle, flap and front pocket.
+	d:Box(50, 20, 32, 18, { Radius = 0.5 })
+	d:Box(50, 23, 16, 7, { Fill = "Outline", Layer = 1, Outline = false, Radius = 0.5 })
+	d:Box(50, 58, 66, 70, { Radius = 0.28, Layer = 1 })
+	d:Box(50, 40, 66, 26, { Fill = "Accent", Radius = 0.35, Layer = 2 })
+	d:Box(50, 70, 38, 22, { Radius = 0.3, Layer = 2 })
+	d:Box(50, 52, 10, 8, { Fill = "Outline", Layer = 3, Outline = false, Radius = 0.3 })
+end
+
 function Icons.Resolve(nameOrGlyph: any): string?
 	if type(nameOrGlyph) ~= "string" then
 		return nil
@@ -696,6 +796,10 @@ function Icons.Resolve(nameOrGlyph: any): string?
 	local text = string.match(nameOrGlyph, "^%s*(.-)%s*$") or ""
 	if text == "" then
 		return nil
+	end
+	-- Exact Theme.Icons keys win (legacy: "Inventory" is the Fighters icon); lowercase names are icon names.
+	if THEME_KEYS[text] then
+		return THEME_KEYS[text]
 	end
 	local lower = string.lower(text)
 	if Drawings[lower] or (Theme.IconAssets and Theme.IconAssets[lower] ~= nil) then

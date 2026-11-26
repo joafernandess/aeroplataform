@@ -143,6 +143,42 @@ function Worlds.IsValid(id: any): boolean
 	return type(id) == "string" and Worlds.ById[id] ~= nil
 end
 
+--[[
+	Teleport points inside a world (TP menu): spawn, summon orb, every zone and every boss arena.
+	Positions follow the config convention (Y = 3 is one stud above the ground); the server lifts the
+	character a few studs above them.
+]]
+export type TeleportPoint = { Id: string, Name: string, Kind: string, Position: Vec }
+
+function Worlds.GetTeleportPoints(id: string): { TeleportPoint }
+	local def = Worlds.ById[id]
+	if not def then
+		return {}
+	end
+	local points = { { Id = "spawn", Name = "Spawn", Kind = "Spawn", Position = def.Spawn } }
+	for _, npc in def.NPCs do
+		if npc.Role == "Summon" then
+			local p = npc.Position
+			table.insert(points, { Id = "summon", Name = "Summon Orb", Kind = "Summon", Position = { p[1] + 8, p[2], p[3] + 8 } })
+		end
+	end
+	for index, area in def.SpawnAreas do
+		local c = area.Center
+		table.insert(points, {
+			Id = "zone_" .. area.Id,
+			Name = ("Zone %d • %s"):format(index, area.Name or area.Id),
+			Kind = "Zone",
+			-- Land at the zone's edge closest to the spawn, not in the middle of the enemies.
+			Position = { c[1] - area.Radius + 4, c[2], c[3] },
+		})
+	end
+	for index, boss in def.Bosses do
+		local p = boss.Position
+		table.insert(points, { Id = "boss_" .. index, Name = boss.Enemy, Kind = "Boss", Position = { p[1] - 22, p[2], p[3] } })
+	end
+	return points
+end
+
 function Worlds.GetPrevious(id: string): WorldDef?
 	local def = Worlds.ById[id]
 	if not def then

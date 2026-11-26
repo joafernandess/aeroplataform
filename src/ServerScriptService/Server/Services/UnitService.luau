@@ -112,9 +112,18 @@ function UnitService:CreateUnit(player, unitId: string, options: { Source: strin
 	}
 	data.Inventory.Units[uid] = unit
 	data.Stats.UnitsObtained += 1
+	UnitService.MarkDiscovered(player, data, unitId)
 	DataService:MarkDirty(player, "Inventory")
 	UnitService.UnitAdded:Fire(player, unit)
 	return true, unit
+end
+
+-- Index: remembers every fighter the player has ever obtained (persisted in PlayerData.Discovered).
+function UnitService.MarkDiscovered(player, data, unitId: string)
+	if not data.Discovered[unitId] then
+		data.Discovered[unitId] = true
+		DataService:MarkDirty(player, "Discovered")
+	end
 end
 
 -- Queries -------------------------------------------------------------------------------------------
@@ -442,6 +451,7 @@ function UnitService:Evolve(player, uid: string): (boolean, any)
 			return false, err
 		end
 		unit.UnitId = def.EvolvesTo
+		UnitService.MarkDiscovered(player, data, def.EvolvesTo)
 		unit.Level = 1
 		unit.XP = 0
 		data.Stats.UnitsEvolved += 1
@@ -487,6 +497,10 @@ function UnitService:Init(services)
 	end
 
 	DataService.ProfileLoaded:Connect(function(player, profile)
+		-- Profiles saved before the Index existed: everything they own counts as discovered.
+		for _, unit in profile.Data.Inventory.Units do
+			profile.Data.Discovered[unit.UnitId] = true
+		end
 		if profile.IsNew then
 			for _, unitId in GameConfig.Start.StarterUnits do
 				local ok, unit = self:CreateUnit(player, unitId, { Source = "Starter", IgnoreCapacity = true })

@@ -33,7 +33,7 @@ local Features = rt:Require("ReplicatedStorage/Shared/Config/Features")
 local function shot(name: string, caption: string, width: number?, height: number?)
 	local html = Render.Page(session.PlayerGui, { Width = width or 1280, Height = height or 720, Caption = caption })
 	fs.writeFile(OUT .. "/" .. name .. ".html", html)
-	print(("wrote %s  (badge %d, hint %s, team %d)"):format(name, UI.MenuBadges.Inventory or 0, tostring(TeamBar.HintVisible), #State.Data.EquippedUnits))
+	print(("wrote %s  (badge %d, hint %s, team %d)"):format(name, UI.MenuBadges.Fighters or 0, tostring(TeamBar.HintVisible), #State.Data.EquippedUnits))
 end
 
 local function clearOverlay()

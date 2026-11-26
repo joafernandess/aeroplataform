@@ -47,8 +47,6 @@ return function(t)
 				{ "TeleportWorld", "W1" },
 				{ "BuyShopItem", "S_XPSmall", 1 },
 				{ "BuyUpgrade", "Damage" },
-				{ "ClaimQuest", "M01" },
-				{ "ClaimAchievement", "A_Kills" },
 				{ "FuseUnits", a.Uid, { b.Uid } },
 				{ "EvolveUnit", a.Uid },
 				{ "UseItem", "XPPotionSmall", a.Uid, 1 },

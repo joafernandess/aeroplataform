@@ -1,12 +1,13 @@
 --[[
 	HUDController
-	Always-visible HUD:
-	  top-left      currency pills (Gems has a "+" shortcut to the shop) + "≈ X ¥/min" under the Yen pill
-	  top-centre    kept clear (zone pill / target panel and toasts live there)
-	  top-right     Team Power, active boosts and events, then the session stats panel (SessionStatsController)
-	  bottom-centre level badge + XP bar
-	  right-centre  big round AUTO toggle (a spark orbits it while auto-attack is on, ON/OFF status pill under it)
-	The menu buttons (bottom-left) belong to UIController.
+	Always-visible player info (top-left), kept compact so it never competes with the side menus:
+	  Yen pill + "≈ X ¥/min" · team Power pill · active boosts/events (only when there are any)
+	  (Gems/Gold/Tokens pills appear only when Features.PremiumCurrencies is on)
+	Elsewhere:
+	  bottom-centre level badge + XP bar (Features.PlayerLevel)
+	  AUTO toggle   docked next to the fighter slots (TeamBarController.ActionSlot); a spark orbits it while
+	                auto-attack is on and a status pill under it says ON/OFF
+	Side menus belong to UIController (UI/Navigation); the top-right corner belongs to UpdateLogController.
 
 	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency or the team power goes up, the
 	pill pops (UIScale on the pill itself, not on the scaled column), its number counts up in ~0.4s and a floating
@@ -44,7 +45,6 @@ local AUTO_SPIN_SPEED = 90 -- degrees per second while auto-attack is on
 
 local PILL_HEIGHT = 44 -- C.CurrencyPill container height (40px bar + 4)
 local RATE_HEIGHT = 20
-local TOOLS_WIDTH = 84 -- slot for small tool buttons left of the Power pill
 
 local function tween(instance: Instance, seconds: number, goals: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?)
 	local t = TweenService:Create(instance, TweenInfo.new(seconds, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goals)
@@ -102,8 +102,8 @@ function HUDController:Init(controllers)
 	local P = Theme.Colors
 
 	-- Currencies (top-left column). Each pill sits in a fixed-size row so its pop never shifts the column.
-	local currencies = C.Frame(root, { Name = "Currencies", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 10), Size = UDim2.fromOffset(220, 200) })
-	C.List(currencies, Enum.FillDirection.Vertical, 8)
+	local currencies = C.Frame(root, { Name = "PlayerInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 10), Size = UDim2.fromOffset(220, 260) })
+	C.List(currencies, Enum.FillDirection.Vertical, 6)
 	self.CurrencyPills = {}
 	self.Animated = {}
 	for i, currency in GameConfig.Economy.Currencies do
@@ -166,20 +166,11 @@ function HUDController:Init(controllers)
 		end
 	end
 
-	--[[
-		Top-right column (LayoutOrder): 1 Power row = [tool slot][Power pill] · 2 boosts/events · 3 session stats panel.
-		Small HUD tool buttons (the session stats toggle) go in `RightTools`, left of the Power pill, so they cost no
-		vertical space: on a phone the column must stay clear of the AUTO button.
-	]]
-	local right = C.Frame(root, { Name = "RightColumn", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 10), Size = UDim2.fromOffset(TOOLS_WIDTH + 8 + 240, 360) })
-	C.List(right, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Right)
-	self.RightColumn = right
-	local powerRow = C.Frame(right, { Name = "PowerRow", BackgroundTransparency = 1, Size = UDim2.fromOffset(TOOLS_WIDTH + 8 + 240, PILL_HEIGHT), LayoutOrder = 1 })
-	self.PowerPill = C.CurrencyPill(powerRow, Theme.Icons.Power, P.Ink, 240, { GlyphColor = P.Cyan, Height = 40 })
-	self.PowerPill.Frame.AnchorPoint = Vector2.new(1, 0.5)
-	self.PowerPill.Frame.Position = UDim2.new(1, 0, 0, PILL_HEIGHT / 2)
-	self.RightTools = C.Frame(powerRow, { Name = "Tools", BackgroundTransparency = 1, Size = UDim2.fromOffset(TOOLS_WIDTH, PILL_HEIGHT) })
-	C.List(self.RightTools, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Right)
+	-- Team Power: under the currencies, same column (player info), slightly slimmer than the Yen pill.
+	local powerRow = C.Frame(currencies, { Name = "PowerRow", BackgroundTransparency = 1, Size = UDim2.fromOffset(200, PILL_HEIGHT), LayoutOrder = 50 })
+	self.PowerPill = C.CurrencyPill(powerRow, Theme.Icons.Power, P.Ink, 184, { GlyphColor = P.Cyan, Height = 40 })
+	self.PowerPill.Frame.AnchorPoint = Vector2.new(0, 0.5)
+	self.PowerPill.Frame.Position = UDim2.fromOffset(0, PILL_HEIGHT / 2)
 	self.Animated.Power = animated(self.PowerPill, {
 		Holder = powerRow,
 		Format = function(value: number): string
@@ -188,14 +179,13 @@ function HUDController:Init(controllers)
 		TickerText = function(amount: number): string
 			return "+" .. NumberFormat.Abbreviate(amount)
 		end,
-		-- Left of the tool slot (outward from the screen edge, like the Yen ticker).
-		TickerAnchor = Vector2.new(1, 0.5),
-		TickerFrom = UDim2.fromOffset(-6, PILL_HEIGHT / 2 + 10),
-		TickerTo = UDim2.fromOffset(-6, PILL_HEIGHT / 2 - 3),
-		TickerAlign = Enum.TextXAlignment.Right,
+		TickerAnchor = Vector2.new(0, 0.5),
+		TickerFrom = UDim2.fromOffset(192, PILL_HEIGHT / 2 + 10),
+		TickerTo = UDim2.fromOffset(192, PILL_HEIGHT / 2 - 3),
+		TickerAlign = Enum.TextXAlignment.Left,
 	})
-	self.BuffList = C.Frame(right, { Name = "Boosts", BackgroundTransparency = 1, Size = UDim2.fromOffset(240, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Visible = false })
-	C.List(self.BuffList, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Right)
+	self.BuffList = C.Frame(currencies, { Name = "Boosts", BackgroundTransparency = 1, Size = UDim2.fromOffset(220, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 60, Visible = false })
+	C.List(self.BuffList, Enum.FillDirection.Vertical, 6)
 
 	-- Level badge + XP bar (bottom centre)
 	local levelFrame = C.Frame(root, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(460, 52), Visible = Features.PlayerLevel })
@@ -207,27 +197,28 @@ function HUDController:Init(controllers)
 	self.LevelLabel = C.Label(badge, "1", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 24, ZIndex = 5 })
 	C.Outline(self.LevelLabel, 2.5)
 
-	-- AUTO toggle (right side, kept clear of the mobile jump button in the bottom-right corner)
+	-- AUTO toggle: built here (it owns the auto-attack setting), docked next to the fighter slots in Start.
 	local autoContainer, autoButton = C.IconButton(root, Theme.Icons.Auto, nil, "Primary", function()
 		local data = State.Data
 		if data then
 			State.Request("UpdateSetting", "AutoAttack", not data.Settings.AutoAttack)
 		end
-	end, 72)
+	end, 60)
 	autoContainer.Name = "Auto"
-	autoContainer.AnchorPoint = Vector2.new(1, 0.5)
-	autoContainer.Position = UDim2.new(1, -16, 0.62, 0)
-	autoContainer.Size = UDim2.fromOffset(88, 76 + 26)
+	autoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	autoContainer.Position = UDim2.fromScale(0.5, 0.5)
+	autoContainer.Size = UDim2.fromOffset(84, 64 + 24)
+	self.AutoContainer = autoContainer
 	self.AutoButton = autoButton
 	-- Status pill under the button: cyan "AUTO ON" / inverted black "AUTO OFF" (never colour alone: the text says it).
-	local status = C.Frame(autoContainer, { Name = "AutoStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(88, 22), BackgroundColor3 = P.Cyan, ZIndex = 4 })
+	local status = C.Frame(autoContainer, { Name = "AutoStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(80, 22), BackgroundColor3 = P.Cyan, ZIndex = 4 })
 	C.Corner(status, UDim.new(0.5, 0))
 	self.AutoStatusStroke = C.Stroke(status, P.Ink, 2.5)
 	self.AutoStatus = status
 	self.AutoCaption = C.Label(status, "AUTO ON", { Name = "Caption", Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Title, TextSize = 14, TextColor3 = P.Ink, ZIndex = 5 })
 
 	-- Responsive scaling (phones/tablets): every HUD block keeps its anchor and shrinks with the screen.
-	for _, gui in { currencies, right, levelFrame, autoContainer } do
+	for _, gui in { currencies, levelFrame } do
 		ui:AddScaled(gui, "Hud")
 	end
 end
@@ -447,11 +438,28 @@ function HUDController:RenderBuffs()
 		order += 1
 		badge("EVENT: " .. event.Name, P.Blue500, order)
 	end
-	-- Collapse the empty list so the stats panel sits right under the Power pill.
+	-- Collapse the empty list (it is the last block of the player-info column).
 	self.BuffList.Visible = order > 0
 end
 
+-- Docks the AUTO toggle next to the fighter slots; without a team bar it falls back to the right-centre edge.
+function HUDController:DockAuto()
+	local ui = self.Controllers.UIController
+	local teamBar = self.Controllers.TeamBarController
+	local dock = teamBar and teamBar.ActionSlot
+	if dock then
+		self.AutoContainer.Parent = dock
+		self.AutoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+		self.AutoContainer.Position = UDim2.fromScale(0.5, 0.5)
+	else
+		self.AutoContainer.AnchorPoint = Vector2.new(1, 0.5)
+		self.AutoContainer.Position = UDim2.new(1, -96, 0.86, 0)
+		ui:AddScaled(self.AutoContainer, "Hud")
+	end
+end
+
 function HUDController:Start()
+	self:DockAuto()
 	State.Observe({ "Currencies" }, function(data)
 		for currency, entry in self.Animated do
 			if currency ~= "Power" then

@@ -1,9 +1,10 @@
 --[[
 	SessionStatsController
-	Client-only counters for the current play session (never saved): play time, kills, bosses defeated, Yen earned
-	and the best fighter owned (highest Power). Shown in a compact panel in the HUD's right column, under the boosts,
-	opened by a small "STATS" button in the HUD's tool slot left of the Power pill. Collapsed by default; the
-	expanded state is remembered for this session only.
+	The "Stats" window (right menu) and the session counters behind it:
+	  Team power    total (same number as the HUD Power pill) and each equipped fighter's share
+	  This session  play time, kills, bosses, Yen earned, Yen per minute (client-only, never saved)
+	  All time      saved lifetime stats from the profile (data.Stats) and fighters discovered
+	  Best fighter  highest-Power fighter owned
 
 	Also the Yen income tracker behind the HUD's "≈ X ¥/min" caption (HUDController:RefreshRate):
 	  gains = EnemyDefeated payloads (they arrive first) + any Currencies.Yen increase those kills don't explain
@@ -16,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local Units = require(Shared.Config.Units)
 local UnitStats = require(Shared.Modules.UnitStats)
+local Formulas = require(Shared.Modules.Formulas)
 local NumberFormat = require(Shared.Modules.NumberFormat)
 local Signal = require(Shared.Modules.Signal)
 local Net = require(Shared.Remotes.Net)
@@ -27,23 +29,15 @@ local State = require(Client.State)
 
 local SessionStatsController = {
 	Name = "SessionStatsController",
-	Priority = 11, -- after HUDController, whose right column hosts the panel
+	Priority = 36,
 }
 
 local RATE_WINDOW = 60
 local MIN_RATE_SPAN = 15
--- Panel layout: 2x2 stat tiles + a best-fighter tile (kept short so a phone's right column clears the AUTO button).
-local PANEL_WIDTH = 240
-local PAD = 8
-local TILE_GAP = 6
-local TILE_WIDTH = (PANEL_WIDTH - 2 * PAD - TILE_GAP) / 2
-local TILE_HEIGHT = 34
-local BEST_HEIGHT = 46
-local BODY_HEIGHT = PAD * 2 + 2 * (TILE_HEIGHT + TILE_GAP) + BEST_HEIGHT
+local TILE_W, TILE_H, TILE_GAP = 126, 62, 8
 
 SessionStatsController.Changed = Signal.new() -- fired whenever a counter changes
 SessionStatsController.Clock = os.clock -- overridable in tests
-SessionStatsController.Expanded = false
 SessionStatsController.Kills = 0
 SessionStatsController.Bosses = 0
 SessionStatsController.YenEarned = 0
@@ -127,146 +121,146 @@ function SessionStatsController:_findBest(data)
 	return best
 end
 
--- Panel ------------------------------------------------------------------------------------------------------------
+-- Window -----------------------------------------------------------------------------------------------------------
 
--- Dark inset tile (PanelAlt well) inside the panel body.
-local function tile(parent: Instance, x: number, y: number, w: number, h: number)
-	local frame = C.Frame(parent, { BackgroundColor3 = Theme.Colors.PanelAlt, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h), ZIndex = 3 })
-	C.Corner(frame, 8)
-	return frame
+-- Equipped fighters with their Power, strongest first, and the team total (with the Damage upgrade, like the HUD).
+function SessionStatsController.TeamBreakdown(data): ({ { Name: string, Rarity: string, Level: number, Power: number } }, number)
+	local members, sum = {}, 0
+	for _, uid in data.EquippedUnits do
+		local unit = data.Inventory.Units[uid]
+		local def = unit and Units.Get(unit.UnitId)
+		local stats = def and UnitStats.Compute(unit)
+		if def and stats then
+			sum += stats.Power
+			table.insert(members, { Name = def.Name, Rarity = def.Rarity, Level = unit.Level or 1, Power = stats.Power })
+		end
+	end
+	table.sort(members, function(a, b)
+		return a.Power > b.Power
+	end)
+	local total = math.floor(sum * Formulas.UpgradeMultiplier("Damage", data.Upgrades.Damage or 0))
+	return members, total
 end
 
--- Stat tile: small caption on top, big number below. Returns the value label.
-local function statTile(parent: Instance, caption: string, column: number, row: number)
-	local frame = tile(parent, PAD + column * (TILE_WIDTH + TILE_GAP), PAD + row * (TILE_HEIGHT + TILE_GAP), TILE_WIDTH, TILE_HEIGHT)
-	C.Title(frame, caption, { Position = UDim2.fromOffset(8, 2), Size = UDim2.new(1, -12, 0, 13), TextSize = 11, TextColor3 = Theme.Colors.TextDim, ZIndex = 4 }, 1.5)
-	return C.Number(frame, "0", { Position = UDim2.fromOffset(8, 14), Size = UDim2.new(1, -12, 0, 20), TextSize = 18, ZIndex = 4 })
+local function count(map): number
+	local n = 0
+	for _ in map or {} do
+		n += 1
+	end
+	return n
 end
 
-function SessionStatsController:_build(toolParent: Instance, bodyParent: Instance)
+-- Row of stat tiles: { { Caption, Value, Color? } }.
+function SessionStatsController:_tiles(order: number, tiles)
+	local row = C.Frame(self.List, { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, TILE_H), LayoutOrder = order })
+	C.List(row, Enum.FillDirection.Horizontal, TILE_GAP)
+	local labels = {}
+	for i, tile in tiles do
+		local _, value = C.StatTile(row, tile[1], tile[2], { Name = tile[1], Size = UDim2.fromOffset(TILE_W, TILE_H), LayoutOrder = i })
+		if tile[3] then
+			value.TextColor3 = tile[3]
+		end
+		labels[tile[1]] = value
+	end
+	return labels
+end
+
+-- Fighter row: rarity strip, name, "Rarity · Lv", Power and a bar with its share of the team.
+function SessionStatsController:_fighterRow(order: number, member, share: number?)
 	local P = Theme.Colors
-	self.ToggleButton = C.Button(toolParent, "STATS ▼", function()
-		self:Toggle()
-	end, {
-		Name = "StatsToggle",
-		Kind = "Dark",
-		TextSize = 15,
-		Radius = Theme.Radius.Tool,
-		Size = UDim2.fromOffset(84, 44), -- 40px face + lip: full touch target
-		StrokeThickness = Theme.Stroke.Tool,
-		Confirm = false,
-		LayoutOrder = 1,
-	})
-
-	local body = C.Frame(bodyParent, {
-		Name = "SessionStats",
-		BackgroundColor3 = P.Panel,
-		BackgroundTransparency = 0.08,
-		Size = UDim2.fromOffset(PANEL_WIDTH, BODY_HEIGHT),
-		LayoutOrder = 3,
-		Visible = false,
-	})
-	C.Corner(body, Theme.Radius.Card)
-	C.Stroke(body, P.Ink, Theme.Stroke.Card)
-	local rim = C.Frame(body, { BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 2 })
-	C.Corner(rim, Theme.Radius.Card - 3)
-	C.Stroke(rim, P.Line, Theme.Stroke.Rim)
-	self.Body = body
-
-	self.TimeValue = statTile(body, "SESSION", 0, 0)
-	self.KillsValue = statTile(body, "KILLS", 1, 0)
-	self.BossesValue = statTile(body, "BOSSES", 0, 1)
-	self.YenValue = statTile(body, "YEN EARNED", 1, 1)
-	self.YenValue.TextColor3 = P.Cyan
-
-	-- Best fighter: rarity strip + name, rarity name and level (never colour alone), Power on the right.
-	local best = tile(body, PAD, PAD + 2 * (TILE_HEIGHT + TILE_GAP), PANEL_WIDTH - 2 * PAD, BEST_HEIGHT)
-	self.BestStrip = C.Frame(best, { Name = "RarityStrip", BackgroundColor3 = P.TextMuted, Position = UDim2.fromOffset(7, 6), Size = UDim2.fromOffset(5, BEST_HEIGHT - 12), ZIndex = 4 })
-	C.Corner(self.BestStrip, UDim.new(0.5, 0))
-	C.Title(best, "BEST FIGHTER", { Position = UDim2.fromOffset(18, 2), Size = UDim2.fromOffset(120, 13), TextSize = 11, TextColor3 = P.TextDim, ZIndex = 4 }, 1.5)
-	self.BestName = C.Title(best, "—", {
-		Position = UDim2.fromOffset(18, 14),
-		Size = UDim2.new(1, -96, 0, 18),
-		TextSize = 16,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 4,
-	}, 2)
-	self.BestInfo = C.Title(best, "", {
-		Font = Theme.Fonts.Body,
-		Position = UDim2.fromOffset(18, 31),
-		Size = UDim2.new(1, -96, 0, 14),
-		TextSize = 12,
-		TextColor3 = P.TextDim,
-		ZIndex = 4,
-	}, 1.5)
-	self.BestPower = C.Number(best, "", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -8, 0.5, 0),
-		Size = UDim2.fromOffset(84, 22),
-		TextSize = 17,
-		TextColor3 = P.Cyan,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 4,
-	})
+	local row = C.Row(self.List, { Name = "Fighter", Size = UDim2.new(1, -8, 0, 54), LayoutOrder = order })
+	local strip = C.Frame(row, { BackgroundColor3 = Theme.Rarity(member.Rarity), Position = UDim2.fromOffset(10, 9), Size = UDim2.fromOffset(6, 36) })
+	C.Corner(strip, UDim.new(0.5, 0))
+	C.Title(row, member.Name, { Position = UDim2.fromOffset(26, 5), Size = UDim2.new(0.5, -30, 0, 24), TextSize = 18, TextTruncate = Enum.TextTruncate.AtEnd }, 2)
+	C.Label(row, ("%s · Lv %d"):format(member.Rarity, member.Level), { Position = UDim2.fromOffset(26, 28), Size = UDim2.new(0.5, -30, 0, 20), TextSize = 14, TextColor3 = P.TextDim })
+	if share then
+		local bar = C.ProgressBar(row, nil, { Position = UDim2.new(0.5, 0, 0.5, -8), Size = UDim2.new(0.3, 0, 0, 16) })
+		bar.Set(share, ("%d%%"):format(math.floor(share * 100 + 0.5)))
+	end
+	local power = C.Frame(row, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.new(0.2, -16, 0, 28) })
+	C.Icon(power, "power", { Size = 20, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), Color = P.Cyan })
+	C.Number(power, NumberFormat.Abbreviate(member.Power), { Position = UDim2.fromOffset(24, 0), Size = UDim2.new(1, -24, 1, 0), TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right })
 end
 
-function SessionStatsController:Refresh()
-	if not self.Body then
+function SessionStatsController:Render()
+	local data = State.Data
+	if not (self.Window and self.Window.Frame.Visible and data) then
 		return
 	end
-	C.SetText(self.ToggleButton, if self.Expanded then "STATS ▲" else "STATS ▼")
-	C.SetToolActive(self.ToggleButton, self.Expanded)
-	self.Body.Visible = self.Expanded
-	if not self.Expanded then
-		return
+	local P = Theme.Colors
+	C.Clear(self.List)
+
+	local members, total = SessionStatsController.TeamBreakdown(data)
+	C.Section(self.List, ("Team power  ·  %s"):format(NumberFormat.Abbreviate(total)), 1)
+	if #members == 0 then
+		C.Label(self.List, "No fighters equipped.", { TextColor3 = P.TextDim, LayoutOrder = 2 })
 	end
-	self.TimeValue.Text = NumberFormat.Duration(self:SessionTime())
-	self.KillsValue.Text = NumberFormat.Abbreviate(self.Kills)
-	self.BossesValue.Text = NumberFormat.Abbreviate(self.Bosses)
-	self.YenValue.Text = "+" .. NumberFormat.Abbreviate(math.floor(self.YenEarned)) .. " " .. Theme.Icons.Yen
+	local sum = 0
+	for _, member in members do
+		sum += member.Power
+	end
+	for i, member in members do
+		self:_fighterRow(1 + i, member, if sum > 0 then member.Power / sum else 0)
+	end
+
+	C.Section(self.List, "This session", 20)
+	self.SessionLabels = self:_tiles(21, {
+		{ "Time", NumberFormat.Duration(self:SessionTime()) },
+		{ "Kills", NumberFormat.Abbreviate(self.Kills) },
+		{ "Bosses", NumberFormat.Abbreviate(self.Bosses) },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(self.YenEarned)), P.Cyan },
+		{ "Yen / min", NumberFormat.Abbreviate(math.floor(self:YenPerMinute())), P.Cyan },
+	})
+
+	local stats = data.Stats
+	C.Section(self.List, "All time", 30)
+	self:_tiles(31, {
+		{ "Kills", NumberFormat.Abbreviate(stats.TotalKills or 0) },
+		{ "Bosses", NumberFormat.Abbreviate(stats.BossKills or 0) },
+		{ "Summons", NumberFormat.Abbreviate(stats.TotalSummons or 0) },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(stats.TotalYenEarned or 0)), P.Cyan },
+		{ "Discovered", tostring(count(data.Discovered)) },
+	})
+
+	C.Section(self.List, "Best fighter", 40)
 	local best = self.Best
 	if best then
-		self.BestStrip.BackgroundColor3 = Theme.Rarity(best.Rarity)
-		self.BestName.Text = best.Name
-		self.BestInfo.Text = best.Rarity .. " · Lv " .. best.Level
-		self.BestPower.Text = NumberFormat.Abbreviate(best.Power) .. " " .. Theme.Icons.Power
+		self:_fighterRow(41, best, nil)
 	else
-		self.BestStrip.BackgroundColor3 = Theme.Colors.TextMuted
-		self.BestName.Text = "—"
-		self.BestInfo.Text = ""
-		self.BestPower.Text = ""
+		C.Label(self.List, "No fighters yet.", { TextColor3 = P.TextDim, LayoutOrder = 41 })
 	end
 end
 
-function SessionStatsController:SetExpanded(expanded: boolean)
-	self.Expanded = expanded
-	self:Refresh()
-end
-
-function SessionStatsController:Toggle()
-	self:SetExpanded(not self.Expanded)
+-- Live session tiles (cheap: only text, no rebuild).
+function SessionStatsController:RefreshSession()
+	local labels = self.SessionLabels
+	if not (labels and self.Window and self.Window.Frame.Visible) then
+		return
+	end
+	labels["Time"].Text = NumberFormat.Duration(self:SessionTime())
+	labels["Kills"].Text = NumberFormat.Abbreviate(self.Kills)
+	labels["Bosses"].Text = NumberFormat.Abbreviate(self.Bosses)
+	labels["Yen earned"].Text = NumberFormat.Abbreviate(math.floor(self.YenEarned))
+	labels["Yen / min"].Text = NumberFormat.Abbreviate(math.floor(self:YenPerMinute()))
 end
 
 -- Lifecycle --------------------------------------------------------------------------------------------------------
 
 function SessionStatsController:Init(controllers)
+	self.Controllers = controllers
 	self.StartedAt = self.Clock()
 	self.Gains = {}
 	self.PendingKillYen = 0
 	self.LastYen = nil
-	-- Toggle in the HUD's tool slot (left of the Power pill), panel under the boosts in the right column.
-	local hud = controllers.HUDController
-	local column = hud and hud.RightColumn
-	local tools = hud and hud.RightTools
-	if not column then
-		-- Fallback: own top-right column (HUD missing or reorganised).
-		local ui = controllers.UIController
-		column = C.Frame(ui:GetRoot(), { Name = "SessionStatsColumn", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 64), Size = UDim2.fromOffset(PANEL_WIDTH, 260) })
-		C.List(column, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Right)
-		ui:AddScaled(column, "Hud")
+	local ui = controllers.UIController
+	if ui then
+		self.Window = ui:CreateWindow("Stats", "Stats", UDim2.fromOffset(720, 540), function()
+			self:Render()
+		end)
+		self.List = C.Scroll(self.Window.Content)
+		C.List(self.List, Enum.FillDirection.Vertical, 8)
+		C.Create("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 4), Parent = self.List })
 	end
-	self:_build(tools or column, column)
-	self:Refresh()
 end
 
 function SessionStatsController:Start()
@@ -276,22 +270,18 @@ function SessionStatsController:Start()
 	State.Observe({ "Currencies" }, function(data)
 		self:_onCurrencies(data)
 	end)
-	State.Observe({ "Inventory" }, function(data)
+	State.Observe({ "Inventory", "EquippedUnits", "Upgrades", "Stats", "Discovered" }, function(data)
 		self.Best = self:_findBest(data)
-		self:Refresh()
+		self:Render()
 	end)
 	self.Changed:Connect(function()
-		if self.Expanded then
-			self:Refresh()
-		end
+		self:RefreshSession()
 	end)
 	-- Session clock
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			if self.Expanded then
-				self:Refresh()
-			end
+			self:RefreshSession()
 		end
 	end)
 end

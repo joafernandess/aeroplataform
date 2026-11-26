@@ -131,6 +131,14 @@ Theme.Icons = {
 	Sell = "⊖",
 	New = "!",
 	Kills = "†",
+	Codes = "✉",
+	Mounts = "∩",
+	Index = "▤",
+	Achievements = "♛",
+	Stats = "▥",
+	Teleport = "⇄",
+	Update = "✎",
+	Bag = "▣",
 }
 
 --[[
@@ -167,6 +175,14 @@ Theme.IconAssets = {
 	new = "",
 	star = "",
 	kills = "",
+	codes = "",
+	mounts = "",
+	index = "",
+	achievements = "",
+	stats = "",
+	teleport = "",
+	update = "",
+	inventory = "",
 }
 
 -- Currency -> icon name (HUD currency pills).

@@ -1,6 +1,8 @@
 --[[
 	ShopController
 	Currency shop (Config/Shop.Items) grouped by category, plus Robux products/passes when configured.
+	While Features.Shop is off the window stays reachable from the Shop button but only says the shop is closed
+	(the server answers FeatureDisabled to purchases anyway).
 ]]
 
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -9,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Shop = require(Shared.Config.Shop)
+local Features = require(Shared.Config.Features)
 local Rewards = require(Shared.Modules.Rewards)
 local NumberFormat = require(Shared.Modules.NumberFormat)
 
@@ -34,6 +37,10 @@ function ShopController:Render()
 		return
 	end
 	C.Clear(self.List)
+	if not Features.Shop then
+		C.EmptyState(self.List, "shop", "The shop is closed", "The shop isn't open yet. Defeat enemies for Yen and spend it on the summon orb.", { LayoutOrder = 0 })
+		return
+	end
 	for i, item in Shop.Items do
 		local row = C.Row(self.List, { Size = UDim2.new(1, -8, 0, 56), LayoutOrder = i })
 		C.Label(row, ("[%s] %s"):format(item.Category, item.Name), { Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -260, 0, 24), Font = Theme.Fonts.Bold })

@@ -84,7 +84,7 @@ end
 
 local function gallery(index: number, names: { string })
 	galleryPage(("10_icons_%d"):format(index), 1280, 760, function(bg)
-		C.Title(bg, ("Icons %d/2 — 24 / 48 / 72 px on Panel and on a Primary button"):format(index), {
+		C.Title(bg, ("Icons %d/%d — 24 / 48 / 72 px on Panel and on a Primary button"):format(index, math.ceil(#Icons.Names / 14)), {
 			Position = UDim2.fromOffset(20, 10),
 			Size = UDim2.fromOffset(900, 34),
 			TextSize = 22,
@@ -104,12 +104,16 @@ local function gallery(index: number, names: { string })
 	end)
 end
 
-local firstHalf, secondHalf = {}, {}
+-- 14 icons per page (7 rows x 2 columns).
+local pages = {}
 for i, name in Icons.Names do
-	table.insert(if i <= 14 then firstHalf else secondHalf, name)
+	local page = math.ceil(i / 14)
+	pages[page] = pages[page] or {}
+	table.insert(pages[page], name)
 end
-gallery(1, firstHalf)
-gallery(2, secondHalf)
+for index, names in pages do
+	gallery(index, names)
+end
 
 -- Variants: the colour combinations the components use + image overrides + small sizes.
 local SVG = OUT .. "/_sample_icon.svg"
@@ -223,7 +227,7 @@ end
 
 shot("01_hud", "HUD (icons)")
 local Inventory = session.Controller("InventoryController")
-UI:Open("Inventory")
+UI:Open("Fighters")
 task.wait(0.05)
 Inventory:Select(session.Units.Raizen.Uid)
 shot("02_fighters", "Fighters window (icons)")

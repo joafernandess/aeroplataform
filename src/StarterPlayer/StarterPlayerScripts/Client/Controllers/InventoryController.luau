@@ -1,6 +1,7 @@
 --[[
 	InventoryController
-	"Units" window: unit grid + embedded details panel (UnitDetailsController) and an Items tab.
+	"Fighters" window: unit grid + embedded details panel (UnitDetailsController).
+	(Items and currencies live in the Inventory window, ItemsController.)
 	Modes:
 	  Browse  - click a card to inspect it
 	  Fuse    - pick fodder for the selected target, then confirm (FuseUnits)
@@ -11,8 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Units = require(Shared.Config.Units)
-local Features = require(Shared.Config.Features)
-local Items = require(Shared.Config.Items)
 local Rarities = require(Shared.Config.Rarities)
 local UnitStats = require(Shared.Modules.UnitStats)
 local Formulas = require(Shared.Modules.Formulas)
@@ -31,7 +30,6 @@ local InventoryController = {
 InventoryController.Mode = "Browse"
 InventoryController.SelectedUid = nil :: string?
 InventoryController.MultiSelect = {} :: { [string]: boolean }
-InventoryController.Tab = "Units"
 
 local SORTS = { "Power", "Rarity", "Level" }
 
@@ -83,13 +81,6 @@ function InventoryController:Render()
 	if not data or not self.Window.Frame.Visible then
 		return
 	end
-	self.UnitsPage.Visible = self.Tab == "Units"
-	self.ItemsPage.Visible = self.Tab == "Items"
-	if self.Tab == "Items" then
-		self:RenderItems(data)
-		return
-	end
-
 	local count = TableUtil.Count(data.Inventory.Units)
 	local capacity = Formulas.UnitStorage(data.Upgrades.UnitStorage or 0)
 	local slots = Formulas.EquipSlots(data.Upgrades.EquipSlots or 0, 0)
@@ -142,50 +133,6 @@ function InventoryController:Render()
 	self.Controllers.UnitDetailsController:Render(self.Details, self.SelectedUid)
 end
 
-function InventoryController:RenderItems(data)
-	C.Clear(self.ItemList)
-	local ids = {}
-	for itemId in data.Inventory.Items do
-		table.insert(ids, itemId)
-	end
-	table.sort(ids)
-	if #ids == 0 then
-		C.Label(self.ItemList, "No items yet. Defeat enemies and complete quests to find some!", { TextColor3 = Theme.Colors.TextDim })
-	end
-	for i, itemId in ids do
-		local def = Items.Get(itemId)
-		if def then
-			local countValue = data.Inventory.Items[itemId]
-			local row = C.Row(self.ItemList, { Size = UDim2.new(1, -8, 0, 62), LayoutOrder = i })
-			local strip = C.Frame(row, { BackgroundColor3 = Theme.Rarity(def.Rarity), Position = UDim2.fromOffset(8, 10), Size = UDim2.fromOffset(5, 42) })
-			C.Corner(strip, UDim.new(0.5, 0))
-			C.Title(row, ("%s  x%d"):format(def.Name, countValue), { Position = UDim2.fromOffset(22, 6), Size = UDim2.new(1, -330, 0, 26), TextSize = 18 })
-			C.Label(row, def.Description, { Position = UDim2.fromOffset(22, 32), Size = UDim2.new(1, -330, 0, 22), TextSize = 15, TextColor3 = Theme.Colors.TextDim })
-			local buttons = C.Frame(row, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(300, 44) })
-			C.List(buttons, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Right)
-			local locked = data.Inventory.LockedItems[itemId] == true
-			C.Button(buttons, if locked then "Unlock" else "Lock", function()
-				State.Request("LockItem", itemId, not locked)
-			end, { Kind = "Dark", Size = UDim2.fromOffset(88, 44), TextSize = 16, LayoutOrder = 1 })
-			if def.SellValue then
-				C.Button(buttons, "Sell 1", function()
-					State.Request("SellItem", itemId, 1)
-				end, { Kind = "Danger", Size = UDim2.fromOffset(88, 44), TextSize = 16, LayoutOrder = 2 })
-			end
-			if def.Usable and not def.TargetsUnit then
-				C.Button(buttons, "Use", function()
-					local response = State.Request("UseItem", itemId)
-					if response.ok and State.Notify then
-						State.Notify("Used " .. def.Name, "Success")
-					end
-				end, { Kind = "Primary", Size = UDim2.fromOffset(88, 44), TextSize = 16, LayoutOrder = 3 })
-			elseif def.TargetsUnit then
-				C.Label(buttons, "Use on a fighter", { Size = UDim2.fromOffset(104, 44), TextSize = 13, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 3 })
-			end
-		end
-	end
-end
-
 function InventoryController:Confirm()
 	local selected = {}
 	for uid in self.MultiSelect do
@@ -214,7 +161,7 @@ end
 function InventoryController:Init(controllers)
 	self.Controllers = controllers
 	self.SortBy = SORTS[1]
-	local window = controllers.UIController:CreateWindow("Inventory", "Fighters", UDim2.fromOffset(860, 560), function()
+	local window = controllers.UIController:CreateWindow("Fighters", "Fighters", UDim2.fromOffset(860, 560), function()
 		self:Render()
 	end)
 	window.OnClose = function()
@@ -224,8 +171,7 @@ function InventoryController:Init(controllers)
 	self.Window = window
 	local content = window.Content
 
-	local tabs = C.Tabs(content, if Features.Items then { "Units", "Items" } else { "Units" }, function(name)
-		self.Tab = name
+	local tabs = C.Tabs(content, { "Units" }, function()
 		self:Render()
 	end)
 	-- Capacity counters (top-right of the content area)
@@ -290,12 +236,6 @@ function InventoryController:Init(controllers)
 	C.Corner(self.Details, Theme.Radius.Card)
 	C.Stroke(self.Details, Theme.Colors.Ink, Theme.Stroke.Card)
 	C.Padding(self.Details, 14)
-
-	-- Items page
-	local itemsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 44), Size = UDim2.new(1, 0, 1, -44), Visible = false })
-	self.ItemsPage = itemsPage
-	self.ItemList = C.Scroll(itemsPage)
-	C.List(self.ItemList, Enum.FillDirection.Vertical, 8)
 	tabs.Select("Units")
 end
 

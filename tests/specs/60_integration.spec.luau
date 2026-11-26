@@ -51,7 +51,9 @@ return function(t)
 			expect(orb ~= nil).toBe(true)
 			local prompt = orb:FindFirstChildWhichIsA("ProximityPrompt", true)
 			expect(prompt ~= nil and prompt:GetAttribute("Role") == "Summon").toBe(true)
-			expect(#w1:FindFirstChild("NPCs"):GetChildren()).toBe(1)
+			-- Orb + Quest Master (Quests are enabled); systems that are off (Shop, Teleport NPC...) have no NPC.
+			expect(#w1:FindFirstChild("NPCs"):GetChildren()).toBe(2)
+			expect(w1:FindFirstChild("NPCs"):FindFirstChild("W1_Shop")).toBeNil()
 			expect(#w1:FindFirstChild("Decor"):GetChildren() > 40).toBe(true)
 
 			-- A joining player gets a profile through the real PlayerAdded wiring

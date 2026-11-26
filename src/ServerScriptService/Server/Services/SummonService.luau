@@ -180,6 +180,8 @@ function SummonService:Summon(player, bannerId: string, count: number): (boolean
 			local settingKey = AUTO_DELETE_SETTINGS[roll.Rarity]
 			local entry = { UnitId = roll.UnitId, Rarity = roll.Rarity, AutoDeleted = false }
 			if settingKey and data.Settings[settingKey] == true then
+				-- Auto-sold pulls still count as discovered for the Index.
+				UnitService.MarkDiscovered(player, data, roll.UnitId)
 				entry.AutoDeleted = true
 				autoDeleteYen += Formulas.UnitSellValue(roll.Rarity, 1, 0)
 			else

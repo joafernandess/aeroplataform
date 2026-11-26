@@ -68,7 +68,7 @@ return function(t)
 			local card = childrenNamed(TeamBar.Slots, "FighterCard")[2]
 			card.Activated:Fire()
 			task.wait(0.05)
-			expect(UI:IsOpen("Inventory")).toBe(true)
+			expect(UI:IsOpen("Fighters")).toBe(true)
 			expect(Inventory.SelectedUid).toBe(card:GetAttribute("Uid"))
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
@@ -119,9 +119,9 @@ return function(t)
 			local State = s.Runtime:Require("StarterPlayer/StarterPlayerScripts/Client/State")
 			local UI = s.Controller("UIController")
 			local TeamBar = s.Controller("TeamBarController")
-			local button = UI.MenuButtons.Inventory
+			local button = UI.MenuButtons.Fighters
 			expect(button ~= nil).toBe(true)
-			expect(UI.MenuBadges.Inventory or 0).toBe(0)
+			expect(UI.MenuBadges.Fighters or 0).toBe(0)
 			local badge = button:FindFirstChild("Badge")
 			expect(badge == nil or badge.Visible == false).toBe(true)
 
@@ -131,7 +131,7 @@ return function(t)
 			task.wait(0.1)
 			local gained = count(State.Data.Inventory.Units) - before
 			expect(gained).toBe(3)
-			expect(UI.MenuBadges.Inventory).toBe(3)
+			expect(UI.MenuBadges.Fighters).toBe(3)
 			expect(TeamBar:NewCount()).toBe(3)
 			badge = button:FindFirstChild("Badge")
 			expect(badge.Visible).toBe(true)
@@ -140,19 +140,19 @@ return function(t)
 			-- Another pull adds up.
 			s.Net.Request("Summon", "B_W1", 1)
 			task.wait(0.1)
-			expect(UI.MenuBadges.Inventory).toBe(4)
+			expect(UI.MenuBadges.Fighters).toBe(4)
 			expect(badge.Count.Text).toBe("4")
 
 			-- Opening Fighters (here through the menu button) clears it.
-			UI:Open("Inventory")
+			UI:Open("Fighters")
 			task.wait(0.05)
-			expect(UI.MenuBadges.Inventory).toBe(0)
+			expect(UI.MenuBadges.Fighters).toBe(0)
 			expect(badge.Visible).toBe(false)
 			UI:Close()
 			-- Fighters already owned stay "seen"; only later pulls count again.
 			s.Net.Request("Summon", "B_W1", 1)
 			task.wait(0.1)
-			expect(UI.MenuBadges.Inventory).toBe(1)
+			expect(UI.MenuBadges.Fighters).toBe(1)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
@@ -171,7 +171,7 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("stays clear of the menu and sits above the level bar when it is enabled", function()
+		t.it("stays clear of the side menus and sits above the level bar when it is enabled", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
 			local TeamBar = s.Controller("TeamBarController")
@@ -187,8 +187,9 @@ return function(t)
 			local function leftEdgeAndMenuRight(viewportWidth: number)
 				local scale = TeamBar.Scale.Scale
 				local left = viewportWidth / 2 + container.Position.X.Offset - container.Size.X.Offset * scale / 2
-				local menuScale = UI.Menu:FindFirstChildOfClass("UIScale").Scale
-				return left, UI.Menu.Position.X.Offset + UI.Menu.Size.X.Offset * menuScale
+				local nav = UI.LeftNav
+				local menuScale = nav:FindFirstChildOfClass("UIScale").Scale
+				return left, nav.Position.X.Offset + nav.Size.X.Offset * menuScale
 			end
 			local left, menuRight = leftEdgeAndMenuRight(667)
 			expect(TeamBar.Scale.Scale < 1).toBe(true)

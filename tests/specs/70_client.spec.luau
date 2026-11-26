@@ -16,7 +16,24 @@ return function(t)
 			expect(State.Data.Currencies.Yen).toBe(s.Data.Currencies.Yen)
 
 			local UI = s.Controller("UIController")
-			for _, name in { "Inventory", "Summon", "Worlds", "Quests", "Shop", "Upgrades", "Settings", "Raids" } do
+			for _, name in {
+				"Fighters",
+				"Summon",
+				"Worlds",
+				"Quests",
+				"Shop",
+				"Upgrades",
+				"Settings",
+				"Raids",
+				"Codes",
+				"Teleport",
+				"Items",
+				"Mounts",
+				"Achievements",
+				"Stats",
+				"Index",
+				"UpdateLog",
+			} do
 				UI:Open(name)
 				task.wait(0.02)
 				expect(UI.Windows[name].Frame.Visible).toBe(true)
@@ -45,7 +62,7 @@ return function(t)
 		t.it("scales windows and HUD to fit a phone screen", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
-			local window = UI.Windows.Inventory.Frame
+			local window = UI.Windows.Fighters.Frame
 			local scale = window:FindFirstChildOfClass("UIScale")
 			expect(scale.Scale).toBe(1)
 			Fake.SetProperty(s.Camera, "ViewportSize", roblox.Vector2.new(844, 390))
@@ -53,7 +70,8 @@ return function(t)
 			expect(scale.Scale < 0.7).toBe(true)
 			-- 820x520 window must fit inside 844x(390-58)
 			expect(520 * scale.Scale <= 390 - 58).toBe(true)
-			expect(UI.Menu:FindFirstChildOfClass("UIScale").Scale < 1).toBe(true)
+			expect(UI.LeftNav:FindFirstChildOfClass("UIScale").Scale < 1).toBe(true)
+			expect(UI.RightNav:FindFirstChildOfClass("UIScale").Scale < 1).toBe(true)
 		end)
 	end)
 end

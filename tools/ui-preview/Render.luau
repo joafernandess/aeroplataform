@@ -195,7 +195,8 @@ local function strokes(inst)
 	for _, child in inst:GetChildren() do
 		if Fake.Data(child).ClassName == "UIStroke" and child.Enabled ~= false then
 			local mode = enumName(child.ApplyStrokeMode)
-			local isText = Fake.Data(inst).ClassName == "TextLabel" or Fake.Data(inst).ClassName == "TextButton"
+			local cls = Fake.Data(inst).ClassName
+			local isText = cls == "TextLabel" or cls == "TextButton" or cls == "TextBox"
 			if mode == "Border" or not isText then
 				border = border or child
 			else
@@ -206,8 +207,8 @@ local function strokes(inst)
 	return border, text
 end
 
-local function textHtml(inst, rect): string
-	local text = tostring(inst.Text or "")
+local function textHtml(inst, rect, placeholder: boolean?): string
+	local text = tostring(if placeholder then inst.PlaceholderText else inst.Text or "")
 	if text == "" then
 		return ""
 	end
@@ -247,7 +248,7 @@ local function textHtml(inst, rect): string
 		size,
 		(FONTS[enumName(inst.Font)] or FONTS.Gotham)[1] .. "," .. EMOJI,
 		(FONTS[enumName(inst.Font)] or FONTS.Gotham)[2],
-		rgba(inst.TextColor3, inst.TextTransparency),
+		rgba(if placeholder then inst.PlaceholderColor3 else inst.TextColor3, inst.TextTransparency),
 		wrap,
 		stroke,
 		body
@@ -351,6 +352,9 @@ local function nodeHtml(inst, rect, parentRect): string
 	local parts = { '<div class="g" style="' .. table.concat(styles) .. '">' }
 	if className == "TextLabel" or className == "TextButton" then
 		table.insert(parts, textHtml(inst, rect))
+	elseif className == "TextBox" then
+		-- Empty box: Roblox shows the placeholder text in PlaceholderColor3.
+		table.insert(parts, textHtml(inst, rect, tostring(inst.Text or "") == ""))
 	elseif className == "ImageLabel" or className == "ImageButton" then
 		table.insert(parts, imageHtml(inst))
 	end

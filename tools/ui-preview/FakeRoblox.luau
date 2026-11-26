@@ -49,6 +49,7 @@ local PARENTS = {
 	ScrollingFrame = { "GuiObject" },
 	TextLabel = { "GuiObject" },
 	TextButton = { "GuiButton", "GuiObject" },
+	TextBox = { "GuiObject" },
 	ImageLabel = { "GuiObject" },
 	ImageButton = { "GuiButton", "GuiObject" },
 	ScreenGui = { "LayerCollector", "GuiBase2d" },
@@ -107,6 +108,7 @@ local DEFAULTS = {
 	UICorner = { CornerRadius = roblox.UDim.new(0, 8) },
 	UIStroke = { Thickness = 1, Color = roblox.Color3.new(0, 0, 0), Transparency = 0 },
 	ScrollingFrame = { ScrollBarThickness = 12 },
+	TextBox = { PlaceholderText = "", PlaceholderColor3 = roblox.Color3.fromRGB(178, 178, 178), ClearTextOnFocus = true, Text = "" },
 	UIScale = { Scale = 1 },
 	UIGradient = { Rotation = 0 },
 }
@@ -127,6 +129,8 @@ local EVENTS = {
 	MouseButton1Up = true,
 	InputBegan = true,
 	InputEnded = true,
+	FocusLost = true,
+	Focused = true,
 }
 
 local counter = 0
@@ -164,11 +168,12 @@ local function defaultFor(className: string, key: string)
 	if own and own[key] ~= nil then
 		return own[key]
 	end
-	local isGui = className == "Frame" or className == "ScrollingFrame" or className == "TextLabel" or className == "TextButton" or className == "ImageLabel" or className == "ImageButton"
+	local isText = className == "TextLabel" or className == "TextButton" or className == "TextBox"
+	local isGui = isText or className == "Frame" or className == "ScrollingFrame" or className == "ImageLabel" or className == "ImageButton"
 	if isGui and GUI_DEFAULTS[key] ~= nil then
 		return GUI_DEFAULTS[key]
 	end
-	if (className == "TextLabel" or className == "TextButton") and TEXT_DEFAULTS[key] ~= nil then
+	if isText and TEXT_DEFAULTS[key] ~= nil then
 		return TEXT_DEFAULTS[key]
 	end
 	if (className == "ImageLabel" or className == "ImageButton") and IMAGE_DEFAULTS[key] ~= nil then

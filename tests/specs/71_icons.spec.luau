@@ -35,7 +35,7 @@ return function(t)
 	t.describe("icons", function()
 		t.it("draws every contract name with primitives at 24, 48 and 72 px", function()
 			local Icons, Theme = load()
-			expect(#Icons.Names).toBe(28)
+			expect(#Icons.Names).toBe(36) -- 28 HUD icons + 8 navigation icons
 			local holder = screen()
 			for _, name in Icons.Names do
 				expect(Icons.Has(name)).toBe(true)

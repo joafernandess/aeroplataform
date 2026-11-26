@@ -24,6 +24,7 @@ SettingsService.Schema = {
 	ShowOtherUnits = { Type = "boolean" },
 	AutoDeleteCommon = { Type = "boolean" },
 	AutoDeleteRare = { Type = "boolean" },
+	LastSeenUpdate = { Type = "string", MaxLength = 32 },
 }
 
 local DataService
@@ -35,6 +36,9 @@ function SettingsService:Set(player, key: any, value: any): (boolean, any)
 	end
 	local rule = type(key) == "string" and SettingsService.Schema[key]
 	if not rule or type(value) ~= rule.Type then
+		return false, "InvalidArguments"
+	end
+	if rule.Type == "string" and #value > (rule.MaxLength or 32) then
 		return false, "InvalidArguments"
 	end
 	if rule.Type == "number" then

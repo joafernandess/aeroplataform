@@ -139,6 +139,36 @@ function WorldService:Teleport(player, worldId: string): (boolean, any)
 	return true, worldId
 end
 
+--[[
+	Teleport inside the current world (TP menu): spawn, summon orb, zones and boss arenas from
+	Worlds.GetTeleportPoints. Not available inside raids. Works in the base game (no world unlock needed).
+]]
+function WorldService:TeleportToPoint(player, pointId: string): (boolean, any)
+	local data = DataService:GetData(player)
+	if not data then
+		return false, "DataNotLoaded"
+	end
+	local raid = self.Services.RaidService
+	if raid and raid:GetPlayerZone(player) then
+		return false, "AlreadyInRaid"
+	end
+	for _, point in Worlds.GetTeleportPoints(data.CurrentWorld) do
+		if point.Id == pointId then
+			local position = if point.Id == "spawn"
+				then self:GetSpawnPosition(data.CurrentWorld)
+				else Vector3.new(point.Position[1], point.Position[2] + 3, point.Position[3])
+			if not position or not PlayerUtil.Teleport(player, position) then
+				return false, "InternalError"
+			end
+			if self.Services.CombatService then
+				self.Services.CombatService:ClearTarget(player)
+			end
+			return true, point.Id
+		end
+	end
+	return false, "PointNotFound"
+end
+
 -- World clear reward: first kill of the world's last listed boss.
 function WorldService:_onEnemyKilled(player, enemyDef)
 	local world = Worlds.Get(enemyDef.World)
@@ -177,6 +207,13 @@ function WorldService:Init(services)
 		end
 		return self:Unlock(player, worldId)
 	end, { RateLimit = 2 })
+
+	Net.Handle("TeleportToPoint", function(player, pointId)
+		if not Validate.String(pointId, 24) then
+			return false, "InvalidArguments"
+		end
+		return self:TeleportToPoint(player, pointId)
+	end, { RateLimit = 1, Burst = 2 })
 
 	Net.Handle("TeleportWorld", function(player, worldId)
 		if not Validate.String(worldId, 16) then

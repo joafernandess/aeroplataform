@@ -47,6 +47,10 @@ local Errors = {
 	MaxUpgrade = "Upgrade already maxed.",
 	NotAdmin = "Not allowed.",
 	FeatureDisabled = "Coming soon!",
+	InvalidCode = "That code doesn't exist.",
+	CodeExpired = "That code has expired.",
+	CodeAlreadyUsed = "You already redeemed that code.",
+	PointNotFound = "Teleport point not found.",
 }
 
 local Codes = {}
