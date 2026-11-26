@@ -1,9 +1,11 @@
 --[[
 	Navigation
-	The two side menus of the HUD. Edit this table to add, remove or reorder menu buttons — UIController builds
-	the columns from it (no other code changes needed as long as the window exists).
+	The two side menus of the HUD: icon-only square buttons in a grid of `PerRow` per row, read left-to-right,
+	top-to-bottom. Edit these tables to add, remove or reorder buttons — UIController builds the grids from them
+	(no other code changes needed as long as the window exists).
 
 	  Window   id of the window opened by the button (created by the window's controller)
+	  Label    the menu's name (accessibility / tests; buttons show only the icon)
 	  Icon     UI/Icons name
 	  Accent   small identity detail on the button (palette only)
 	A system that is switched off in Config/Features keeps its button: its window shows its own "not available
@@ -45,11 +47,11 @@ Navigation.Hotkeys = {
 	[Enum.KeyCode.B] = "Shop",
 }
 
--- Button geometry at the 1280x720 design size (the whole column is scaled with the HUD on small screens).
-Navigation.ButtonSize = 58
-Navigation.CellHeight = 76
-Navigation.Gap = 4
-Navigation.Margin = 12
-Navigation.CenterY = 0.56 -- vertical centre of both columns (scale of the screen height)
+-- Grid geometry at the 1280x720 design size (scaled with the HUD on small screens, see UIController:LayoutNav).
+Navigation.PerRow = 2
+Navigation.ButtonSize = 66
+Navigation.Gap = 10
+Navigation.Margin = 14
+Navigation.CenterY = 0.5 -- preferred vertical centre of both grids (scale of the screen height)
 
 return Navigation

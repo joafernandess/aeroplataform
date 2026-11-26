@@ -1,29 +1,25 @@
 --[[
 	HUDController
-	Always-visible player info (top-left), kept compact so it never competes with the side menus:
-	  Yen pill + "≈ X ¥/min" · team Power pill · active boosts/events (only when there are any)
-	  (Gems/Gold/Tokens pills appear only when Features.PremiumCurrencies is on)
-	Elsewhere:
-	  bottom-centre level badge + XP bar (Features.PlayerLevel)
-	  AUTO toggle   docked next to the fighter slots (TeamBarController.ActionSlot); a spark orbits it while
-	                auto-attack is on and a status pill under it says ON/OFF
+	Always-visible player info (top-left), kept minimal:
+	  Yen pill (Gems/Gold/Tokens pills too when Features.PremiumCurrencies is on)
+	  active boosts/events under it (only while there are any)
+	  bottom-centre level badge + XP bar (only when Features.PlayerLevel is on)
 	Side menus belong to UIController (UI/Navigation); the top-right corner belongs to UpdateLogController.
+	Team power lives in the Stats window; auto-attack is a toggle in Settings.
 
-	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency or the team power goes up, the
-	pill pops (UIScale on the pill itself, not on the scaled column), its number counts up in ~0.4s and a floating
-	"+X" ticker rises next to it and fades. Gains that arrive while a ticker is still showing merge into it.
-	Decreases (spending, unequipping) only count down: no pop, no ticker.
+	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency goes up, the pill pops (UIScale
+	on the pill itself, not on the scaled column), its number counts up in ~0.4s and a floating "+X" ticker rises
+	next to it and fades. Gains that arrive while a ticker is still showing merge into it.
+	Decreases (spending) only count down: no pop, no ticker.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
 local Features = require(Shared.Config.Features)
 local Formulas = require(Shared.Modules.Formulas)
-local UnitStats = require(Shared.Modules.UnitStats)
 local NumberFormat = require(Shared.Modules.NumberFormat)
 
 local Client = script.Parent.Parent
@@ -41,28 +37,14 @@ local BUMP_SCALE = 1.12
 local TICKER_RISE_TIME = 0.6
 local TICKER_HOLD = 0.75 -- a ticker stays fully visible this long after its last (merged) gain
 local TICKER_FADE = 0.3
-local AUTO_SPIN_SPEED = 90 -- degrees per second while auto-attack is on
 
 local PILL_HEIGHT = 44 -- C.CurrencyPill container height (40px bar + 4)
-local RATE_HEIGHT = 20
+local BUFF_HEIGHT = 30
 
 local function tween(instance: Instance, seconds: number, goals: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?)
 	local t = TweenService:Create(instance, TweenInfo.new(seconds, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goals)
 	t:Play()
 	return t
-end
-
--- Estimated damage per second of the equipped team (client-side estimate for display only).
-local function teamPower(data): number
-	local total = 0
-	for _, uid in data.EquippedUnits do
-		local unit = data.Inventory.Units[uid]
-		local stats = unit and UnitStats.Compute(unit)
-		if stats then
-			total += stats.Power
-		end
-	end
-	return math.floor(total * Formulas.UpgradeMultiplier("Damage", data.Upgrades.Damage or 0))
 end
 
 local function whole(value: number): number
@@ -110,11 +92,10 @@ function HUDController:Init(controllers)
 		if currency ~= "Yen" and not Features.PremiumCurrencies then
 			continue -- base game: Yen only
 		end
-		local isYen = currency == "Yen"
 		local row = C.Frame(currencies, {
 			Name = currency .. "Row",
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(200, PILL_HEIGHT + (if isYen then RATE_HEIGHT + 2 else 0)),
+			Size = UDim2.fromOffset(200, PILL_HEIGHT),
 			LayoutOrder = i,
 		})
 		local pill = C.CurrencyPill(row, Theme.Icons[currency] or "?", Theme.Currency(currency), 200, {
@@ -143,49 +124,15 @@ function HUDController:Init(controllers)
 			TickerTo = UDim2.fromOffset(208, PILL_HEIGHT / 2 - 3),
 			TickerAlign = Enum.TextXAlignment.Left,
 		})
-		if isYen then
-			-- Income caption: small dark pill tucked under the Yen pill, aligned with its number.
-			local ratePill = C.Frame(row, {
-				Name = "YenPerMinute",
-				BackgroundColor3 = P.Panel,
-				BackgroundTransparency = 0.15,
-				Position = UDim2.fromOffset(46, PILL_HEIGHT + 1),
-				Size = UDim2.fromOffset(124, RATE_HEIGHT),
-			})
-			C.Corner(ratePill, UDim.new(0.5, 0))
-			C.Stroke(ratePill, P.Ink, 2)
-			self.RateLabel = C.Title(ratePill, "≈ 0 " .. glyph .. "/min", {
-				Name = "Rate",
-				Font = Theme.Fonts.Number,
-				Size = UDim2.fromScale(1, 1),
-				TextSize = 14,
-				TextColor3 = P.Ice,
-				TextXAlignment = Enum.TextXAlignment.Center,
-				ZIndex = 2,
-			}, 1.5)
-		end
 	end
 
-	-- Team Power: under the currencies, same column (player info), slightly slimmer than the Yen pill.
-	local powerRow = C.Frame(currencies, { Name = "PowerRow", BackgroundTransparency = 1, Size = UDim2.fromOffset(200, PILL_HEIGHT), LayoutOrder = 50 })
-	self.PowerPill = C.CurrencyPill(powerRow, Theme.Icons.Power, P.Ink, 184, { GlyphColor = P.Cyan, Height = 40 })
-	self.PowerPill.Frame.AnchorPoint = Vector2.new(0, 0.5)
-	self.PowerPill.Frame.Position = UDim2.fromOffset(0, PILL_HEIGHT / 2)
-	self.Animated.Power = animated(self.PowerPill, {
-		Holder = powerRow,
-		Format = function(value: number): string
-			return NumberFormat.Abbreviate(whole(value)) .. " Power"
-		end,
-		TickerText = function(amount: number): string
-			return "+" .. NumberFormat.Abbreviate(amount)
-		end,
-		TickerAnchor = Vector2.new(0, 0.5),
-		TickerFrom = UDim2.fromOffset(192, PILL_HEIGHT / 2 + 10),
-		TickerTo = UDim2.fromOffset(192, PILL_HEIGHT / 2 - 3),
-		TickerAlign = Enum.TextXAlignment.Left,
-	})
-	self.BuffList = C.Frame(currencies, { Name = "Boosts", BackgroundTransparency = 1, Size = UDim2.fromOffset(220, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 60, Visible = false })
+	self.BuffList = C.Frame(currencies, { Name = "Boosts", BackgroundTransparency = 1, Size = UDim2.fromOffset(220, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 50, Visible = false })
 	C.List(self.BuffList, Enum.FillDirection.Vertical, 6)
+
+	self.InfoFrame = currencies
+	ui:AvoidForNav("Left", function()
+		return self:InfoBottom()
+	end)
 
 	-- Level badge + XP bar (bottom centre)
 	local levelFrame = C.Frame(root, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(460, 52), Visible = Features.PlayerLevel })
@@ -197,30 +144,29 @@ function HUDController:Init(controllers)
 	self.LevelLabel = C.Label(badge, "1", { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Display, TextSize = 24, ZIndex = 5 })
 	C.Outline(self.LevelLabel, 2.5)
 
-	-- AUTO toggle: built here (it owns the auto-attack setting), docked next to the fighter slots in Start.
-	local autoContainer, autoButton = C.IconButton(root, Theme.Icons.Auto, nil, "Primary", function()
-		local data = State.Data
-		if data then
-			State.Request("UpdateSetting", "AutoAttack", not data.Settings.AutoAttack)
-		end
-	end, 60)
-	autoContainer.Name = "Auto"
-	autoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	autoContainer.Position = UDim2.fromScale(0.5, 0.5)
-	autoContainer.Size = UDim2.fromOffset(84, 64 + 24)
-	self.AutoContainer = autoContainer
-	self.AutoButton = autoButton
-	-- Status pill under the button: cyan "AUTO ON" / inverted black "AUTO OFF" (never colour alone: the text says it).
-	local status = C.Frame(autoContainer, { Name = "AutoStatus", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(80, 22), BackgroundColor3 = P.Cyan, ZIndex = 4 })
-	C.Corner(status, UDim.new(0.5, 0))
-	self.AutoStatusStroke = C.Stroke(status, P.Ink, 2.5)
-	self.AutoStatus = status
-	self.AutoCaption = C.Label(status, "AUTO ON", { Name = "Caption", Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Title, TextSize = 14, TextColor3 = P.Ink, ZIndex = 5 })
-
 	-- Responsive scaling (phones/tablets): every HUD block keeps its anchor and shrinks with the screen.
 	for _, gui in { currencies, levelFrame } do
 		ui:AddScaled(gui, "Hud")
 	end
+end
+
+-- Bottom edge of the player-info stack (root pixels): the left menu column stays below it.
+function HUDController:InfoBottom(): number
+	local frame = self.InfoFrame
+	local height, count = 0, 0
+	for _, child in frame:GetChildren() do
+		if child:IsA("GuiObject") and child.Visible then
+			count += 1
+			if child == self.BuffList then
+				height += (self.BuffCount or 0) * (BUFF_HEIGHT + 6) - 6
+			else
+				height += child.Size.Y.Offset
+			end
+		end
+	end
+	height += math.max(count - 1, 0) * 6
+	local scale = frame:FindFirstChildOfClass("UIScale")
+	return frame.Position.Y.Offset + height * (if scale then scale.Scale else 1)
 end
 
 -- Reward feedback ------------------------------------------------------------------------------------------------
@@ -301,113 +247,6 @@ function HUDController:SetAnimated(entry, target: number, instant: boolean?)
 	end
 end
 
-function HUDController:RefreshRate()
-	local stats = self.Controllers and self.Controllers.SessionStatsController
-	if not (self.RateLabel and stats and stats.YenPerMinute) then
-		return
-	end
-	local rate = math.floor(stats:YenPerMinute())
-	self.RateLabel.Text = "≈ " .. NumberFormat.Abbreviate(rate, 1) .. " " .. Theme.Icons.Yen .. "/min"
-end
-
--- AUTO button ---------------------------------------------------------------------------------------------------
-
--- The object that holds the AUTO glyph: an explicit "Icon" holder or image if the button has one, else its label.
-function HUDController:_autoIcon(): GuiObject?
-	local cached = self.AutoIcon
-	if cached and cached.Parent then
-		return cached
-	end
-	local button = self.AutoButton
-	if not button then
-		return nil
-	end
-	local descendants = button:GetDescendants()
-	local found = nil
-	for _, d in descendants do
-		if d.Name == "Icon" and d:IsA("GuiObject") then
-			found = d
-			break
-		end
-	end
-	if not found then
-		for _, d in descendants do
-			if d:IsA("ImageLabel") then
-				found = d
-				break
-			end
-		end
-	end
-	if not found then
-		for _, d in descendants do
-			if d:IsA("TextLabel") and (d.Text == Theme.Icons.Auto or d.Name == "Label") then
-				found = d
-				break
-			end
-		end
-	end
-	self.AutoIcon = found
-	return found
-end
-
-function HUDController:SetAutoState(on: boolean)
-	local P = Theme.Colors
-	self.AutoOn = on
-	C.SetKind(self.AutoButton, if on then "Primary" else "Dark")
-	C.SetSelected(self.AutoButton, on)
-	self.AutoCaption.Text = if on then "AUTO ON" else "AUTO OFF"
-	self.AutoCaption.TextColor3 = if on then P.Ink else P.White
-	self.AutoStatus.BackgroundColor3 = if on then P.Cyan else P.Ink
-	self.AutoStatusStroke.Color = if on then P.Ink else P.White
-	self.AutoStatusStroke.Thickness = if on then 2.5 else 2
-	local orbit = self:_autoOrbit()
-	if orbit then
-		orbit.Visible = on
-	end
-end
-
---[[
-	"Working" indicator for AUTO: a cyan spark orbiting the button while auto-attack is on.
-	The icon itself is never rotated: code-drawn icons (UI/Icons) rely on clipping frames, and Roblox disables
-	clipping under rotation, which would reveal their hidden parts.
-]]
-function HUDController:_autoOrbit()
-	if self.AutoOrbit and self.AutoOrbit.Parent then
-		return self.AutoOrbit
-	end
-	if not self.AutoButton then
-		return nil
-	end
-	local P = Theme.Colors
-	local spark = C.Frame(self.AutoButton, {
-		Name = "AutoOrbit",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.08),
-		Size = UDim2.fromOffset(12, 12),
-		BackgroundColor3 = P.Cyan,
-		ZIndex = 20,
-		Visible = self.AutoOn == true,
-	})
-	C.Corner(spark, UDim.new(0.5, 0))
-	C.Stroke(spark, P.Ink, 2)
-	self.AutoOrbit = spark
-	self.AutoAngle = 0
-	return spark
-end
-
--- Per frame: move the spark around the AUTO button while auto-attack is on.
-function HUDController:Step(dt: number)
-	if not self.AutoOn then
-		return
-	end
-	local spark = self:_autoOrbit()
-	if spark then
-		self.AutoAngle = ((self.AutoAngle or 0) + dt * math.rad(AUTO_SPIN_SPEED)) % (math.pi * 2)
-		local radius = 0.46
-		spark.Position = UDim2.fromScale(0.5 + math.cos(self.AutoAngle) * radius, 0.5 + math.sin(self.AutoAngle) * radius)
-	end
-end
-
 -- Boosts / events --------------------------------------------------------------------------------------------------
 
 function HUDController:RenderBuffs()
@@ -419,7 +258,7 @@ function HUDController:RenderBuffs()
 	local P = Theme.Colors
 	local now = math.floor(workspace:GetServerTimeNow())
 	local function badge(text: string, accent: Color3, order: number)
-		local pill = C.Frame(self.BuffList, { Size = UDim2.fromOffset(220, 30), BackgroundColor3 = P.Panel, BackgroundTransparency = 0.1, LayoutOrder = order })
+		local pill = C.Frame(self.BuffList, { Size = UDim2.fromOffset(220, BUFF_HEIGHT), BackgroundColor3 = P.Panel, BackgroundTransparency = 0.1, LayoutOrder = order })
 		C.Corner(pill, UDim.new(0.5, 0))
 		C.Stroke(pill, P.Ink, 2.5)
 		local bar = C.Frame(pill, { BackgroundColor3 = accent, Position = UDim2.fromOffset(8, 7), Size = UDim2.fromOffset(6, 16), ZIndex = 2 })
@@ -438,33 +277,18 @@ function HUDController:RenderBuffs()
 		order += 1
 		badge("EVENT: " .. event.Name, P.Blue500, order)
 	end
-	-- Collapse the empty list (it is the last block of the player-info column).
+	-- Collapse the empty list (it is the last block of the player-info column); the left menu follows its height.
 	self.BuffList.Visible = order > 0
-end
-
--- Docks the AUTO toggle next to the fighter slots; without a team bar it falls back to the right-centre edge.
-function HUDController:DockAuto()
-	local ui = self.Controllers.UIController
-	local teamBar = self.Controllers.TeamBarController
-	local dock = teamBar and teamBar.ActionSlot
-	if dock then
-		self.AutoContainer.Parent = dock
-		self.AutoContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-		self.AutoContainer.Position = UDim2.fromScale(0.5, 0.5)
-	else
-		self.AutoContainer.AnchorPoint = Vector2.new(1, 0.5)
-		self.AutoContainer.Position = UDim2.new(1, -96, 0.86, 0)
-		ui:AddScaled(self.AutoContainer, "Hud")
+	if order ~= self.BuffCount then
+		self.BuffCount = order
+		self.Controllers.UIController:LayoutNav()
 	end
 end
 
 function HUDController:Start()
-	self:DockAuto()
 	State.Observe({ "Currencies" }, function(data)
 		for currency, entry in self.Animated do
-			if currency ~= "Power" then
-				self:SetAnimated(entry, data.Currencies[currency] or 0)
-			end
+			self:SetAnimated(entry, data.Currencies[currency] or 0)
 		end
 	end)
 	State.Observe({ "Level", "Experience" }, function(data)
@@ -472,33 +296,17 @@ function HUDController:Start()
 		self.LevelLabel.Text = tostring(data.Level)
 		self.XPBar.Set(data.Experience / math.max(needed, 1), NumberFormat.Abbreviate(data.Experience) .. " / " .. NumberFormat.Abbreviate(needed) .. " XP")
 	end)
-	State.Observe({ "EquippedUnits", "Inventory", "Upgrades" }, function(data)
-		self:SetAnimated(self.Animated.Power, teamPower(data))
-	end)
-	State.Observe({ "Settings" }, function(data)
-		self:SetAutoState(data.Settings.AutoAttack ~= false)
-	end)
 	State.Observe({ "ActiveBoosts" }, function()
 		self:RenderBuffs()
 	end)
 	State.EventsChanged:Connect(function()
 		self:RenderBuffs()
 	end)
-	local stats = self.Controllers.SessionStatsController
-	if stats and stats.Changed then
-		stats.Changed:Connect(function()
-			self:RefreshRate()
-		end)
-	end
-	RunService.RenderStepped:Connect(function(dt)
-		self:Step(dt)
-	end)
-	-- Refresh countdowns and let the income rate decay as old gains leave the 60s window.
+	-- Refresh boost countdowns.
 	task.spawn(function()
 		while true do
 			task.wait(1)
 			self:RenderBuffs()
-			self:RefreshRate()
 		end
 	end)
 end

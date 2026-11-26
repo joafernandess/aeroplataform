@@ -2,6 +2,8 @@
 	InventoryController
 	"Fighters" window: unit grid + embedded details panel (UnitDetailsController).
 	(Items and currencies live in the Inventory window, ItemsController.)
+	Also owns the NEW badge on the Fighters menu button: fighters obtained this session while the window was
+	closed (summons, quest rewards...) are counted until the Fighters window is opened.
 	Modes:
 	  Browse  - click a card to inspect it
 	  Fuse    - pick fodder for the selected target, then confirm (FuseUnits)
@@ -30,6 +32,8 @@ local InventoryController = {
 InventoryController.Mode = "Browse"
 InventoryController.SelectedUid = nil :: string?
 InventoryController.MultiSelect = {} :: { [string]: boolean }
+InventoryController.NewUids = {} :: { [string]: boolean }
+InventoryController.KnownUids = nil :: { [string]: boolean }?
 
 local SORTS = { "Power", "Rarity", "Level" }
 
@@ -239,8 +243,63 @@ function InventoryController:Init(controllers)
 	tabs.Select("Units")
 end
 
+-- NEW badge -------------------------------------------------------------------------------------------------------
+
+function InventoryController:TrackNew(data)
+	local units = data.Inventory.Units
+	if self.KnownUids == nil then
+		-- First snapshot: everything owned before this session is "old".
+		local known = {}
+		for uid in units do
+			known[uid] = true
+		end
+		self.KnownUids = known
+		return
+	end
+	local known = self.KnownUids :: { [string]: boolean }
+	local open = self.Controllers.UIController:IsOpen("Fighters")
+	for uid in units do
+		if not known[uid] then
+			known[uid] = true
+			if not open then
+				self.NewUids[uid] = true
+			end
+		end
+	end
+	-- Sold / fused away before being seen: stop counting them.
+	for uid in self.NewUids do
+		if not units[uid] then
+			self.NewUids[uid] = nil
+		end
+	end
+	self:_publishBadge()
+end
+
+function InventoryController:NewCount(): number
+	local count = 0
+	for _ in self.NewUids do
+		count += 1
+	end
+	return count
+end
+
+function InventoryController:ClearNew()
+	self.NewUids = {}
+	self:_publishBadge()
+end
+
+function InventoryController:_publishBadge()
+	self.Controllers.UIController:SetMenuBadge("Fighters", self:NewCount())
+end
+
 function InventoryController:Start()
+	self.Controllers.UIController.WindowChanged:Connect(function(name)
+		if name == "Fighters" then
+			self:ClearNew()
+		end
+	end)
 	State.Observe({ "Inventory", "EquippedUnits", "Upgrades" }, function(data)
+		self:TrackNew(data)
 		if self.SelectedUid and not data.Inventory.Units[self.SelectedUid] then
 			self.SelectedUid = nil
 		end

@@ -1,8 +1,10 @@
--- Reworked HUD on the REAL client bridged to the REAL server (tools/ui-preview/Session): side menus, top-right Update
--- Log card, player info stack, docked AUTO, fighter slot selection and every new window (Codes, Teleport, Index,
+-- Reworked HUD on the REAL client bridged to the REAL server (tools/ui-preview/Session): side menu grids, top-right
+-- Update Log card, minimal player info, the Fighters NEW badge and every new window (Codes, Teleport, Index,
 -- Inventory, Achievements, Stats, Mounts, Shop closed state).
 local task = require("@lune/task")
+local roblox = require("@lune/roblox")
 local Session = require("../../tools/ui-preview/Session")
+local Fake = require("../../tools/ui-preview/FakeRoblox")
 
 local CLIENT = "StarterPlayer/StarterPlayerScripts/Client/"
 
@@ -49,28 +51,48 @@ return function(t)
 	local expect = t.expect
 
 	t.describe("side menus", function()
-		t.it("builds both columns in the requested order and every button opens a real window", function()
+		t.it("builds both icon-only grids in the requested order and every button opens a real window", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
 			local Navigation = s.Runtime:Require(CLIENT .. "UI/Navigation")
-			local function order(column)
-				local names = {}
-				local list = {}
-				for _, child in column:GetChildren() do
+			-- Reading order of a grid: rows top to bottom, buttons left to right; also returns the row sizes.
+			local function order(grid)
+				local rows = {}
+				for _, child in grid:GetChildren() do
 					if child.ClassName == "Frame" then
-						table.insert(list, child)
+						table.insert(rows, child)
 					end
 				end
-				table.sort(list, function(a, b)
+				table.sort(rows, function(a, b)
 					return a.LayoutOrder < b.LayoutOrder
 				end)
-				for _, child in list do
-					table.insert(names, child.Name)
+				local names, sizes = {}, {}
+				for _, row in rows do
+					local buttons = {}
+					for _, child in row:GetChildren() do
+						if child.ClassName == "Frame" then
+							table.insert(buttons, child)
+						end
+					end
+					table.sort(buttons, function(a, b)
+						return a.LayoutOrder < b.LayoutOrder
+					end)
+					for _, button in buttons do
+						table.insert(names, button.Name)
+					end
+					table.insert(sizes, tostring(#buttons))
 				end
-				return table.concat(names, ",")
+				return table.concat(names, ","), table.concat(sizes, ",")
 			end
-			expect(order(UI.LeftNav)).toBe("Shop,Fighters,Settings,Codes,Quests,Teleport")
-			expect(order(UI.RightNav)).toBe("Items,Mounts,Achievements,Stats,Index")
+			local left, leftRows = order(UI.LeftNav)
+			local right, rightRows = order(UI.RightNav)
+			expect(left).toBe("Shop,Fighters,Settings,Codes,Quests,Teleport")
+			expect(leftRows).toBe("2,2,2")
+			expect(right).toBe("Items,Mounts,Achievements,Stats,Index")
+			expect(rightRows).toBe("2,2,1")
+			-- Icon only: no captions under the buttons.
+			expect(find(UI.LeftNav, "Caption")).toBeNil()
+			expect(find(UI.RightNav, "Caption")).toBeNil()
 			expect(UI.LeftNav.AnchorPoint.X).toBe(0)
 			expect(UI.RightNav.AnchorPoint.X).toBe(1)
 			for _, side in { Navigation.Left, Navigation.Right } do
@@ -88,11 +110,10 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("opens windows at their responsive scale and keeps the old top-right Power/STATS out", function()
+		t.it("opens windows at their responsive scale; the HUD keeps only the Yen pill top-left", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
 			local HUD = s.Controller("HUDController")
-			local TeamBar = s.Controller("TeamBarController")
 			UI:Open("Codes")
 			-- (FakeRoblox tweens jump to their goal: the pop from 86% ends on the responsive scale and the scrim fades in.)
 			local scale = UI.Windows.Codes.Frame:FindFirstChildOfClass("UIScale")
@@ -100,14 +121,69 @@ return function(t)
 			expect(math.abs(scale.Scale - 1) < 1e-3).toBe(true)
 			expect(UI.Scrim.BackgroundTransparency).toBe(0.55)
 			UI:Close()
-			-- Player info: Power lives under the Yen pill (top-left), not in a top-right column.
-			local info = find(UI:GetRoot(), "PlayerInfo")
+			local root = UI:GetRoot()
+			local info = find(root, "PlayerInfo")
 			expect(info ~= nil).toBe(true)
-			expect(isInside(HUD.PowerPill.Frame, info)).toBe(true)
-			expect(HUD.RightTools).toBeNil()
-			expect(find(UI:GetRoot(), "StatsToggle")).toBeNil()
-			-- AUTO is docked next to the fighter slots.
-			expect(HUD.AutoContainer.Parent).toBe(TeamBar.ActionSlot)
+			expect(isInside(HUD.CurrencyPills.Yen.Frame, info)).toBe(true)
+			-- Removed: Power pill, Yen/min caption, AUTO button, fighter slot bar, STATS toggle.
+			expect(HUD.PowerPill).toBeNil()
+			expect(HUD.Animated.Power).toBeNil()
+			for _, name in { "YenPerMinute", "Auto", "TeamBar", "StatsToggle", "PowerRow" } do
+				expect(find(root, name)).toBeNil()
+			end
+			-- The left grid sits below the player info, the right grid below the Update Log card.
+			local navScale = UI.LeftNav:FindFirstChild("NavScale").Scale
+			local leftTop = UI.LeftNav.Position.Y.Offset - UI.LeftNav.Size.Y.Offset * navScale / 2
+			expect(leftTop >= HUD:InfoBottom()).toBe(true)
+			expect(#s.Runtime.Mocks.Warnings).toBe(0)
+		end)
+
+		t.it("counts fighters obtained this session on the Fighters button and clears it when Fighters opens", function()
+			local s = Session.new()
+			local UI = s.Controller("UIController")
+			local Inventory = s.Controller("InventoryController")
+			local button = UI.MenuButtons.Fighters
+			expect(UI.MenuBadges.Fighters or 0).toBe(0)
+			expect(s.Net.Request("Summon", "B_W1", 3).ok).toBe(true)
+			task.wait(0.1)
+			expect(UI.MenuBadges.Fighters).toBe(3)
+			expect(Inventory:NewCount()).toBe(3)
+			local badge = button:FindFirstChild("Badge")
+			expect(badge.Visible).toBe(true)
+			expect(badge.Count.Text).toBe("3")
+			UI:Open("Fighters")
+			task.wait(0.05)
+			expect(UI.MenuBadges.Fighters).toBe(0)
+			expect(badge.Visible).toBe(false)
+			UI:Close()
+			-- Already-seen fighters stay seen; only later pulls count again.
+			s.Net.Request("Summon", "B_W1", 1)
+			task.wait(0.1)
+			expect(UI.MenuBadges.Fighters).toBe(1)
+			-- Badge text caps at 99+ and hides at 0.
+			UI:SetMenuBadge("Settings", 120)
+			expect(UI.MenuButtons.Settings:FindFirstChild("Badge").Count.Text).toBe("99+")
+			UI:SetMenuBadge("Settings", 0)
+			expect(UI.MenuButtons.Settings:FindFirstChild("Badge").Visible).toBe(false)
+			expect(#s.Runtime.Mocks.Warnings).toBe(0)
+		end)
+
+		t.it("fits both grids on a phone without covering the Yen pill or the Update Log card", function()
+			local s = Session.new()
+			local UI = s.Controller("UIController")
+			local HUD = s.Controller("HUDController")
+			local Log = s.Controller("UpdateLogController")
+			Fake.SetProperty(s.Camera, "ViewportSize", roblox.Vector2.new(667, 375))
+			task.wait(0.05)
+			local rootHeight = UI:GetRootSize().Y
+			for _, pair in { { UI.LeftNav, HUD:InfoBottom() }, { UI.RightNav, Log.CardHolder.Position.Y.Offset + Log.CardHolder.Size.Y.Offset * Log.CardHolder:FindFirstChildOfClass("UIScale").Scale } } do
+				local grid, above = pair[1], pair[2]
+				local scale = grid:FindFirstChild("NavScale").Scale
+				local half = grid.Size.Y.Offset * scale / 2
+				expect(scale < 1).toBe(true)
+				expect(grid.Position.Y.Offset - half >= above).toBe(true)
+				expect(grid.Position.Y.Offset + half <= rootHeight).toBe(true)
+			end
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 	end)
@@ -265,30 +341,6 @@ return function(t)
 				expect(find(list, "EmptyState") ~= nil).toBe(true)
 				expect(hasButtons(list)).toBe(false)
 			end
-			expect(#s.Runtime.Mocks.Warnings).toBe(0)
-		end)
-	end)
-
-	t.describe("fighter slots", function()
-		t.it("selects a slot with its hotkey and opens the fighter on the second press", function()
-			local s = Session.new()
-			local UI = s.Controller("UIController")
-			local TeamBar = s.Controller("TeamBarController")
-			local first = TeamBar.Team[1]
-			expect(first ~= nil).toBe(true)
-			TeamBar:Hotkey(1)
-			task.wait(0.02)
-			expect(TeamBar.SelectedUid).toBe(first.Uid)
-			expect(UI:IsOpen("Fighters")).toBe(false)
-			TeamBar:Hotkey(1)
-			task.wait(0.05)
-			expect(UI:IsOpen("Fighters")).toBe(true)
-			expect(s.Controller("InventoryController").SelectedUid).toBe(first.Uid)
-			-- Out-of-range hotkeys do nothing.
-			UI:Close()
-			TeamBar:Hotkey(8)
-			task.wait(0.02)
-			expect(UI:IsOpen("Fighters")).toBe(false)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 	end)

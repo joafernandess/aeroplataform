@@ -74,6 +74,26 @@ task.wait(0.05)
 shot("05_settings", "Settings")
 UI:Close()
 
+-- New menus (side columns + top-right Update Log card)
+local windows = {
+	{ "UpdateLog", "08_update_log", "Update Log (card no canto superior direito)" },
+	{ "Codes", "09_codes", "Codes" },
+	{ "Teleport", "10_teleport", "TP — pontos do mundo 1" },
+	{ "Index", "11_index", "Index — lutadores descobertos e ???" },
+	{ "Items", "12_inventory", "Inventory — carteira e itens" },
+	{ "Achievements", "13_achievements", "Achievements" },
+	{ "Stats", "14_stats", "Stats — poder do time, sessão e totais" },
+	{ "Quests", "15_quests", "Quests" },
+	{ "Mounts", "16_mounts", "Mounts (preparado, sistema ainda não existe)" },
+	{ "Shop", "17_shop", "Shop (fechada enquanto Features.Shop = false)" },
+}
+for _, entry in windows do
+	UI:Open(entry[1])
+	task.wait(0.05)
+	shot(entry[2], entry[3])
+end
+UI:Close()
+
 -- Phone-sized viewport (landscape) to check scaling
 local camera = services.Workspace.CurrentCamera
 Fake.SetProperty(camera, "ViewportSize", roblox.Vector2.new(844, 390))

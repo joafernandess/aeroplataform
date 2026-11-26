@@ -1,6 +1,6 @@
 --[[
 	UIController
-	Owns the root ScreenGui, the two side menus (built from UI/Navigation) and the window registry.
+	Owns the root ScreenGui, the two side menu grids (built from UI/Navigation) and the window registry.
 	Only one window is open at a time; opening one pops it in (TweenService) over a dark scrim.
 
 	  UI:CreateWindow(name, title, size?, onOpen?) -> window { Frame, Content, Title }
@@ -12,6 +12,11 @@
 	  Window - shrinks just enough to fit the screen (never above 1)
 	  Hud    - follows the screen size relative to 1280x720 (slightly boosted so text stays readable)
 	UIScale keeps each element's anchor point fixed, so corner-anchored HUD blocks stay in their corners.
+
+	Side menus (UI:LayoutNav) are laid out separately: each grid is centred at Navigation.CenterY but kept below
+	the HUD blocks registered with UI:AvoidForNav(side, bottomFn) (player info on the left, Update Log card on the
+	right) and above the bottom edge; on short screens it shrinks further so it always fits. LayoutChanged fires
+	after every re-layout.
 ]]
 
 local Players = game:GetService("Players")
@@ -34,11 +39,15 @@ local UIController = {
 UIController.Windows = {}
 UIController.Current = nil :: string?
 UIController.WindowChanged = Signal.new() -- (currentWindowName?)
+UIController.LayoutChanged = Signal.new() -- side menus were re-laid out (screen size or HUD blocks changed)
+UIController.NavAvoid = { Left = {}, Right = {} } :: { [string]: { () -> number } }
 
 local DESIGN_SIZE = Vector2.new(1280, 720)
 local TOPBAR_INSET = 58 -- Roblox top bar height (ScreenGui.IgnoreGuiInset = false)
 local HUD_BOOST = 1.2
 local MIN_SCALE = 0.55 -- below this text becomes unreadable; windows scroll instead
+local NAV_EDGE = 10 -- gap between a side menu and whatever it must stay clear of
+local NAV_MIN_SCALE = 0.42
 
 UIController.Scaled = {} :: { { Gui: GuiObject, Kind: string, Scale: UIScale } }
 UIController.MenuButtons = {} :: { [string]: GuiObject } -- window name -> nav tile (TextButton)
@@ -102,6 +111,46 @@ function UIController:RefreshScale()
 			entry.Scale.Scale = self:_scaleFor(entry.Gui, entry.Kind)
 		end
 	end
+	if self.LeftNav or self.RightNav then
+		self:LayoutNav()
+	end
+end
+
+-- Size of the root ScreenGui's area (the viewport below the Roblox top bar).
+function UIController:GetRootSize(): Vector2
+	local viewport = self:GetViewportSize()
+	return Vector2.new(viewport.X, viewport.Y - TOPBAR_INSET)
+end
+
+-- Registers a HUD block a side menu must stay below; `bottom()` returns its bottom edge in root pixels.
+function UIController:AvoidForNav(side: string, bottom: () -> number)
+	table.insert(self.NavAvoid[side], bottom)
+	if self.LeftNav or self.RightNav then
+		self:LayoutNav()
+	end
+end
+
+-- Places and scales both side menus (see the header).
+function UIController:LayoutNav()
+	local root = self:GetRootSize()
+	for side, column in { Left = self.LeftNav, Right = self.RightNav } do
+		local scale = column:FindFirstChild("NavScale")
+		local height = column.Size.Y.Offset
+		local minTop = NAV_EDGE
+		for _, bottom in self.NavAvoid[side] do
+			local ok, value = pcall(bottom)
+			if ok and type(value) == "number" then
+				minTop = math.max(minTop, value + NAV_EDGE)
+			end
+		end
+		local maxBottom = root.Y - NAV_EDGE
+		local s = math.max(math.min(self:_scaleFor(column, "Hud"), (maxBottom - minTop) / height), NAV_MIN_SCALE)
+		local h = height * s
+		local top = math.clamp(root.Y * Navigation.CenterY - h / 2, minTop, math.max(minTop, maxBottom - h))
+		scale.Scale = s
+		column.Position = UDim2.new(column.Position.X.Scale, column.Position.X.Offset, 0, top + h / 2)
+	end
+	self.LayoutChanged:Fire()
 end
 
 function UIController:CreateWindow(name: string, title: string, size: UDim2?, onOpen: ((...any) -> ())?)
@@ -181,32 +230,44 @@ function UIController:Toggle(name: string, ...: any)
 end
 
 -- Builds one side column from UI/Navigation entries. side = "Left" | "Right".
+-- One side menu: icon-only buttons in rows of Navigation.PerRow, pushed against its screen edge.
 function UIController:_buildColumn(side: string, entries)
 	local left = side == "Left"
-	local count = #entries
-	local height = count * Navigation.CellHeight + (count - 1) * Navigation.Gap
-	local column = C.Frame(self.Root, {
+	local perRow = Navigation.PerRow
+	local d, gap = Navigation.ButtonSize, Navigation.Gap
+	local rows = math.ceil(#entries / perRow)
+	local width = perRow * d + (perRow - 1) * gap
+	local height = rows * d + (rows - 1) * gap
+	local grid = C.Frame(self.Root, {
 		Name = side .. "Navigation",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(if left then 0 else 1, 0.5),
 		Position = UDim2.new(if left then 0 else 1, if left then Navigation.Margin else -Navigation.Margin, Navigation.CenterY, 0),
-		Size = UDim2.fromOffset(Navigation.ButtonSize + 22, height),
+		Size = UDim2.fromOffset(width, height),
 	})
-	C.Create("UISizeConstraint", { MaxSize = Vector2.new(Navigation.ButtonSize + 22, height), Parent = column })
-	local list = C.List(column, Enum.FillDirection.Vertical, Navigation.Gap, Enum.HorizontalAlignment.Center)
-	list.VerticalAlignment = Enum.VerticalAlignment.Center
-	for order, entry in entries do
-		local container, button = C.NavButton(column, entry.Icon, entry.Label, entry.Accent, function()
-			self:Toggle(entry.Window)
-		end, Navigation.ButtonSize)
-		container.Name = entry.Window
-		container.Size = UDim2.fromOffset(Navigation.ButtonSize + 22, Navigation.CellHeight)
-		container.LayoutOrder = order
-		self.MenuButtons[entry.Window] = button
-		self:_paintMenuBadge(entry.Window, false)
+	C.Create("UISizeConstraint", { MaxSize = Vector2.new(width, height), Parent = grid })
+	C.List(grid, Enum.FillDirection.Vertical, gap)
+	for r = 1, rows do
+		local row = C.Frame(grid, { Name = "Row" .. r, BackgroundTransparency = 1, Size = UDim2.fromOffset(width, d), LayoutOrder = r })
+		-- A short last row hugs the screen edge.
+		C.List(row, Enum.FillDirection.Horizontal, gap, if left then Enum.HorizontalAlignment.Left else Enum.HorizontalAlignment.Right)
+		for k = 1, perRow do
+			local order = (r - 1) * perRow + k
+			local entry = entries[order]
+			if not entry then
+				break
+			end
+			local container, button = C.NavButton(row, entry.Icon, nil, entry.Accent, function()
+				self:Toggle(entry.Window)
+			end, d)
+			container.Name = entry.Window
+			container.LayoutOrder = order
+			self.MenuButtons[entry.Window] = button
+			self:_paintMenuBadge(entry.Window, false)
+		end
 	end
-	self:AddScaled(column, "Hud")
-	return column
+	C.Create("UIScale", { Name = "NavScale", Parent = grid }) -- driven by LayoutNav
+	return grid
 end
 
 -- Notification badge (brief §5.2): cyan circle, ink border and ink count over the tile's top-right corner.

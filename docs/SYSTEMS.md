@@ -116,12 +116,31 @@ event, spawn, resetquests) disponíveis no Studio e para UserIds em `GameConfig.
 serviços normais (mesmas validações).
 Estado: **implementado e testado**.
 
+## Codes — `CodesService`, `Config/Codes`
+Códigos promocionais: `Codes.List` (vazio até existirem códigos reais), sem diferença de maiúsculas/minúsculas,
+validade opcional (`ExpiresAt`) e nível mínimo; recompensa uma vez por jogador (`GrantRewards` com
+`OnceKey = "Code:<CÓDIGO>"`). Remote `RedeemCode` com rate limit.
+Estado: **implementado e testado**.
+
+## Teleporte e Index — `WorldService`, `UnitService`
+`Worlds.GetTeleportPoints(mundo)`: spawn, orbe, cada zona e cada chefe; `TeleportToPoint` só aceita pontos do
+mundo atual. `data.Discovered`: todo lutador que o jogador já teve (summon, auto-venda, evolução) — base do Index.
+Estado: **implementado e testado**.
+
 ## K. UI — `Client/Controllers/*`
-Interfaces criadas por código (`UI/Components` + `UI/Theme`), cada uma com controller próprio:
-HUD (moedas, nível/XP, mundo, boosts/eventos, auto-ataque), Inventário (grade, ordenação, venda em massa,
-modo fusão, aba de itens), Detalhes da Unidade (stats, habilidades, comparação, equipar, travar, vender,
-fundir, evoluir, poções, reroll), Summon (banners, taxas, pity, x1/x10, revelação), Mundos, Quests/Conquistas,
-Loja, Upgrades, Configurações, Raids (lista + HUD da raid), Notificações, Indicadores de dano, Barras de vida,
-Alvo por clique/toque, Unidades seguindo o jogador, NPCs (ProximityPrompt → janela).
-Atalhos: I (unidades), Q (quests), M (mundos), B (loja), X / botão direito (limpar alvo).
-Estado: **implementado, compila e passa no linter; não testado visualmente** (requer Studio).
+Interfaces criadas por código (`UI/Components` + `UI/Theme` + `UI/Icons`), cada uma com controller próprio.
+HUD (mínimo): pílula de Yen no canto superior esquerdo (+X animado ao ganhar) e boosts ativos embaixo dela;
+card **UPDATE LOG** no canto superior direito (abre a janela; selo NEW até o jogador ler, salvo em
+`Settings.LastSeenUpdate`); menus laterais em **grade 2×N só com ícones** montados a partir de `UI/Navigation`:
+- esquerda: Shop, Fighters, Settings, Codes, Quests, TP
+- direita: Inventory (carteira + itens), Mounts, Achievements, Stats, Index
+As grades ficam abaixo das infos do jogador / do card de Update Log e encolhem em telas pequenas
+(`UIController:LayoutNav`). Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
+Janelas: Fighters (grade, ordenação, venda em massa, detalhes), Summon (orbe), Quests, Achievements, Codes,
+Teleport, Index (descobertos × silhuetas "???"), Inventory, Stats (poder do time por lutador, sessão, totais),
+Update Log (`Config/UpdateLog`, mais nova primeiro), Settings (inclui o auto-ataque), Mounts (preparada: o
+sistema ainda não existe e a janela diz isso), Shop (diz que está fechada enquanto `Features.Shop` = false).
+Também: Mundos, Upgrades e Raids (desligados no jogo base), notificações, números de dano, barras de vida,
+painel do alvo, indicador de zona, moedas voando.
+Atalhos: F (Fighters), I (Inventory), Q (Quests), T (Teleport), B (Shop), X / botão direito (limpar alvo).
+Estado: **implementado, compila, passa no linter e nos testes de cliente (Lune); não testado no Studio**.

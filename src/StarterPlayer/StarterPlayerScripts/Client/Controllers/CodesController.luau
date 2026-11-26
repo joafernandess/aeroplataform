@@ -60,7 +60,7 @@ end
 
 function CodesController:Init(controllers)
 	self.Controllers = controllers
-	local window = controllers.UIController:CreateWindow("Codes", "Codes", UDim2.fromOffset(560, 360), function()
+	local window = controllers.UIController:CreateWindow("Codes", "Codes", UDim2.fromOffset(560, 320), function()
 		self:SetStatus("Codes are not case-sensitive.")
 	end)
 	self.Window = window

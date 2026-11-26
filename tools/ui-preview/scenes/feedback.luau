@@ -1,7 +1,7 @@
 --[[
-	Scene: reward feedback & session stats (Lune)
+	Scene: reward feedback & the Stats window (Lune)
 	Kills enemies on the REAL server so EnemyDefeated + Currencies/Inventory updates reach the REAL client, then
-	renders the HUD mid-ticker, with the session stats panel expanded, AUTO off and on a phone screen.
+	renders the HUD mid-ticker, the Stats window after a boss kill and a phone screen with an active boost.
 
 	Usage (repo root):
 	  lune run tools/ui-preview/scenes/feedback [outputDir]
@@ -29,9 +29,7 @@ local session = Session.new()
 local S = session.Harness.Services
 local V = session.Harness.Vector3
 local rt = session.Runtime
-local State = rt:Require("StarterPlayer/StarterPlayerScripts/Client/State")
 local Stats = session.Controller("SessionStatsController")
-local RunService = session.Services.RunService
 
 local width, height = 1280, 720
 
@@ -51,40 +49,31 @@ end
 -- Pretend the session has been running for a few minutes (the rate uses the last 60s, at least 15s).
 Stats.StartedAt -= 4 * 60 + 12
 
-shot("01_idle", "HUD — antes de farmar (stats recolhido, 0 ¥/min)")
+shot("01_idle", "HUD — antes de farmar")
 
--- A burst of kills in the same frame merges into one ticker; a level-up raises team Power.
+-- A burst of kills in the same frame merges into one ticker.
 kill("W1_Bandit", 4)
 kill("W1_RogueNinja", 2)
-S.UnitService:AddUnitXP(session.Player, session.Units.Raizen.Uid, 4000)
 task.wait(0.2)
-shot("02_ticker", "Ganho de Yen e Power: pílula pulsa, número sobe, \"+X\" flutua ao lado")
+shot("02_ticker", "Ganho de Yen: pílula pulsa, número sobe, \"+X\" flutua ao lado")
 
--- Boss kill, then expand the stats panel; spin the AUTO icon a little (RenderStepped is driven by hand here).
+-- Boss kill, then the Stats window (session counters, lifetime stats, team power).
 task.wait(0.9)
 kill("W1_SnakeSage", 1)
 task.wait(0.15)
-Stats:SetExpanded(true)
-RunService.RenderStepped:Fire(0.35)
-shot("03_stats_expanded", "Painel de sessão expandido + ticker do chefe; ícone AUTO girando")
+session.Controller("UIController"):Open("Stats")
+task.wait(0.05)
+shot("03_stats_window", "Janela Stats depois de um chefe")
+session.Controller("UIController"):Close()
 
--- Auto-attack off: Dark button, inverted status pill, icon back upright.
-State.Request("UpdateSetting", "AutoAttack", false)
-task.wait(1)
-shot("04_auto_off", "AUTO OFF (botão Dark, pílula invertida)")
-State.Request("UpdateSetting", "AutoAttack", true)
-
--- Phone (landscape) with an active boost so the right column is at its tallest.
+-- Phone (landscape) with an active boost: the boost pill sits under Yen and the left menu moves down.
 S.BoostService:Activate(session.Player, "Damage", 2, 600)
 width, height = 844, 390
 Fake.SetProperty(session.Camera, "ViewportSize", roblox.Vector2.new(width, height))
 task.wait(0.2)
 kill("W1_Bandit", 3)
 task.wait(0.15)
-shot("05_phone_expanded", "Celular 844x390 — ticker, boost e painel de sessão expandido")
-Stats:SetExpanded(false)
-task.wait(0.8)
-shot("06_phone_collapsed", "Celular 844x390 — painel recolhido")
+shot("04_phone_boost", "Celular 844x390 — ticker e boost ativo")
 
 print("")
 print(("kills %d · bosses %d · earned %d · rate %.1f/min"):format(Stats.Kills, Stats.Bosses, Stats.YenEarned, Stats:YenPerMinute()))

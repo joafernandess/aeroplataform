@@ -1,12 +1,12 @@
 --[[
 	SessionStatsController
 	The "Stats" window (right menu) and the session counters behind it:
-	  Team power    total (same number as the HUD Power pill) and each equipped fighter's share
+	  Team power    total (equipped fighters' Power with the Damage upgrade) and each fighter's share
 	  This session  play time, kills, bosses, Yen earned, Yen per minute (client-only, never saved)
 	  All time      saved lifetime stats from the profile (data.Stats) and fighters discovered
 	  Best fighter  highest-Power fighter owned
 
-	Also the Yen income tracker behind the HUD's "≈ X ¥/min" caption (HUDController:RefreshRate):
+	Yen income tracker (the "Yen / min" tile):
 	  gains = EnemyDefeated payloads (they arrive first) + any Currencies.Yen increase those kills don't explain
 	          (quests, sells, codes...). Decreases (spending) are ignored.
 	  rate  = gains of the last 60s, per minute (the window is at least 15s so the first kill doesn't spike it).

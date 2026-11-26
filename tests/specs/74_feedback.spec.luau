@@ -1,4 +1,4 @@
--- Reward feedback (HUD pops, count-up, "+X" tickers, ¥/min, AUTO orbit) and the Stats window, on the REAL
+-- Reward feedback (Yen pill pops, count-up, "+X" tickers) and the Stats window, on the REAL
 -- client bridged to the REAL server (tools/ui-preview/Session).
 local task = require("@lune/task")
 local Session = require("../../tools/ui-preview/Session")
@@ -33,7 +33,7 @@ return function(t)
 
 	t.describe("reward feedback & session stats", function()
 		t.it("counts kills and bosses from EnemyDefeated and tracks Yen earned without double counting", function()
-			local s, HUD, Stats = setup()
+			local s, _, Stats = setup()
 			expect(Stats.Kills).toBe(0)
 			local before = s.Data.Currencies.Yen
 			kill(s, "W1_Bandit", 3)
@@ -44,8 +44,6 @@ return function(t)
 			-- Kill payloads arrive before the Currencies update; the update must not count them again.
 			expect(Stats.YenEarned).toBe(s.Data.Currencies.Yen - before)
 			expect(Stats:YenPerMinute() > 0).toBe(true)
-			expect(HUD.RateLabel.Text == "≈ 0 ¥/min").toBe(false)
-			expect(string.find(HUD.RateLabel.Text, "¥/min", 1, true) ~= nil).toBe(true)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
@@ -87,41 +85,6 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("shows a +N ticker when team power goes up", function()
-			local s, HUD = setup()
-			local power = HUD.Animated.Power
-			local before = power.Target
-			s.Harness.Services.UnitService:AddUnitXP(s.Player, s.Units.Raizen.Uid, 4000)
-			task.wait(0.1)
-			expect(power.Target > before).toBe(true)
-			local list = tickers(power.Holder)
-			expect(#list).toBe(1)
-			expect(string.sub(list[1].Text, 1, 1)).toBe("+")
-			expect(#s.Runtime.Mocks.Warnings).toBe(0)
-		end)
-
-		t.it("orbits a spark around AUTO only while auto-attack is on, never rotating the icon", function()
-			local s, HUD, _, State = setup()
-			local RunService = s.Services.RunService
-			local icon = HUD:_autoIcon()
-			expect(icon ~= nil).toBe(true)
-			expect(HUD.AutoCaption.Text).toBe("AUTO ON")
-			RunService.RenderStepped:Fire(0.5)
-			task.wait(0.02)
-			local spark = HUD:_autoOrbit()
-			expect(spark ~= nil and spark.Visible).toBe(true)
-			local before = spark.Position
-			RunService.RenderStepped:Fire(0.5)
-			task.wait(0.02)
-			expect(spark.Position ~= before).toBe(true)
-			expect(icon.Rotation or 0).toBe(0)
-			State.Request("UpdateSetting", "AutoAttack", false)
-			task.wait(0.1)
-			expect(HUD.AutoCaption.Text).toBe("AUTO OFF")
-			expect(spark.Visible).toBe(false)
-			expect(#s.Runtime.Mocks.Warnings).toBe(0)
-		end)
-
 		t.it("shows session, lifetime and team power stats in the Stats window", function()
 			local s, _, Stats, State = setup()
 			local UI = s.Controller("UIController")
@@ -140,9 +103,9 @@ return function(t)
 				end
 			end
 			expect(rows).toBe(#State.Data.EquippedUnits + 1)
-			-- The team total matches the HUD Power pill.
+			-- The section title shows the team total.
 			local _, total = Stats.TeamBreakdown(State.Data)
-			expect(s.Controller("HUDController").Animated.Power.Target).toBe(total)
+			expect(total > 0).toBe(true)
 			-- Live update without reopening.
 			kill(s, "W1_Bandit", 1)
 			task.wait(0.1)

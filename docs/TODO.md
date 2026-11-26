@@ -20,8 +20,11 @@ Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 
 ## UI
 - [ ] [Studio] Conferir o preview contra o Studio real (fontes Gotham, tamanhos de texto em telas reais).
-- [ ] [Código] Layouts dedicados para celular (no celular as janelas encolhem para ~60% e o texto fica pequeno).
+- [ ] [Código] Layouts dedicados para celular (no celular as janelas encolhem para ~60% e o texto fica pequeno;
+      os botões dos menus laterais ficam com ~30 px em telas de 375 px de altura).
 - [ ] [Código/Arte] Ícones e retratos das unidades nos cards (hoje só texto).
+- [ ] [Arte] SVG/PNG dos 8 ícones novos (codes, mounts, index, achievements, stats, teleport, update,
+      inventory) em `assets/icons/`; hoje eles existem só desenhados em código (`UI/Icons.luau`).
 
 ## Conteúdo / arte
 - [ ] [Studio] Mapas reais dos 5 mundos (`Workspace.Worlds.*`, ver convenções em `STUDIO_SETUP.md`).
@@ -33,9 +36,12 @@ Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 ## Funcionalidades futuras
 - [ ] [Código] Raids em grupo (lobby/convite). O modelo de dados já suporta `Players` e `MaxPlayers`.
 - [ ] [Código] Mostrar unidades de outros jogadores (replicar equipados via atributos; setting `ShowOtherUnits` já existe).
-- [ ] [Código] Índice/coleção de unidades obtidas.
+- [ ] [Código] Sistema de Mounts (a janela e o botão já existem e mostram "ainda não disponível").
+- [ ] [Design] Recompensas de conquistas/quests em Gems aparecem na UI, mas Gems ficam escondidas no jogo base
+      (`Features.PremiumCurrencies` = false): decidir trocar por Yen ou mostrar Gems.
 - [ ] [Código] Trocas entre jogadores (exige cuidado extra contra duplicação: transação dupla com locks).
-- [ ] [Código] Códigos promocionais (usar `GrantRewards` com `OnceKey = "Code:<código>"`).
+- [ ] [Código] Cadastrar os códigos reais em `Config/Codes.luau` quando forem anunciados.
+- [ ] [Código] Escrever a próxima entrada de `Config/UpdateLog.luau` a cada atualização publicada.
 - [ ] [Código] Leaderboards (OrderedDataStore) de dano total / nível.
 - [ ] [Código] Localização (strings da UI estão em inglês; centralizar em um módulo de textos).
 - [ ] [Código] Analytics (AnalyticsService) para funil de progressão e economia.

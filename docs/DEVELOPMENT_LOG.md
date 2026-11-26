@@ -117,6 +117,23 @@
 - Letreiro grande do mundo removido do topo. Pastas vazias de Assets agora versionadas (.gitkeep).
 - 205 testes passando, selene 0/0.
 
+### Rework completo da UI (imagem de referência)
+- Servidor: `CodesService` + `Config/Codes` (resgate único, validade, sem diferença de maiúsculas), pontos de
+  teleporte por mundo (`TeleportToPoint`), `data.Discovered` para o Index, `Settings.LastSeenUpdate`.
+- Removidos: pílula de Power, "≈ ¥/min", botão AUTO (o auto-ataque continua em Settings), barra dos lutadores
+  equipados embaixo (e o aviso de lutador melhor), painel/botão STATS do canto superior direito, legendas
+  embaixo dos ícones. O poder do time está na janela Stats; o contador NOVO de lutadores foi para o botão Fighters.
+- Menus laterais em grade 2×N só com ícones (`UI/Navigation`, `C.NavButton`): esquerda Shop/Fighters/Settings/
+  Codes/Quests/TP, direita Inventory/Mounts/Achievements/Stats/Index. Hover cresce e acende o contorno, clique
+  afunda, janela abre com "pop" + escurecimento. As grades se posicionam abaixo das infos do jogador e do card de
+  Update Log e encolhem no celular sem sobrepor nada (`UIController:LayoutNav`).
+- Card UPDATE LOG no canto superior direito + janela (`Config/UpdateLog`, mais nova primeiro, selo NEW salvo).
+- Janelas novas: Codes, Teleport, Index, Inventory (carteira + itens), Achievements (separada de Quests), Stats,
+  Mounts (preparada, sem dados falsos); Shop mostra "fechada" enquanto o sistema está desligado.
+- Componentes novos: `C.Section`, `C.EmptyState`, `C.StatTile`, `C.TextInput`, `C.ClaimRow`. Preview com TextBox.
+- 8 ícones novos (codes, mounts, index, achievements, stats, teleport, update, inventory).
+- **223 testes passando**, selene 0/0, preview sem warnings.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

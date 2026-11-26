@@ -27,7 +27,7 @@ local IndexController = {
 	Priority = 33,
 }
 
-local CARD = UDim2.fromOffset(104, 132)
+local CARD = UDim2.fromOffset(104, 140)
 local CARD_GAP = 10
 local WINDOW_W = 820
 -- Cards per grid row: the window is scaled with a UIScale (its layout width never changes), so this is fixed.
@@ -161,6 +161,7 @@ function IndexController:Render()
 					Footer = string.upper(def.Rarity),
 					FooterColor = Theme.Rarity(def.Rarity),
 					FooterFont = Theme.Fonts.Title,
+					FooterSize = 12,
 				})
 				card.Name = def.Id
 				card.LayoutOrder = i
@@ -173,7 +174,7 @@ end
 
 function IndexController:Init(controllers)
 	self.Controllers = controllers
-	self.Window = controllers.UIController:CreateWindow("Index", "Index", UDim2.fromOffset(WINDOW_W, 560), function()
+	self.Window = controllers.UIController:CreateWindow("Index", "Index", UDim2.fromOffset(WINDOW_W, 520), function()
 		self:Render()
 	end)
 	local content = self.Window.Content

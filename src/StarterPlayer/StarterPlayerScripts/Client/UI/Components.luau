@@ -456,14 +456,14 @@ function C.SetSelected(button: Instance, selected: boolean)
 end
 
 --[[
-	Side-navigation button: dark rounded tile with a light outline, a big icon, the caption under it and a small
-	accent bar for identity. Hover grows it a little and lights the outline cyan, pressing squashes it.
-	Returns (container, button). The FX use their own UIScale on the tile, so they never fight the responsive
-	UIScale that UIController puts on the whole column.
+	Side-navigation button: dark rounded tile with a light outline, a big icon and a small accent bar for identity
+	(optional caption under it; the HUD menus are icon-only). Hover grows it a little and lights the outline cyan,
+	pressing squashes it. Returns (container, button). The FX use their own UIScale on the tile, so they never
+	fight the responsive UIScale that UIController puts on the whole grid.
 ]]
-function C.NavButton(parent: Instance, icon: string, caption: string, accent: Color3?, onClick: (() -> ())?, size: number?)
+function C.NavButton(parent: Instance, icon: string, caption: string?, accent: Color3?, onClick: (() -> ())?, size: number?)
 	local d = size or 58
-	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d + 22, d + 22) })
+	local container = C.Frame(parent, { BackgroundTransparency = 1, Size = UDim2.fromOffset(d, if caption then d + 22 else d) })
 	local button = C.Create("TextButton", {
 		Name = "Button",
 		AutoButtonColor = false,
@@ -489,15 +489,17 @@ function C.NavButton(parent: Instance, icon: string, caption: string, accent: Co
 	})
 	C.Corner(bar, UDim.new(0.5, 0))
 	C.Icon(button, icon, { Name = "Icon", Size = math.floor(d * 0.6), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), ZIndex = 3 })
-	C.Title(container, caption, {
-		Name = "Caption",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.new(1, 16, 0, 18),
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Center,
-		ZIndex = 3,
-	}, 2)
+	if caption then
+		C.Title(container, caption, {
+			Name = "Caption",
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.fromScale(0.5, 1),
+			Size = UDim2.new(1, 16, 0, 18),
+			TextSize = 14,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			ZIndex = 3,
+		}, 2)
+	end
 	local fx = C.Create("UIScale", { Name = "FX", Parent = button })
 	local hovering = false
 	local function to(scale: number, time: number)
@@ -1041,6 +1043,7 @@ function C.UnitCard(
 		Footer: string?,
 		FooterColor: Color3?,
 		FooterFont: Enum.Font?,
+		FooterSize: number?,
 		Badge: string?,
 		HideLevel: boolean?,
 	},
@@ -1102,7 +1105,7 @@ function C.UnitCard(
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -4),
 			Size = UDim2.new(1, -8, 0, 22),
-			TextSize = 19,
+			TextSize = info.FooterSize or 19,
 			TextColor3 = info.FooterColor or P.White,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			ZIndex = 3,

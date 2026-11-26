@@ -167,7 +167,7 @@ function UpdateLogController:_buildCard(root: Instance)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, 2)
 
-	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = P.Cyan, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -6, 0, 4), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
+	local new = C.Frame(card, { Name = "NewTag", BackgroundColor3 = P.Cyan, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 4, 0, 2), Size = UDim2.fromOffset(46, 22), ZIndex = 5, Visible = false })
 	C.Corner(new, UDim.new(0.5, 0))
 	C.Stroke(new, P.Ink, 2)
 	C.Title(new, "NEW", { Size = UDim2.fromScale(1, 1), TextSize = 13, TextColor3 = P.Ink, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 0.01)
@@ -192,7 +192,11 @@ function UpdateLogController:_buildCard(root: Instance)
 	end)
 	self.Card = card
 	self.CardHolder = holder
-	ui:AddScaled(holder, "Hud")
+	local holderScale = ui:AddScaled(holder, "Hud")
+	-- The right menu column stays below this card.
+	ui:AvoidForNav("Right", function()
+		return holder.Position.Y.Offset + (CARD_H + 6) * holderScale.Scale
+	end)
 end
 
 -- Lifecycle --------------------------------------------------------------------------------------------------------
@@ -200,7 +204,7 @@ end
 function UpdateLogController:Init(controllers)
 	self.Controllers = controllers
 	local ui = controllers.UIController
-	self.Window = ui:CreateWindow("UpdateLog", "Update Log", UDim2.fromOffset(640, 500), function()
+	self.Window = ui:CreateWindow("UpdateLog", "Update Log", UDim2.fromOffset(640, 460), function()
 		self:Render()
 		self:MarkSeen()
 	end)
