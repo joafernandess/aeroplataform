@@ -5,6 +5,7 @@
 	  UI:CreateWindow(name, title, size?, onOpen?) -> window { Frame, Content, Title }
 	  UI:Open(name, ...)  UI:Close(name?)  UI:Toggle(name)  UI:IsOpen(name)
 	  UI:AddMenuButton(name, label, order)
+	  UI:SetMenuBadge(name, count)           count badge on the menu button that opens window `name` (0 hides it)
 	  UI:AddScaled(gui, "Window" | "Hud")   responsive UIScale (phones, tablets, small windows)
 
 	Responsive scaling: the UI is designed for a 1280x720 screen. Every registered element gets a UIScale:
@@ -14,6 +15,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
@@ -40,6 +42,11 @@ local HUD_BOOST = 1.2
 local MIN_SCALE = 0.55 -- below this text becomes unreadable; windows scroll instead
 
 UIController.Scaled = {} :: { { Gui: GuiObject, Kind: string, Scale: UIScale } }
+UIController.MenuButtons = {} :: { [string]: GuiObject } -- window name -> menu button container
+UIController.MenuBadges = {} :: { [string]: number } -- window name -> badge count (kept until its button exists)
+
+local MENU_ICON_SIZE = 68
+local BADGE_SIZE = 24
 
 -- Glyph shown in each window's header tile.
 local WINDOW_ICONS = {
@@ -161,8 +168,68 @@ end
 function UIController:AddMenuButton(name: string, label: string, order: number)
 	local container = C.IconButton(self.Menu, Theme.Icons[name] or "?", label, Theme.MenuKinds[name] or "Primary", function()
 		self:Toggle(name)
-	end, 68)
+	end, MENU_ICON_SIZE)
 	container.LayoutOrder = order
+	self.MenuButtons[name] = container
+	self:_paintMenuBadge(name, false)
+end
+
+-- Notification badge (brief §5.2): cyan circle, ink border and ink count over the button's top-right corner.
+function UIController:_paintMenuBadge(name: string, pop: boolean)
+	local container = self.MenuButtons[name]
+	if not container then
+		return
+	end
+	local count = self.MenuBadges[name] or 0
+	local badge = container:FindFirstChild("Badge")
+	if count <= 0 then
+		if badge then
+			badge.Visible = false
+		end
+		return
+	end
+	if not badge then
+		local P = Theme.Colors
+		badge = C.Frame(container, {
+			Name = "Badge",
+			BackgroundColor3 = P.Cyan,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(0.5, MENU_ICON_SIZE / 2 + 6, 0, -6),
+			Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE),
+			ZIndex = 8,
+		})
+		C.Corner(badge, UDim.new(0.5, 0))
+		C.Stroke(badge, P.Ink, Theme.Stroke.Badge)
+		C.Create("UIScale", { Parent = badge })
+		C.Label(badge, "", {
+			Name = "Count",
+			Size = UDim2.fromScale(1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Font = Theme.Fonts.Bold,
+			TextSize = 14,
+			TextColor3 = P.Ink,
+			ZIndex = 9,
+		})
+	end
+	local text = if count > 99 then "99+" else tostring(count)
+	badge.Count.Text = text
+	badge.Size = UDim2.fromOffset(BADGE_SIZE + math.max(#text - 1, 0) * 7, BADGE_SIZE)
+	badge.Visible = true
+	if pop then
+		-- Pop when the count goes up.
+		local scale = badge:FindFirstChildOfClass("UIScale")
+		scale.Scale = 1.4
+		TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	end
+end
+
+-- Shows `count` on the menu button that opens `windowName` (0 hides the badge). Safe to call before the button
+-- exists: the count is applied when the button is added.
+function UIController:SetMenuBadge(windowName: string, count: number)
+	count = math.max(0, math.floor(count))
+	local previous = self.MenuBadges[windowName] or 0
+	self.MenuBadges[windowName] = count
+	self:_paintMenuBadge(windowName, count > previous)
 end
 
 function UIController:Init()
