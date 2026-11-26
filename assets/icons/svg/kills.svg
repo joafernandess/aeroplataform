@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>kills</title>
+  <!-- tally: four bars... -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M28 30 V98 M52 30 V98 M76 30 V98 M100 30 V98" stroke="#05070D" stroke-width="28"/>
+    <path d="M28 30 V98 M52 30 V98 M76 30 V98 M100 30 V98" stroke="#4FD2FF" stroke-width="12"/>
+  </g>
+  <!-- ...struck through by the shared sword (stroke 8.4 x .95 = 8) -->
+  <g transform="translate(64 64) rotate(60) scale(.95) translate(-64 -64)" stroke="#05070D" stroke-width="8.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M54 84 V30 L64 10 L74 30 V84 Z" fill="#FFFFFF"/>
+    <path d="M64 17 L70 30.5 V80 H64 Z" fill="#CFEFFF" stroke="none"/>
+    <rect x="57" y="96" width="14" height="14" rx="3" fill="#1546B8"/>
+    <rect x="38" y="82" width="52" height="14" rx="7" fill="#1E6BFF"/>
+    <circle cx="64" cy="114" r="7" fill="#4FD2FF"/>
+  </g>
+</svg>

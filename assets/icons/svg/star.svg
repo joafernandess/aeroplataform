@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>star</title>
+  <path d="M64 12 L78.1 48.6 L117.3 50.7 L86.8 75.4 L96.9 113.3 L64 92 L31.1 113.3 L41.2 75.4 L10.7 50.7 L49.9 48.6 Z" fill="#FFFFFF"/>
+  <!-- shaded half of every point -->
+  <path d="M64 68 L64 12 L78.1 48.6 Z M64 68 L117.3 50.7 L86.8 75.4 Z M64 68 L96.9 113.3 L64 92 Z M64 68 L31.1 113.3 L41.2 75.4 Z M64 68 L10.7 50.7 L49.9 48.6 Z" fill="#CFEFFF"/>
+  <path d="M64 12 L78.1 48.6 L117.3 50.7 L86.8 75.4 L96.9 113.3 L64 92 L31.1 113.3 L41.2 75.4 L10.7 50.7 L49.9 48.6 Z" fill="none" stroke="#05070D" stroke-width="8" stroke-linejoin="round"/>
+</svg>

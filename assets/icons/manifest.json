@@ -1,0 +1,114 @@
+{
+	"yen": {
+		"png": "png/yen.png",
+		"rbxassetid": ""
+	},
+	"gems": {
+		"png": "png/gems.png",
+		"rbxassetid": ""
+	},
+	"gold": {
+		"png": "png/gold.png",
+		"rbxassetid": ""
+	},
+	"tokens": {
+		"png": "png/tokens.png",
+		"rbxassetid": ""
+	},
+	"power": {
+		"png": "png/power.png",
+		"rbxassetid": ""
+	},
+	"fighters": {
+		"png": "png/fighters.png",
+		"rbxassetid": ""
+	},
+	"summon": {
+		"png": "png/summon.png",
+		"rbxassetid": ""
+	},
+	"settings": {
+		"png": "png/settings.png",
+		"rbxassetid": ""
+	},
+	"auto": {
+		"png": "png/auto.png",
+		"rbxassetid": ""
+	},
+	"sort": {
+		"png": "png/sort.png",
+		"rbxassetid": ""
+	},
+	"lock": {
+		"png": "png/lock.png",
+		"rbxassetid": ""
+	},
+	"check": {
+		"png": "png/check.png",
+		"rbxassetid": ""
+	},
+	"close": {
+		"png": "png/close.png",
+		"rbxassetid": ""
+	},
+	"plus": {
+		"png": "png/plus.png",
+		"rbxassetid": ""
+	},
+	"quests": {
+		"png": "png/quests.png",
+		"rbxassetid": ""
+	},
+	"shop": {
+		"png": "png/shop.png",
+		"rbxassetid": ""
+	},
+	"upgrades": {
+		"png": "png/upgrades.png",
+		"rbxassetid": ""
+	},
+	"worlds": {
+		"png": "png/worlds.png",
+		"rbxassetid": ""
+	},
+	"raids": {
+		"png": "png/raids.png",
+		"rbxassetid": ""
+	},
+	"boss": {
+		"png": "png/boss.png",
+		"rbxassetid": ""
+	},
+	"zone": {
+		"png": "png/zone.png",
+		"rbxassetid": ""
+	},
+	"target": {
+		"png": "png/target.png",
+		"rbxassetid": ""
+	},
+	"team": {
+		"png": "png/team.png",
+		"rbxassetid": ""
+	},
+	"timer": {
+		"png": "png/timer.png",
+		"rbxassetid": ""
+	},
+	"sell": {
+		"png": "png/sell.png",
+		"rbxassetid": ""
+	},
+	"new": {
+		"png": "png/new.png",
+		"rbxassetid": ""
+	},
+	"star": {
+		"png": "png/star.png",
+		"rbxassetid": ""
+	},
+	"kills": {
+		"png": "png/kills.png",
+		"rbxassetid": ""
+	}
+}

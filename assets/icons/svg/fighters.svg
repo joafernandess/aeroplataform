@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>fighters</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- gi -->
+    <path d="M16 120 C16 101 32 92 50 90 H78 C96 92 112 101 112 120 Z" fill="#1E6BFF"/>
+    <path d="M50 90 L64 110 L78 90 Z" fill="#FFFFFF" stroke-width="6"/>
+    <!-- head -->
+    <circle cx="64" cy="64" r="28" fill="#FFFFFF"/>
+    <!-- spiky hair -->
+    <path d="M34 62 L18 50 L34 44 L24 24 L46 32 L50 10 L64 26 L80 8 L84 30 L106 22 L96 42 L112 48 L94 62 Z" fill="#4FD2FF"/>
+    <!-- headband with tails -->
+    <path d="M94 52 L118 44 L112 57 L120 68 L94 62 Z" fill="#1E6BFF"/>
+    <rect x="34" y="50" width="62" height="13" rx="4" fill="#1E6BFF"/>
+    <!-- eyes -->
+    <path d="M46 71 L58 75 L57 81 L48 80 Z" fill="#05070D" stroke-width="3"/>
+    <path d="M82 71 L70 75 L71 81 L80 80 Z" fill="#05070D" stroke-width="3"/>
+  </g>
+  <path d="M40 22 L44 30" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+</svg>

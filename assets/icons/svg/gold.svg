@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>gold</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- back stack: 4 coins (rx 30, ry 11, thickness 16) -->
+    <path d="M46 89 V105 A30 11 0 0 0 106 105 V89 Z" fill="#CFEFFF"/>
+    <path d="M46 73 V89 A30 11 0 0 0 106 89 V73 Z" fill="#CFEFFF"/>
+    <path d="M46 57 V73 A30 11 0 0 0 106 73 V57 Z" fill="#CFEFFF"/>
+    <path d="M46 41 V57 A30 11 0 0 0 106 57 V41 Z" fill="#CFEFFF"/>
+    <ellipse cx="76" cy="41" rx="30" ry="11" fill="#FFFFFF"/>
+    <!-- front stack: 2 coins -->
+    <path d="M14 91 V107 A30 11 0 0 0 74 107 V91 Z" fill="#CFEFFF"/>
+    <path d="M14 75 V91 A30 11 0 0 0 74 91 V75 Z" fill="#CFEFFF"/>
+    <ellipse cx="44" cy="75" rx="30" ry="11" fill="#FFFFFF"/>
+  </g>
+  <!-- coin faces -->
+  <ellipse cx="76" cy="41" rx="17" ry="5" fill="#4FD2FF"/>
+  <ellipse cx="44" cy="75" rx="17" ry="5" fill="#4FD2FF"/>
+  <!-- sparkle -->
+  <path d="M24 18 Q26 30 36 32 Q26 34 24 46 Q22 34 12 32 Q22 30 24 18 Z" fill="#FFFFFF" stroke="#05070D" stroke-width="5" stroke-linejoin="round"/>
+</svg>
