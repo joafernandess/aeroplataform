@@ -1,8 +1,9 @@
 # UI_Icons — ícones dos menus do HUD
 
 12 ícones PNG **512×512, fundo transparente (RGBA)**, prontos para `ImageLabel` no Roblox.
-Arte original (sem texto, sem fundo quadrado/redondo), contorno escuro grosso + cor própria de cada ícone,
-legível a 32×32 e 48×48 px (ver `preview.png`).
+Arte original, estilo minimalista/brutalista arredondado: formas simples e grossas, cor chapada própria de cada
+ícone, contorno preto pesado e volume 3D (extrusão sólida com a lateral mais escura). Sem texto, sem fundo
+quadrado/redondo; legível a 32×32 e 48×48 px (ver `preview.png`).
 
 | Arquivo | Botão no jogo | Cor | Chave em `UI/IconAssets.luau` |
 |---|---|---|---|

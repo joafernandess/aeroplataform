@@ -136,8 +136,8 @@
 
 ### Ícones PNG + botões preto/branco
 - `assets/UI_Icons/`: 12 ícones originais em PNG 512×512 com fundo transparente (Shop, Fighters, Settings, Codes,
-  Quests, Teleport, Inventory, Mounts, Achievements, Stats, Index, UpdateLog), cada um com cor própria, contorno
-  escuro grosso e realce branco; fontes SVG em `src/`, exportador `tools/export.js` (Chromium), folha de
+  Quests, Teleport, Inventory, Mounts, Achievements, Stats, Index, UpdateLog), cada um com cor própria; estilo
+  minimalista/brutalista arredondado com volume 3D (extrusão sólida, contorno preto grosso, realce branco em pílula); fontes SVG em `src/`, exportador `tools/export.js` (Chromium), folha de
   revisão `preview.png` (512/48/32 px), `manifest.json`, `README.md` com o mapeamento; `assets/UI_Icons.zip`.
 - `Client/UI/IconAssets.luau`: único arquivo a editar depois do upload (ícone → `rbxassetid://`). Imagens enviadas
   são mostradas sem tingir; sem ID, o desenho vetorial aparece na mesma cor (`Theme.IconColors`).

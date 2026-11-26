@@ -507,7 +507,7 @@ function C.NavButton(parent: Instance, icon: string, caption: string?, _accent: 
 		Parent = container,
 	})
 	C.Create("UIAspectRatioConstraint", { AspectRatio = 1, Parent = button })
-	local paint = C.MenuTile(button, 14)
+	local paint = C.MenuTile(button, 18)
 	local color = Theme.IconColors[icon] or P.White
 	C.Icon(button, icon, {
 		Name = "Icon",
