@@ -139,6 +139,9 @@
   Quests, Teleport, Inventory, Mounts, Achievements, Stats, Index, UpdateLog), cada um com cor própria; estilo
   minimalista/brutalista arredondado com volume 3D (extrusão sólida, contorno preto grosso, realce branco em pílula); fontes SVG em `src/`, exportador `tools/export.js` (Chromium), folha de
   revisão `preview.png` (512/48/32 px), `manifest.json`, `README.md` com o mapeamento; `assets/UI_Icons.zip`.
+- Redesenhados com base em referências de ícones de jogos: Fighters = punho fechado com faixa (mais legível que
+  um busto em 32 px), Teleport = portão de pedra em arco com redemoinho dentro, Mounts = cabeça de cavalo de perfil
+  com crina e cabresto (deixa claro que é montaria).
 - `Client/UI/IconAssets.luau`: único arquivo a editar depois do upload (ícone → `rbxassetid://`). Imagens enviadas
   são mostradas sem tingir; sem ID, o desenho vetorial aparece na mesma cor (`Theme.IconColors`).
 - Botões dos menus, card do Update Log e ladrilho do título das janelas: face grafite, borda clara, sombra preta
