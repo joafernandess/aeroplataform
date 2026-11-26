@@ -106,6 +106,17 @@
   (fora do botão de pulo no celular); toasts no topo.
 - 179 testes passando, selene 0/0, preview sem warnings.
 
+### HUD + ícones (5 agentes em paralelo, git worktrees separados)
+- Ícones: 28 ícones originais em SVG + PNG 256px (`assets/icons/`, script de exportação com checagem de paleta,
+  folha de contato, `manifest.json`, guia de upload `docs/ui/ICONS.md`) e o mesmo conjunto desenhado em código
+  (`UI/Icons.luau`: imagem de `Theme.IconAssets` se houver, senão vetor, senão glifo).
+- Barra do time (lutadores equipados, espaços vazios, toque abre o lutador), aviso de lutador melhor, contador NOVO.
+- Indicador de zona, painel do alvo (vida branca com rastro), alertas de chefe, toasts reposicionados.
+- Feedback de recompensa (+X ¥ animado, contagem, ¥/min), painel STATS da sessão, AUTO com ponto orbitando
+  (o ícone não gira: ícones vetoriais usam recorte, que o Roblox desliga sob rotação).
+- Letreiro grande do mundo removido do topo. Pastas vazias de Assets agora versionadas (.gitkeep).
+- 205 testes passando, selene 0/0.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

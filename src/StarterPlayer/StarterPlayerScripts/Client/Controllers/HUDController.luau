@@ -5,7 +5,7 @@
 	  top-centre    kept clear (zone pill / target panel and toasts live there)
 	  top-right     Team Power, active boosts and events, then the session stats panel (SessionStatsController)
 	  bottom-centre level badge + XP bar
-	  right-centre  big round AUTO toggle (icon spins while auto-attack is on, ON/OFF status pill under it)
+	  right-centre  big round AUTO toggle (a spark orbits it while auto-attack is on, ON/OFF status pill under it)
 	The menu buttons (bottom-left) belong to UIController.
 
 	Reward feedback ("juice", docs/ui/UI_RESEARCH.md §2.5 / §5.3): when a currency or the team power goes up, the
@@ -369,22 +369,51 @@ function HUDController:SetAutoState(on: boolean)
 	self.AutoStatus.BackgroundColor3 = if on then P.Cyan else P.Ink
 	self.AutoStatusStroke.Color = if on then P.Ink else P.White
 	self.AutoStatusStroke.Thickness = if on then 2.5 else 2
-	if not on then
-		local icon = self:_autoIcon()
-		if icon then
-			icon.Rotation = 0
-		end
+	local orbit = self:_autoOrbit()
+	if orbit then
+		orbit.Visible = on
 	end
 end
 
--- Per frame: spin the AUTO icon while auto-attack is on.
+--[[
+	"Working" indicator for AUTO: a cyan spark orbiting the button while auto-attack is on.
+	The icon itself is never rotated: code-drawn icons (UI/Icons) rely on clipping frames, and Roblox disables
+	clipping under rotation, which would reveal their hidden parts.
+]]
+function HUDController:_autoOrbit()
+	if self.AutoOrbit and self.AutoOrbit.Parent then
+		return self.AutoOrbit
+	end
+	if not self.AutoButton then
+		return nil
+	end
+	local P = Theme.Colors
+	local spark = C.Frame(self.AutoButton, {
+		Name = "AutoOrbit",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.08),
+		Size = UDim2.fromOffset(12, 12),
+		BackgroundColor3 = P.Cyan,
+		ZIndex = 20,
+		Visible = self.AutoOn == true,
+	})
+	C.Corner(spark, UDim.new(0.5, 0))
+	C.Stroke(spark, P.Ink, 2)
+	self.AutoOrbit = spark
+	self.AutoAngle = 0
+	return spark
+end
+
+-- Per frame: move the spark around the AUTO button while auto-attack is on.
 function HUDController:Step(dt: number)
 	if not self.AutoOn then
 		return
 	end
-	local icon = self:_autoIcon()
-	if icon then
-		icon.Rotation = ((icon.Rotation or 0) + dt * AUTO_SPIN_SPEED) % 360
+	local spark = self:_autoOrbit()
+	if spark then
+		self.AutoAngle = ((self.AutoAngle or 0) + dt * math.rad(AUTO_SPIN_SPEED)) % (math.pi * 2)
+		local radius = 0.46
+		spark.Position = UDim2.fromScale(0.5 + math.cos(self.AutoAngle) * radius, 0.5 + math.sin(self.AutoAngle) * radius)
 	end
 end
 

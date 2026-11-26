@@ -1,4 +1,4 @@
--- Reward feedback (HUD pops, count-up, "+X" tickers, ¥/min, AUTO spin) and the session stats panel, on the REAL
+-- Reward feedback (HUD pops, count-up, "+X" tickers, ¥/min, AUTO orbit) and the session stats panel, on the REAL
 -- client bridged to the REAL server (tools/ui-preview/Session).
 local task = require("@lune/task")
 local Session = require("../../tools/ui-preview/Session")
@@ -100,20 +100,25 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("spins the AUTO icon only while auto-attack is on and labels the state", function()
+		t.it("orbits a spark around AUTO only while auto-attack is on, never rotating the icon", function()
 			local s, HUD, _, State = setup()
 			local RunService = s.Services.RunService
 			local icon = HUD:_autoIcon()
 			expect(icon ~= nil).toBe(true)
 			expect(HUD.AutoCaption.Text).toBe("AUTO ON")
 			RunService.RenderStepped:Fire(0.5)
-			expect(math.abs(icon.Rotation - 45) < 1e-6).toBe(true)
+			task.wait(0.02)
+			local spark = HUD:_autoOrbit()
+			expect(spark ~= nil and spark.Visible).toBe(true)
+			local before = spark.Position
+			RunService.RenderStepped:Fire(0.5)
+			task.wait(0.02)
+			expect(spark.Position ~= before).toBe(true)
+			expect(icon.Rotation or 0).toBe(0)
 			State.Request("UpdateSetting", "AutoAttack", false)
 			task.wait(0.1)
 			expect(HUD.AutoCaption.Text).toBe("AUTO OFF")
-			expect(icon.Rotation).toBe(0)
-			RunService.RenderStepped:Fire(0.5)
-			expect(icon.Rotation).toBe(0)
+			expect(spark.Visible).toBe(false)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
