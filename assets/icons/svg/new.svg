@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>new</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- burst badge (14 points) -->
+    <path d="M64 10 L73.8 21.1 L87.4 15.3 L91.4 29.6 L106.2 30.3 L103.6 44.9 L116.6 52 L108 64 L116.6 76 L103.6 83.1 L106.2 97.7 L91.4 98.4 L87.4 112.7 L73.8 106.9 L64 118 L54.2 106.9 L40.6 112.7 L36.6 98.4 L21.8 97.7 L24.4 83.1 L11.4 76 L20 64 L11.4 52 L24.4 44.9 L21.8 30.3 L36.6 29.6 L40.6 15.3 L54.2 21.1 Z" fill="#4FD2FF"/>
+    <!-- exclamation mark -->
+    <path d="M55 30 H73 L68 74 H60 Z" fill="#FFFFFF"/>
+    <circle cx="64" cy="91" r="9" fill="#FFFFFF"/>
+  </g>
+</svg>

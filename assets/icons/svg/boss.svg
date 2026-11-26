@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>boss</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- horns -->
+    <path d="M42 50 C24 46 14 32 14 10 C26 24 40 28 54 32 Z" fill="#4FD2FF"/>
+    <path d="M86 50 C104 46 114 32 114 10 C102 24 88 28 74 32 Z" fill="#4FD2FF"/>
+    <!-- skull -->
+    <path d="M28 68 C28 42 44 26 64 26 C84 26 100 42 100 68 C100 82 94 90 86 94 V108 Q86 116 78 116 H50 Q42 116 42 108 V94 C34 90 28 82 28 68 Z" fill="#FFFFFF"/>
+    <!-- angry eye sockets -->
+    <path d="M38 64 L58 72 L56 82 Q46 86 40 78 Z" fill="#05070D" stroke-width="4"/>
+    <path d="M90 64 L70 72 L72 82 Q82 86 88 78 Z" fill="#05070D" stroke-width="4"/>
+    <!-- nose and teeth -->
+    <path d="M64 86 L59 95 H69 Z" fill="#05070D" stroke-width="4"/>
+    <path d="M54 104 V114 M64 104 V114 M74 104 V114" fill="none" stroke-width="5"/>
+  </g>
+  <circle cx="49" cy="76" r="4" fill="#4FD2FF"/>
+  <circle cx="79" cy="76" r="4" fill="#4FD2FF"/>
+</svg>

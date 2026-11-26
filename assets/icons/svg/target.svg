@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>target</title>
+  <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ink layer -->
+    <circle cx="64" cy="64" r="36" stroke="#05070D" stroke-width="28"/>
+    <path d="M64 17 V40 M64 88 V111 M17 64 H40 M88 64 H111" stroke="#05070D" stroke-width="26"/>
+    <!-- colour layer -->
+    <circle cx="64" cy="64" r="36" stroke="#FFFFFF" stroke-width="12"/>
+    <path d="M64 17 V40 M64 88 V111 M17 64 H40 M88 64 H111" stroke="#4FD2FF" stroke-width="10"/>
+  </g>
+  <circle cx="64" cy="64" r="8" fill="#4FD2FF" stroke="#05070D" stroke-width="6"/>
+</svg>

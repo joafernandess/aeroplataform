@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>lock</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- shackle -->
+    <path d="M42 62 V46 A22 22 0 0 1 86 46 V62" fill="none" stroke-width="30"/>
+    <path d="M42 62 V46 A22 22 0 0 1 86 46 V62" fill="none" stroke="#CFEFFF" stroke-width="14"/>
+    <!-- body -->
+    <rect x="22" y="56" width="84" height="62" rx="14" fill="#FFFFFF"/>
+  </g>
+  <path d="M26 100 H102 V104 Q102 114 92 114 H36 Q26 114 26 104 Z" fill="#CFEFFF"/>
+  <!-- keyhole -->
+  <path d="M64 72 A9 9 0 0 1 69 88.5 L72 102 H56 L59 88.5 A9 9 0 0 1 64 72 Z" fill="#1E6BFF" stroke="#05070D" stroke-width="6" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>sell</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- the yen coin, smaller -->
+    <circle cx="54" cy="64" r="40" fill="#1546B8"/>
+    <circle cx="54" cy="52" r="40" fill="#FFFFFF"/>
+    <circle cx="54" cy="52" r="28" fill="#1E6BFF" stroke-width="6"/>
+    <path d="M43 35 L54 48 L65 35 M54 48 V70 M44 53 H64 M44 63 H64" fill="none" stroke-width="17"/>
+    <path d="M43 35 L54 48 L65 35 M54 48 V70 M44 53 H64 M44 63 H64" fill="none" stroke="#FFFFFF" stroke-width="7"/>
+    <!-- minus badge -->
+    <circle cx="94" cy="94" r="24" fill="#4FD2FF"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M82 94 H106" stroke="#05070D" stroke-width="24"/>
+    <path d="M82 94 H106" stroke="#FFFFFF" stroke-width="10"/>
+  </g>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>shop</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- handles -->
+    <path d="M46 54 V40 A18 18 0 0 1 82 40 V54" fill="none" stroke-width="26"/>
+    <path d="M46 54 V40 A18 18 0 0 1 82 40 V54" fill="none" stroke="#CFEFFF" stroke-width="10"/>
+    <!-- bag -->
+    <path d="M26 46 H102 L108 110 Q108 118 100 118 H28 Q20 118 20 110 Z" fill="#FFFFFF"/>
+    <path d="M26 46 H102 L103.6 64 H24.4 Z" fill="#1E6BFF"/>
+    <circle cx="46" cy="55" r="3" fill="#05070D" stroke-width="3"/>
+    <circle cx="82" cy="55" r="3" fill="#05070D" stroke-width="3"/>
+  </g>
+  <path d="M30 72 L28 106" stroke="#CFEFFF" stroke-width="6" stroke-linecap="round"/>
+</svg>

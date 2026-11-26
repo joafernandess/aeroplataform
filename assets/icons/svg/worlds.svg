@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>worlds</title>
+  <g transform="translate(64 66) rotate(-18)" fill="none" stroke-linejoin="round">
+    <!-- back of the ring -->
+    <ellipse rx="48" ry="14" stroke="#05070D" stroke-width="26"/>
+    <ellipse rx="48" ry="14" stroke="#FFFFFF" stroke-width="10"/>
+  </g>
+  <!-- planet -->
+  <circle cx="64" cy="66" r="36" fill="#4FD2FF" stroke="#05070D" stroke-width="8"/>
+  <path d="M95.2 48 A36 36 0 0 1 32.8 84 A44 44 0 0 0 95.2 48 Z" fill="#4A95FF"/>
+  <ellipse cx="50" cy="48" rx="9" ry="5" transform="rotate(-35 50 48)" fill="#FFFFFF"/>
+  <g transform="translate(64 66) rotate(-18)" fill="none">
+    <!-- front of the ring -->
+    <path d="M-48 0 A48 14 0 0 0 48 0" stroke="#05070D" stroke-width="26"/>
+    <path d="M-48 0 A48 14 0 0 0 48 0" stroke="#FFFFFF" stroke-width="10"/>
+  </g>
+  <!-- sparkle -->
+  <path d="M104 8 Q106 18 114 20 Q106 22 104 32 Q102 22 94 20 Q102 18 104 8 Z" fill="#FFFFFF" stroke="#05070D" stroke-width="5" stroke-linejoin="round"/>
+</svg>

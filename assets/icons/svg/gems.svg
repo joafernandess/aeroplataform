@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>gems</title>
+  <g stroke="#05070D" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- crown facets -->
+    <path d="M40 18 L12 46 H44 Z" fill="#FFFFFF"/>
+    <path d="M40 18 H88 L84 46 H44 Z" fill="#CFEFFF"/>
+    <path d="M88 18 L116 46 H84 Z" fill="#4FD2FF"/>
+    <!-- pavilion facets -->
+    <path d="M12 46 H44 L64 112 Z" fill="#CFEFFF"/>
+    <path d="M44 46 H84 L64 112 Z" fill="#4FD2FF"/>
+    <path d="M84 46 H116 L64 112 Z" fill="#4A95FF"/>
+    <!-- outer silhouette -->
+    <path d="M40 18 H88 L116 46 L64 112 L12 46 Z" fill="none" stroke-width="8"/>
+  </g>
+  <path d="M38 27 L27 39 H37 Z" fill="#FFFFFF"/>
+  <path d="M22 54 L32 54 L44 86 Z" fill="#FFFFFF" opacity=".75"/>
+</svg>
