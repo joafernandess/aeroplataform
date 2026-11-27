@@ -900,7 +900,7 @@ function C.Scroll(parent: Instance, props: { [string]: any }?)
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
 		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar, -- content never sits under the scrollbar
-		ScrollBarImageColor3 = P.Yellow,
+		ScrollBarImageColor3 = P.Blue400,
 		ScrollBarImageTransparency = 0.25,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
@@ -954,8 +954,8 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 			local active = tabName == name
 			tab.Button.BackgroundTransparency = if active then 0 else 1
 			tab.Gradient.Enabled = active
-			tab.Label.TextColor3 = if active then P.Ink else P.TextDim
-			tab.Stroke.Enabled = false
+			tab.Label.TextColor3 = if active then P.White else P.TextDim
+			tab.Stroke.Enabled = active
 			tab.Underline.Visible = false
 		end
 		onSelect(name)
@@ -971,11 +971,11 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 			Parent = well,
 		})
 		C.Corner(button, Theme.Radius.Tool)
-		local gradient = C.Gradient(button, G.Gold.Top, G.Gold.Bottom) -- active tab = yellow
+		local gradient = C.Gradient(button, G.Primary.Top, G.Primary.Bottom) -- active tab = blue
 		local label = C.Label(button, name, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Bold, TextSize = 18 })
 		local stroke = C.Outline(label, 2)
-		-- Gold underline marks the active tab (yellow = selected).
-		local underline = C.Frame(button, { Name = "Underline", BackgroundColor3 = P.Yellow, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -24, 0, 3), Visible = false, ZIndex = 3 })
+		-- Underline (unused: the active tab is filled blue).
+		local underline = C.Frame(button, { Name = "Underline", BackgroundColor3 = P.Select, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -24, 0, 3), Visible = false, ZIndex = 3 })
 		C.Corner(underline, UDim.new(0.5, 0))
 		tabs[name] = { Button = button, Gradient = gradient, Label = label, Stroke = stroke, Underline = underline }
 		button.Activated:Connect(function()
@@ -1040,7 +1040,7 @@ function C.EmptyState(parent: Instance, _icon: string, title: string, message: s
 		TextSize = 28,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	}, 2.5)
-	C.Frame(holder, { Name = "GoldLine", BackgroundColor3 = P.Yellow, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(56, 3) })
+	C.Frame(holder, { Name = "AccentLine", BackgroundColor3 = P.Select, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(56, 3) })
 	C.Label(holder, message, {
 		Name = "Message",
 		Position = UDim2.new(0.1, 0, 0, 86),
@@ -1192,13 +1192,13 @@ function C.Window(parent: Instance, title: string, size: UDim2?)
 	C.Corner(inner, 6)
 	C.Gradient(inner, G.WindowBody.Top, G.WindowBody.Bottom)
 	C.Stroke(inner, P.Ink, 2)
-	-- yellow accents on the bottom border
+	-- blue accents on the bottom border
 	local accents = C.Frame(group, { Name = "Accents", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 8), ClipsDescendants = true, ZIndex = 11 })
-	stripes(accents, 3, 54, 6, 6, P.Yellow, 11)
+	stripes(accents, 3, 54, 6, 6, P.Select, 11)
 	local right = C.Frame(accents, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 120, 1, 0), ClipsDescendants = true, ZIndex = 11 })
-	stripes(right, 3, 30, 6, 6, P.Yellow, 11)
+	stripes(right, 3, 30, 6, 6, P.Select, 11)
 
-	-- Title strip (drag handle) with the yellow bar
+	-- Title strip (drag handle) with the blue bar
 	local header = C.Frame(group, { Name = "Header", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 68), Active = true, ZIndex = 12 })
 	local bar = C.Frame(header, {
 		Name = "TitleBar",
@@ -1220,11 +1220,12 @@ function C.Window(parent: Instance, title: string, size: UDim2?)
 	local titleLabel = C.Label(bar, title, {
 		Font = Theme.Fonts.Title,
 		TextSize = 32,
-		TextColor3 = P.Ink,
+		TextColor3 = P.White,
 		Position = UDim2.fromOffset(66, 0),
 		Size = UDim2.new(1, -80, 1, 0),
 		ZIndex = 14,
 	})
+	C.Outline(titleLabel, 2.5)
 
 	local close = C.Button(group, "", nil, {
 		Kind = "Close",
@@ -1393,7 +1394,7 @@ function C.HighlightCard(card: Instance, mode: string?)
 		return
 	end
 	if mode == "Selected" then
-		stroke.Color = P.Yellow -- yellow accent = selected
+		stroke.Color = P.Select -- blue accent = selected
 		stroke.Thickness = 3
 		if scale then
 			scale.Scale = 1.04

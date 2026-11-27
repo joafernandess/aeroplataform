@@ -1,8 +1,10 @@
 # Ícones — conjunto próprio (preto / branco / azul)
 
-> **Menus do HUD:** os 12 ícones dos menus (Shop, Fighters, Settings, Codes, Quests, TP, Inventory, Mounts,
-> Achievements, Stats, Index, Update Log) agora são PNGs coloridos 512×512 em `assets/UI_Icons/` — ver
+> **Menus do HUD:** os 13 ícones dos menus (Shop, Fighters, Settings, Codes, Quests, TP, Inventory, Mounts,
+> Upgrades, Stats, Index, Update Log, Yen) agora são PNGs 512×512 minimalistas e chapados em `assets/UI_Icons/` — ver
 > `assets/UI_Icons/README.md` para o mapeamento e o upload. Os IDs vão em `Client/UI/IconAssets.luau`.
+> Os ícones vetoriais do código (`Client/UI/Icons.luau`) também são chapados (sem contorno; `Bordered = true` volta
+> o contorno antigo onde precisar).
 > Este documento descreve o conjunto antigo (moedas, ferramentas e detalhes das janelas, `assets/icons/`).
 
 Substitui os glifos Unicode de `Theme.Icons` por imagens. Arte 100% original (nada traçado ou copiado de Anime

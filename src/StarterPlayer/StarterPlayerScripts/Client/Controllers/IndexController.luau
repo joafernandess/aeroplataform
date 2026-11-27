@@ -194,7 +194,7 @@ function IndexController:_info(data, group)
 		})
 	end
 	line("World", "WORLD", group.WorldName, 3)
-	line("Obtain", "OBTAIN", IndexController.ObtainText(def, group), 4, P.Yellow)
+	line("Obtain", "OBTAIN", IndexController.ObtainText(def, group), 4, P.Cyan)
 	line("Status", "STATUS", if discovered then "Discovered" else "Not discovered yet", 5, if discovered then P.Green else P.TextDim)
 end
 
@@ -226,7 +226,7 @@ function IndexController:Render()
 		table.insert(worlds, {
 			Id = world.Id,
 			Name = world.Name,
-			Color = if world.Theme then Color3.fromRGB(world.Theme[1], world.Theme[2], world.Theme[3]) else P.Yellow,
+			Color = if world.Theme then Color3.fromRGB(world.Theme[1], world.Theme[2], world.Theme[3]) else P.Select,
 			Available = available,
 			Selected = world.Id == group.World,
 			Count = if available then ("%d / %d"):format(worldFound, worldTotal) else nil,
@@ -316,7 +316,7 @@ function IndexController:Init(controllers)
 	local body = C.Frame(content, { Name = "Body", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) })
 	self.Body = body
 	-- Rarity filter
-	local items = { { Id = "All", Text = "ALL", Color = P.Yellow } }
+	local items = { { Id = "All", Text = "ALL", Color = P.Select } }
 	for _, rarity in IndexController.RarityFilters() do
 		table.insert(items, { Id = rarity, Text = string.upper(rarity), Color = Theme.Rarity(rarity), Gradient = Theme.RarityGradient(rarity) })
 	end

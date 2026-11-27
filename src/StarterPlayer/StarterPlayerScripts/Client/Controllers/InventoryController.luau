@@ -133,7 +133,7 @@ function InventoryController:Render()
 			Equipped = equipped[entry.Uid] == true,
 			Trait = unit.Trait,
 			Footer = NumberFormat.Abbreviate(entry.Power) .. " " .. Theme.Icons.Power,
-			FooterColor = Theme.Colors.Yellow,
+			FooterColor = Theme.Colors.Cyan,
 			FooterSize = 15,
 		}, function()
 			if self.Mode == "Browse" then

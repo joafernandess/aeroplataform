@@ -1,10 +1,9 @@
 # UI_Icons — ícones dos menus do HUD
 
 13 ícones PNG **512×512, fundo transparente (RGBA)**, prontos para `ImageLabel` no Roblox.
-Arte original, estilo minimalista arredondado em 3D: formas simples e grossas com cantos bem redondos, cor própria
-de cada ícone, contorno preto pesado, faces "infladas" com luz de cima/esquerda (brilho e sombra nas bordas),
-reflexos em degradê e lateral extrudada mais escura. Sem texto, sem fundo
-quadrado/redondo; legível a 32×32 e 48×48 px (ver `preview.png`).
+Arte original, estilo **minimalista e chapado**: formas simples e arredondadas, uma cor por ícone (no máximo um
+segundo tom da mesma cor), detalhes vazados (transparentes), sem contorno, sem 3D, sem brilho e sem estrelinhas.
+Sem texto, sem fundo quadrado/redondo; legível a 32×32 e 48×48 px (ver `preview.png`).
 
 | Arquivo | Botão no jogo | Cor | Chave em `UI/IconAssets.luau` |
 |---|---|---|---|
@@ -34,5 +33,11 @@ Dentro das janelas não se repete o ícone do menu (o botão já mostra).
    estiver `""`, o jogo usa o desenho vetorial em código na mesma cor, então nada aparece quebrado.
 
 ## Editar / exportar de novo
-Fontes em `src/*.svg` (viewBox 512). `node assets/UI_Icons/tools/export.js` regera os PNGs, `preview.png`
-e `manifest.json` (precisa do Playwright com Chromium).
+Os desenhos ficam em `tools/generate.py` (gera `src/*.svg`, viewBox 512). Depois de mudar:
+```
+python3 assets/UI_Icons/tools/generate.py assets/UI_Icons/src
+node assets/UI_Icons/tools/fit.js assets/UI_Icons/src 424   # centraliza e ajusta o tamanho
+node assets/UI_Icons/tools/export.js                         # PNGs, preview.png e manifest.json
+```
+(precisa do Playwright com Chromium). O jogo usa os mesmos formatos em vetor (`Client/UI/Icons.luau`, estilo chapado)
+enquanto os PNGs não forem enviados — exceto Mounts, que no vetor é uma ferradura.

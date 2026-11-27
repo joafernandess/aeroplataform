@@ -50,7 +50,8 @@ Theme.Colors.Bad = palette.Ice -- attention text on dark panels (destructive but
 Theme.Colors.Info = palette.Blue500
 Theme.Colors.Alert = hex("FF3B4E") -- notification badges (count, NEW)
 Theme.Colors.Gold = hex("FFC21A") -- currency, selection and window accents (thin gold lines)
-Theme.Colors.Yellow = hex("FFC21A") -- testplace accent (window header, selection, claimable) — never overridden
+Theme.Colors.Yellow = hex("FFC21A") -- gold accent outside windows (CLICK button) — never overridden
+Theme.Colors.Select = palette.Blue400 -- window accent: selection, claimable, active tab, stripes
 Theme.Colors.Green = hex("3ED45E") -- "discovered" / done text
 Theme.Colors.XP = palette.Cyan
 Theme.Colors.Crit = palette.Cyan
@@ -72,8 +73,8 @@ Theme.Gradients = {
 	Disabled = { Top = hex("3A4560"), Bottom = hex("2A3247") },
 	WindowBody = { Top = hex("1C1D22"), Bottom = hex("0E0F12") },
 	WindowFrame = { Top = hex("4A4D56"), Bottom = hex("26282E") }, -- metallic border
-	WindowHeader = { Top = hex("FFE45C"), Bottom = hex("F5B400") }, -- yellow title bar
-	Progress = { Top = hex("FFE45C"), Bottom = hex("F2A900") },
+	WindowHeader = { Top = hex("2A7BFF"), Bottom = hex("0E3A9E") }, -- blue title bar
+	Progress = { Top = hex("4FD2FF"), Bottom = hex("1E6BFF") },
 	Portrait = { Top = hex("2D3038"), Bottom = hex("111216") },
 	EnemyHealth = { Top = hex("FFFFFF"), Bottom = hex("BFD6FF") },
 }

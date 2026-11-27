@@ -79,7 +79,7 @@ function UpdateLogController:_entry(entry, order: number, latest: boolean)
 	end
 	local card = C.Row(self.List, { Name = entry.Id, Size = UDim2.new(1, -8, 0, height + 10), LayoutOrder = order })
 	if latest then
-		card:FindFirstChildOfClass("UIStroke").Color = P.Yellow
+		card:FindFirstChildOfClass("UIStroke").Color = P.Select
 	end
 	C.Title(card, entry.Title, { Name = "EntryTitle", Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -200, 0, 30), TextSize = 24 }, 2.5)
 	-- Right side: LATEST tag and/or the date.
@@ -92,10 +92,10 @@ function UpdateLogController:_entry(entry, order: number, latest: boolean)
 		C.Label(date, entry.Date, { Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = P.TextDim, TextXAlignment = Enum.TextXAlignment.Center })
 	end
 	if latest then
-		local tag = C.Frame(tags, { Name = "Latest", BackgroundColor3 = P.Yellow, Size = UDim2.fromOffset(72, 26), LayoutOrder = 1 })
+		local tag = C.Frame(tags, { Name = "Latest", BackgroundColor3 = P.Select, Size = UDim2.fromOffset(72, 26), LayoutOrder = 1 })
 		C.Corner(tag, UDim.new(0.5, 0))
 		C.Stroke(tag, P.Ink, 2)
-		C.Title(tag, "LATEST", { Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = P.Ink, TextXAlignment = Enum.TextXAlignment.Center }, 0.01)
+		C.Title(tag, "LATEST", { Size = UDim2.fromScale(1, 1), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Center }, 1.5)
 	end
 	local y = 46
 	local n = 0
@@ -106,13 +106,13 @@ function UpdateLogController:_entry(entry, order: number, latest: boolean)
 			Position = UDim2.fromOffset(16, y + 4),
 			Size = UDim2.new(1, -32, 0, 22),
 			TextSize = 15,
-			TextColor3 = P.Yellow,
+			TextColor3 = P.Cyan,
 		}, 1.5)
 		y += SECTION_H
 		for _, item in section.Items do
 			n += 1
 			local h = itemHeight(item)
-			local dot = C.Frame(card, { Name = "Bullet", BackgroundColor3 = P.Yellow, Position = UDim2.fromOffset(22, y + 8), Size = UDim2.fromOffset(7, 7) })
+			local dot = C.Frame(card, { Name = "Bullet", BackgroundColor3 = P.Select, Position = UDim2.fromOffset(22, y + 8), Size = UDim2.fromOffset(7, 7) })
 			C.Corner(dot, UDim.new(0.5, 0))
 			C.Label(card, item, {
 				Name = "Item" .. n,

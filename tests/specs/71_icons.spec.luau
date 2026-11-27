@@ -93,6 +93,13 @@ return function(t)
 			end
 		end)
 
+		t.it("draws flat (no outline around the shapes) unless Bordered is asked for", function()
+			local Icons = load()
+			local flat = Icons.Create("shop", screen(), { Size = 48 })
+			local bordered = Icons.Create("shop", screen(), { Size = 48, Bordered = true })
+			expect(countClass(bordered, "Frame") > countClass(flat, "Frame")).toBe(true)
+		end)
+
 		t.it("resolves names, Theme.Icons keys and glyphs (reverse lookup)", function()
 			local Icons, Theme = load()
 			expect(Icons.Resolve("settings")).toBe("settings")

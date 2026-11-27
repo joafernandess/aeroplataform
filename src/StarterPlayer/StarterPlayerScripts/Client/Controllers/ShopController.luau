@@ -61,11 +61,11 @@ function ShopController:_card(pass, order: number)
 	local owned = self.Owned[pass.PassId] == true
 	local card = C.Frame(self.List, { Name = pass.Id, BackgroundColor3 = P.PanelAlt, LayoutOrder = order })
 	C.Corner(card, Theme.Radius.Card)
-	C.Stroke(card, if owned then P.Yellow else P.Ink, if owned then 3 else Theme.Stroke.Card)
+	C.Stroke(card, if owned then P.Select else P.Ink, if owned then 3 else Theme.Stroke.Card)
 	-- The pass's own image (uploaded with the pass on Roblox), on a dark well with a gold rim.
 	local well = C.Frame(card, { Name = "Art", BackgroundColor3 = P.Bg, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 0, 104) })
 	C.Corner(well, 10)
-	C.Stroke(well, P.Yellow, 2)
+	C.Stroke(well, P.Select, 2)
 	if info and info.IconImageAssetId and info.IconImageAssetId ~= 0 then
 		C.Create("ImageLabel", {
 			Name = "Image",
@@ -95,7 +95,7 @@ function ShopController:_card(pass, order: number)
 			MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, pass.PassId)
 		end, {
 		Name = "Buy",
-		Kind = if owned then "Dark" else "Gold",
+		Kind = if owned then "Dark" else "Primary",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -10),
 		Size = UDim2.new(1, -20, 0, 48),

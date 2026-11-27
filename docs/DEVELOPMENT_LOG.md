@@ -204,6 +204,17 @@
 - Preview: ViewportFrame aparece como busto de referência; janelas novas também em 844×390.
 - **244 testes passando**, selene 0/0.
 
+### Janelas de volta ao azul + ícones minimalistas
+- Onde as janelas tinham ficado amarelas voltou o azul de antes: barra de título (degradê azul, nome branco),
+  listras da borda, seleção de cards, aba ativa, chips, barras de progresso, botões CLAIM/BUY, rolagem. O corpo
+  escuro e o formato angular ficaram. O dourado ficou só no Yen e no botão CLICK (fora das janelas).
+- Os 13 PNGs de `assets/UI_Icons` foram redesenhados minimalistas: chapados, uma cor (+ um tom), detalhes vazados,
+  sem contorno, sem 3D, sem brilho. Gerador em `assets/UI_Icons/tools/generate.py` + `fit.js`; ZIP refeito.
+- Ícones vetoriais do jogo (`UI/Icons.luau`) também chapados (sem contorno por padrão; `Bordered = true` traz de
+  volta) e redesenhados com os mesmos formatos dos PNGs (punho, ingresso, folha com ✓, portal, baú, livro, sino,
+  seta com chevron, barras, moeda). Mounts continua ferradura no vetor.
+- **245 testes passando**, selene 0/0.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

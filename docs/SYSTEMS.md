@@ -152,9 +152,9 @@ Cada botão: fundo escuro tingido e borda na cor do ícone, nome dentro, tecla d
 de notificação; hover cresce e levanta o ícone, clique afunda, botões largos têm um brilho que passa de tempos em
 tempos. Os menus (com o Yen) ficam centralizados na altura e encolhem em telas pequenas (`UIController:LayoutNav`).
 Badges: lutadores novos (Fighters), quests e upgrades para resgatar, lutadores novos no Index.
-Janelas (um único modelo, `C.Window`, no estilo do testplace): barra de título amarela angular com listras pretas e o
-nome em preto, X vermelho quadrado (sem repetir o ícone do menu dentro da janela), corpo preto/grafite com borda
-metálica e listras amarelas na borda de baixo. Peças reutilizáveis em `UI/Cards` (UpgradeCard, UpgradeDetailsPanel,
+Janelas (um único modelo, `C.Window`): barra de título azul angular com listras e o nome em branco, X vermelho
+quadrado (sem repetir o ícone do menu dentro da janela), corpo preto/grafite com borda metálica e listras azuis na
+borda de baixo; seleção, aba ativa, barras de progresso e botões CLAIM/BUY em azul (`Theme.Colors.Select`). Peças reutilizáveis em `UI/Cards` (UpgradeCard, UpgradeDetailsPanel,
 FighterIndexCard, IndexWorldPanel, Chips, LabeledBar). Abrem com leve aumento + fade e fecham com leve redução + fade
 (CanvasGroup); arrastam pela barra de título (sem sair da tela); Esc ou o X fecham; nunca há cópias duplicadas
 e o botão do menu fica destacado enquanto a janela dele está aberta.

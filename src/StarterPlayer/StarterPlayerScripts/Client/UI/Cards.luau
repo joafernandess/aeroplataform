@@ -1,6 +1,6 @@
 --[[
 	Cards
-	Reusable pieces of the collection-style windows (Upgrades, Fighter Index), black and yellow like the windows:
+	Reusable pieces of the collection-style windows (Upgrades, Fighter Index), dark with blue accents like the windows:
 	  Cards.UpgradeCard(parent, info, onClick)       milestone card: icon, name, progress pill, state look
 	  Cards.UpgradeDetailsPanel(parent)              right panel: name, category, bonus, requirement, bar, state
 	  Cards.FighterIndexCard(parent, info, onClick)  fighter card: 3D thumbnail (or dark silhouette) + rarity bar
@@ -84,7 +84,7 @@ function Cards.UpgradeCard(parent: Instance, info, onClick: (() -> ())?)
 	C.Gradient(card, if locked then P.Panel else P.PanelAlt, P.Bg)
 	local border = if info.Selected then P.White
 		elseif state == "Completed" then color
-		elseif state == "Claimable" then P.Yellow
+		elseif state == "Claimable" then P.Select
 		elseif locked then P.Line
 		else color:Lerp(P.Ink, 0.35)
 	C.Stroke(card, border, if info.Selected or state == "Claimable" then 3.5 else 2.5)
@@ -157,7 +157,7 @@ end
 function Cards.UpgradeDetailsPanel(parent: Instance)
 	local panel = C.Frame(parent, { Name = "Details", BackgroundColor3 = P.Panel, ZIndex = 2 })
 	C.Corner(panel, 6)
-	C.Stroke(panel, P.Yellow, 3)
+	C.Stroke(panel, P.Select, 3)
 	local name = C.Title(panel, "", { Name = "DetailName", Position = UDim2.fromOffset(18, 14), Size = UDim2.new(1, -36, 0, 40), TextSize = 34, ZIndex = 3 }, 2.5)
 	local category = C.Label(panel, "", { Name = "Category", Position = UDim2.fromOffset(18, 56), Size = UDim2.new(1, -36, 0, 20), TextSize = 15, TextColor3 = P.TextDim, Font = Theme.Fonts.Bold, ZIndex = 3 })
 	local bonus = C.Title(panel, "", { Name = "Bonus", Position = UDim2.fromOffset(18, 92), Size = UDim2.new(1, -36, 0, 44), TextSize = 36, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 3 }, 2.5)
@@ -180,7 +180,7 @@ function Cards.UpgradeDetailsPanel(parent: Instance)
 		if onClaim then
 			onClaim()
 		end
-	end, { Name = "Claim", Kind = "Gold", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.new(1, -36, 0, 50), TextSize = 22, Visible = false, Confirm = false, ZIndex = 4 })
+	end, { Name = "Claim", Kind = "Primary", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.new(1, -36, 0, 50), TextSize = 22, Visible = false, Confirm = false, ZIndex = 4 })
 	local api = { Frame = panel, ClaimButton = claim }
 	function api.Show(info)
 		name.Text = info.Name
@@ -190,7 +190,7 @@ function Cards.UpgradeDetailsPanel(parent: Instance)
 		requirement.Text = info.Requirement
 		bar.Set(info.Fraction, info.ProgressText)
 		stateLabel.Text = STATE_TEXT[info.State] or info.State
-		stateLabel.TextColor3 = if info.State == "Completed" then info.Color elseif info.State == "Claimable" then P.Yellow else P.TextDim
+		stateLabel.TextColor3 = if info.State == "Completed" then info.Color elseif info.State == "Claimable" then P.Cyan else P.TextDim
 		note.Text = info.StateNote or ""
 		total.Text = info.Total or ""
 		onClaim = info.OnClaim
@@ -306,7 +306,7 @@ function Cards.IndexWorldPanel(parent: Instance, onWorld: (string) -> ())
 				Parent = list,
 			})
 			C.Corner(banner, 6)
-			C.Stroke(banner, if world.Selected then P.Yellow else P.Ink, if world.Selected then 3 else 2)
+			C.Stroke(banner, if world.Selected then P.Select else P.Ink, if world.Selected then 3 else 2)
 			if world.Available then
 				C.Gradient(banner, world.Color:Lerp(P.White, 0.15), Theme.Darken(world.Color, 0.45))
 				texture(banner, 2)
@@ -356,10 +356,9 @@ function Cards.Chips(parent: Instance, items, onSelect: (string) -> ())
 		for id, chip in chips do
 			local item = chip.Item
 			local selected = id == api.Selected
-			local tint = item.Color or P.Yellow
+			local tint = item.Color or P.Select
 			chip.Button.BackgroundColor3 = if selected then tint else P.Panel
 			chip.Stroke.Color = if selected then P.Ink else tint
-			chip.Label.TextColor3 = if selected then P.Ink else P.White
 			chip.Gradient.Enabled = selected and item.Gradient ~= nil
 		end
 	end
@@ -376,12 +375,12 @@ function Cards.Chips(parent: Instance, items, onSelect: (string) -> ())
 			Parent = row,
 		})
 		C.Corner(button, 5)
-		local stroke = C.Stroke(button, item.Color or P.Yellow, 2.5)
+		local stroke = C.Stroke(button, item.Color or P.Select, 2.5)
 		local gradient = C.Create("UIGradient", { Color = item.Gradient or ColorSequence.new(P.White), Enabled = false, Parent = button })
 		if item.Gradient then
 			button.BackgroundColor3 = P.White
 		end
-		local label = C.Title(button, item.Text, { Size = UDim2.fromScale(1, 1), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 }, 0.01)
+		local label = C.Title(button, item.Text, { Size = UDim2.fromScale(1, 1), TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 4 }, 1.5)
 		chips[item.Id] = { Button = button, Stroke = stroke, Label = label, Item = item, Gradient = gradient }
 		hoverable(button)
 		button.Activated:Connect(function()

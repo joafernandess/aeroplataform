@@ -29,14 +29,15 @@ return function(t)
 	local expect = t.expect
 
 	t.describe("window system", function()
-		t.it("uses one template: yellow angular title bar, dark metallic body, yellow accents, red X, fading group", function()
+		t.it("uses one template: blue angular title bar, dark metallic body, blue accents, red X, fading group", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
 			local Theme = s.Runtime:Require(CLIENT .. "UI/Theme")
 			for name, window in UI.Windows do
 				expect(window.Group ~= nil and window.Group.ClassName == "CanvasGroup").toBe(true)
 				expect(find(window.Header, "TitleBar") ~= nil).toBe(true)
-				expect(window.Title.TextColor3).toBe(Theme.Colors.Ink) -- black title on the yellow bar
+				expect(window.Title.TextColor3).toBe(Theme.Colors.White) -- white title on the blue bar
+				expect(find(window.Header, "TitleBar"):FindFirstChildOfClass("UIGradient").Color.Keypoints[1].Value).toBe(Theme.Gradients.WindowHeader.Top)
 				expect(find(window.Group, "Panel") ~= nil).toBe(true)
 				expect(find(window.Group, "Accents") ~= nil).toBe(true)
 				expect(window.CloseButton.Name).toBe("Close")
@@ -183,7 +184,7 @@ return function(t)
 			find(Index.WorldPanel.List, "W1").Activated:Fire()
 			task.wait(0.02)
 			expect(Index.SelectedWorld).toBe("W1")
-			expect(find(Index.WorldPanel.List, "W1"):FindFirstChildOfClass("UIStroke").Color).toBe(s.Runtime:Require(CLIENT .. "UI/Theme").Colors.Yellow)
+			expect(find(Index.WorldPanel.List, "W1"):FindFirstChildOfClass("UIStroke").Color).toBe(s.Runtime:Require(CLIENT .. "UI/Theme").Colors.Select)
 			UI:Open("UpdateLog")
 			task.wait(0.05)
 			local entry = UpdateLog.GetLatest()

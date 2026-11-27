@@ -1,6 +1,6 @@
 --[[
 	Icons
-	Bold, outlined icons drawn with GUI primitives only (Frames + UICorner, rotated Frames, ClipsDescendants
+	Flat minimalist icons (same look as the PNGs in assets/UI_Icons) drawn with GUI primitives only (Frames + UICorner, rotated Frames, ClipsDescendants
 	frames and UIStroke rings). Every icon is a square container whose children use Scale-based UDim2s, so an
 	icon scales with whatever size it is given (24-72 px is the design range).
 
@@ -9,8 +9,9 @@
 	             Visible, Rotation, plus
 	        Color         main fill (default White)
 	        Accent        secondary fill (default Cyan)
-	        Outline       outline + inner-detail colour (default Ink); false = no outline
-	        OutlineScale  multiplies the outline thickness (default 1; 6% of the icon size, at least 1 px)
+	        Outline       inner-detail colour (default Ink; reads as a cut-out on the dark buttons); false = none
+	        Bordered      true = also draw the old dark outline around the shapes (off by default: flat style)
+	        OutlineScale  multiplies that outline thickness (default 1; 6% of the icon size, at least 1 px)
 	  Icons.Resolve(nameOrGlyph) -> name?    accepts an icon name, a Theme.Icons key ("Inventory") or glyph ("▦")
 	  Icons.Glyph(name) -> string            text fallback for a name (for prices/labels in plain text)
 	  Icons.SetColors(icon, { Color?, Accent?, Outline? })
@@ -412,16 +413,18 @@ local function coinFace(d, cx: number, cy: number, size: number)
 end
 
 Drawings.yen = function(d)
-	coinFace(d, 50, 50, 86)
-	local ink = { Fill = "Outline", Layer = 2, Outline = false, Radius = 0.35 }
+	-- Coin with a thin inner ring and the yen sign (dark = cut-out look).
+	d:Disc(50, 50, 88, {})
+	d:Ring(50, 50, 72, 72, 3, { Fill = "Outline", Layer = 1 })
+	local ink = { Fill = "Outline", Layer = 2, Radius = 0.45 }
 	local arm = table.clone(ink)
 	arm.Rot = -34
-	d:Box(43, 37, 8.5, 28, arm)
+	d:Box(43, 36, 8.5, 26, arm)
 	arm.Rot = 34
-	d:Box(57, 37, 8.5, 28, arm)
+	d:Box(57, 36, 8.5, 26, arm)
 	d:Box(50, 59, 8.5, 28, ink)
-	d:Box(50, 56, 30, 6.5, ink)
-	d:Box(50, 66, 30, 6.5, ink)
+	d:Box(50, 55, 30, 6, ink)
+	d:Box(50, 65, 30, 6, ink)
 end
 
 Drawings.sell = function(d)
@@ -487,14 +490,17 @@ Drawings.power = function(d)
 end
 
 Drawings.fighters = function(d)
-	-- Fighter bust with a flying headband.
-	d:Box(79, 37, 22, 8, { Fill = "Accent", Radius = 0.5, Rot = 14 })
-	d:Box(77, 47, 18, 7, { Fill = "Accent", Radius = 0.5, Rot = 42 })
-	d:Clip(0, 0, 100, 90, 0, function()
-		d:Box(50, 92, 76, 48, { Radius = 0.5 })
-	end)
-	d:Disc(50, 42, 42, { Layer = 1 })
-	d:Box(50, 36, 48, 10, { Fill = "Accent", Radius = 0.3, Layer = 2, OutlineScale = 0.6 })
+	-- Fist: four fingers over the palm, thumb across (lighter), wrist below.
+	d:Box(50, 56, 64, 40, { Radius = 0.4 })
+	for i, x in { 27, 42.5, 58, 73 } do
+		d:Box(x, if i == 1 or i == 4 then 38 else 33, 14, 32, { Radius = 0.5 })
+	end
+	local gap = { Fill = "Outline", Layer = 1, Radius = 0.5 }
+	for _, x in { 34.8, 50.3, 65.5 } do
+		d:Box(x, 34, 2.6, 18, gap)
+	end
+	d:Box(44, 62, 40, 13, { Fill = "Accent", Radius = 0.5, Layer = 1 })
+	d:Box(50, 87, 38, 11, { Fill = "Accent", Radius = 0.25 })
 end
 
 Drawings.team = function(d)
@@ -544,11 +550,14 @@ Drawings.sort = function(d)
 end
 
 Drawings.upgrades = function(d)
-	d:Box(50, 68, 28, 42, { Radius = 0.12 })
-	d:Tri(50, 48, 36, "up")
-	local band = { Fill = "Accent", Layer = 1, Outline = false }
-	d:Box(50, 70, 28, 6, band)
-	d:Box(50, 81, 28, 6, band)
+	-- Up arrow with a lighter chevron above it.
+	d:Tri(50, 60, 32, "up")
+	d:Box(50, 76, 28, 36, { Radius = 0.12 })
+	local chevron = { Fill = "Accent", Radius = 0.5 }
+	chevron.Rot = -38
+	d:Box(39.5, 15, 28, 10, chevron)
+	chevron.Rot = 38
+	d:Box(60.5, 15, 28, 10, chevron)
 end
 
 Drawings.lock = function(d)
@@ -575,19 +584,22 @@ Drawings.plus = function(d)
 end
 
 Drawings.quests = function(d)
-	d:Box(50, 50, 56, 66, { Radius = 0.06 })
-	d:Box(50, 19, 74, 15, { Fill = "Accent", Radius = 0.5, Layer = 1 })
-	d:Box(50, 81, 74, 15, { Fill = "Accent", Radius = 0.5, Layer = 1 })
-	local ink = { Fill = "Outline", Layer = 2, Outline = false, Radius = 0.5 }
-	d:Box(50, 40, 34, 5, ink)
-	d:Box(50, 50, 34, 5, ink)
-	d:Box(45, 60, 24, 5, ink)
+	-- Sheet with a folded corner and a check mark.
+	d:Box(48, 50, 62, 84, { Radius = 0.12 })
+	d:Clip(64, 8, 79, 23, 1, function()
+		d:Box(79, 8, 21, 21, { Rot = 45, Fill = "Accent" })
+	end)
+	local ink = { Fill = "Outline", Layer = 2, Radius = 0.5 }
+	ink.Rot = -45
+	d:Box(36, 57, 9, 20, ink)
+	ink.Rot = 45
+	d:Box(52, 51, 9, 34, ink)
 end
 
 Drawings.shop = function(d)
 	-- Storefront: building with a door under a striped, scalloped awning.
 	d:Box(50, 66, 72, 42, { Radius = 0.08 })
-	d:Box(50, 74, 20, 26, { Fill = "Accent", Layer = 1, Radius = 0.15, OutlineScale = 0.6 })
+	d:Box(50, 74, 20, 26, { Fill = "Outline", Layer = 1, Radius = 0.15 })
 	d:Box(50, 30, 88, 22, { Radius = 0.2, Layer = 2 })
 	for i, x in { 15.2, 32.6, 50, 67.4, 84.8 } do
 		d:Disc(x, 41, 17.4, { Layer = 2, Fill = if i % 2 == 0 then "Accent" else "Color" })
@@ -733,14 +745,17 @@ end
 -- Navigation icons (side menus) -------------------------------------------------------------------------------------
 
 Drawings.codes = function(d)
-	-- Gift box: body, lid, ribbon and a two-loop bow.
-	d:Box(50, 66, 68, 44, { Radius = 0.12 })
-	d:Box(50, 40, 80, 18, { Fill = "Accent", Radius = 0.18, Layer = 1 })
-	d:Box(50, 66, 12, 44, { Fill = "Accent", Layer = 1, Outline = false })
-	d:Box(50, 40, 12, 18, { Fill = "Color", Layer = 2, Outline = false })
-	d:Box(38, 24, 22, 14, { Radius = 0.5, Rot = -28, Layer = 3 })
-	d:Box(62, 24, 22, 14, { Radius = 0.5, Rot = 28, Layer = 3 })
-	d:Disc(50, 28, 12, { Fill = "Accent", Layer = 4 })
+	-- Ticket: side notches, perforation and a star.
+	d:Box(50, 50, 90, 46, { Radius = 0.2 })
+	d:Clip(5, 27, 95, 73, 1, function()
+		d:Disc(5, 50, 18, { Fill = "Outline" })
+		d:Disc(95, 50, 18, { Fill = "Outline" })
+	end)
+	local dash = { Fill = "Outline", Layer = 2, Radius = 0.4 }
+	for _, y in { 34, 46, 58, 70 } do
+		d:Box(31, y - 2, 4, 7, dash)
+	end
+	d:Star5(61, 50, 16, { Fill = "Outline", Layer = 2 })
 end
 
 Drawings.mounts = function(d)
@@ -757,14 +772,11 @@ Drawings.mounts = function(d)
 end
 
 Drawings.index = function(d)
-	-- Book: cover with a cyan spine, page block and text lines.
-	d:Box(52, 50, 70, 84, { Radius = 0.1 })
-	d:Box(22, 50, 14, 84, { Fill = "Accent", Radius = 0.25, Layer = 1 })
-	local line = { Fill = "Outline", Layer = 2, Outline = false, Radius = 0.5 }
-	d:Box(58, 30, 36, 5, line)
-	d:Box(58, 44, 36, 5, line)
-	d:Box(58, 58, 28, 5, line)
-	d:Star5(58, 74, 11, { Fill = "Accent", Layer = 2, OutlineScale = 0.6 })
+	-- Book: cover, lighter spine, label and a bookmark ribbon.
+	d:Box(66, 91, 11, 14, { Fill = "Accent", Radius = 0.15 })
+	d:Box(53, 47, 66, 84, { Radius = 0.1, Layer = 1 })
+	d:Box(26, 47, 12, 84, { Fill = "Accent", Radius = 0.3, Layer = 2 })
+	d:Box(59, 30, 30, 11, { Fill = "Outline", Layer = 2, Radius = 0.35 })
 end
 
 Drawings.achievements = function(d)
@@ -781,37 +793,36 @@ Drawings.achievements = function(d)
 end
 
 Drawings.stats = function(d)
-	-- Rising bar chart on a base line.
-	d:Box(26, 66, 16, 30, { Radius = 0.2 })
-	d:Box(50, 54, 16, 54, { Radius = 0.2 })
-	d:Box(74, 40, 16, 82, { Fill = "Accent", Radius = 0.2 })
-	d:Box(50, 86, 84, 7, { Radius = 0.5, Layer = 1 })
+	-- Three rising bars.
+	d:Box(24, 70, 17, 36, { Radius = 0.4 })
+	d:Box(50, 58, 17, 60, { Radius = 0.4 })
+	d:Box(76, 46, 17, 84, { Radius = 0.4 })
 end
 
 Drawings.teleport = function(d)
-	-- Portal: cyan ring with a bright core and a sparkle.
-	d:Ring(50, 50, 80, 88, 14, { Fill = "Accent" })
-	d:Box(50, 50, 42, 52, { Radius = 0.5, Layer = 1 })
-	d:Spike4(50, 50, 16, 5, 2, { Fill = "Accent" })
+	-- Portal: thick ring around a dark well with a swirl and a bright core.
+	d:Ring(50, 50, 78, 94, 13)
+	d:Box(50, 50, 50, 66, { Fill = "Outline", Radius = 0.5, Layer = 1, Transparency = 0.35 })
+	d:Ring(50, 50, 34, 44, 6, { Fill = "Accent", Layer = 2 })
+	d:Box(50, 50, 14, 18, { Radius = 0.5, Layer = 3 })
 end
 
 Drawings.update = function(d)
-	-- Bell: dome, rim, clapper and top knob.
-	d:Disc(50, 18, 14, {})
-	d:Box(50, 46, 56, 52, { Radius = 0.46, Layer = 1 })
-	d:Box(50, 70, 74, 14, { Radius = 0.5, Layer = 2 })
-	d:Disc(50, 84, 16, { Fill = "Accent", Layer = 1 })
-	d:Box(38, 42, 7, 22, { Fill = "Accent", Layer = 2, Outline = false, Radius = 0.5 })
+	-- Bell: knob, dome flaring into the rim, clapper.
+	d:Disc(50, 13, 12, {})
+	d:Box(50, 44, 52, 54, { Radius = 0.46 })
+	d:Box(50, 68, 78, 14, { Radius = 0.4 })
+	d:Box(50, 76.5, 82, 3, { Fill = "Outline", Layer = 1 })
+	d:Disc(50, 86, 15, {})
 end
 
 Drawings.inventory = function(d)
-	-- Backpack: body, top handle, flap and front pocket.
-	d:Box(50, 20, 32, 18, { Radius = 0.5 })
-	d:Box(50, 23, 16, 7, { Fill = "Outline", Layer = 1, Outline = false, Radius = 0.5 })
-	d:Box(50, 58, 66, 70, { Radius = 0.28, Layer = 1 })
-	d:Box(50, 40, 66, 26, { Fill = "Accent", Radius = 0.35, Layer = 2 })
-	d:Box(50, 70, 38, 22, { Radius = 0.3, Layer = 2 })
-	d:Box(50, 52, 10, 8, { Fill = "Outline", Layer = 3, Outline = false, Radius = 0.3 })
+	-- Chest: lighter lid over the body, with a clasp.
+	d:Box(50, 63, 78, 48, { Radius = 0.16 })
+	d:Box(50, 34, 84, 28, { Fill = "Accent", Radius = 0.4 })
+	d:Box(50, 47.5, 92, 3, { Fill = "Outline", Layer = 1 })
+	d:Box(50, 48, 14, 18, { Fill = "Outline", Layer = 2, Radius = 0.3 })
+	d:Box(50, 48, 4, 7, { Layer = 3, Radius = 0.5 })
 end
 
 function Icons.Resolve(nameOrGlyph: any): string?
@@ -851,7 +862,7 @@ end
 
 -- Creation ----------------------------------------------------------------------------------------------------------
 
-local SPECIAL = { Color = true, Accent = true, Outline = true, OutlineScale = true, Size = true, Px = true, Tint = true }
+local SPECIAL = { Color = true, Accent = true, Outline = true, OutlineScale = true, Bordered = true, Size = true, Px = true, Tint = true }
 
 local function sizeOf(value: any): UDim2
 	if type(value) == "number" then
@@ -936,7 +947,8 @@ function Icons.Create(nameOrGlyph: string, parent: Instance?, props: { [string]:
 			Parts = entry.Parts,
 			Px = px,
 			Z = z,
-			T = if p.Outline == false then 0 else math.max(OUTLINE, 100 / px) * (p.OutlineScale or 1),
+			-- Flat style: no outline around the shapes unless the caller asks for it (Bordered = true).
+			T = if p.Outline == false or not p.Bordered then 0 else math.max(OUTLINE, 100 / px) * (p.OutlineScale or 1),
 		}, Draw)
 		Drawings[name](draw)
 	else
