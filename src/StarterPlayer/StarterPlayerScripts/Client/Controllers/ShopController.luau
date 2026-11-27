@@ -61,11 +61,11 @@ function ShopController:_card(pass, order: number)
 	local owned = self.Owned[pass.PassId] == true
 	local card = C.Frame(self.List, { Name = pass.Id, BackgroundColor3 = P.PanelAlt, LayoutOrder = order })
 	C.Corner(card, Theme.Radius.Card)
-	C.Stroke(card, if owned then P.Gold else P.Ink, if owned then 3 else Theme.Stroke.Card)
+	C.Stroke(card, if owned then P.Yellow else P.Ink, if owned then 3 else Theme.Stroke.Card)
 	-- The pass's own image (uploaded with the pass on Roblox), on a dark well with a gold rim.
 	local well = C.Frame(card, { Name = "Art", BackgroundColor3 = P.Bg, Position = UDim2.fromOffset(10, 10), Size = UDim2.new(1, -20, 0, 104) })
 	C.Corner(well, 10)
-	C.Stroke(well, P.Gold, 2)
+	C.Stroke(well, P.Yellow, 2)
 	if info and info.IconImageAssetId and info.IconImageAssetId ~= 0 then
 		C.Create("ImageLabel", {
 			Name = "Image",

@@ -16,13 +16,13 @@ quadrado/redondo; legível a 32×32 e 48×48 px (ver `preview.png`).
 | `Icon_Teleport.png` | Menu esquerdo · TP | ciano `#2ED3FF` | `teleport` |
 | `Icon_Inventory.png` | Menu direito · Inventory | azul `#3D8BFF` | `inventory` |
 | `Icon_Mounts.png` | Menu direito · Mounts | rosa/magenta `#FF4FB8` | `mounts` |
-| `Icon_Achievements.png` | Menu direito · Achievements | dourado `#FFB81C` | `achievements` |
+| `Icon_Upgrades.png` | Menu direito · Upgrades | dourado `#FFB81C` | `upgrades` |
 | `Icon_Stats.png` | Menu direito · Stats | vermelho `#FF4545` | `stats` |
 | `Icon_Index.png` | Menu direito · Index | violeta `#7C5CFF` | `index` |
 | `Icon_UpdateLog.png` | Card "UPDATE LOG" (canto superior direito) | menta `#34E3A5` | `update` |
-| `Icon_Yen.png` | Contador de Yen (em cima do menu esquerdo) e carteira do Inventory | dourado `#FFC21A` | `yen` |
+| `Icon_Yen.png` | Contador de Yen (em cima do menu esquerdo) e cards Yen dos Upgrades | dourado `#FFC21A` | `yen` |
 
-Os mesmos ícones aparecem no ladrilho do título de cada janela.
+Dentro das janelas não se repete o ícone do menu (o botão já mostra).
 
 ## Colocar no jogo
 1. Roblox Studio → **View → Asset Manager → Bulk Import** → selecione os 13 PNGs

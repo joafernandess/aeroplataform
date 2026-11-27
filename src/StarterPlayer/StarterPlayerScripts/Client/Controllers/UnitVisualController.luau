@@ -24,6 +24,7 @@ local Net = require(Shared.Remotes.Net)
 local Client = script.Parent.Parent
 local C = require(Client.UI.Components)
 local Theme = require(Client.UI.Theme)
+local FighterModel = require(Client.UI.FighterModel)
 local State = require(Client.State)
 
 local UnitVisualController = {
@@ -41,35 +42,13 @@ local FIGHT_MEMORY = 1.5 -- seconds without damage before fighters return to the
 local FORMATION_SPACING = 3.6
 local FORMATION_BACK = 5
 
-local function findAsset(unitId: string): Model?
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	local units = assets and assets:FindFirstChild("Units")
-	local model = units and units:FindFirstChild(unitId)
-	if model and model:IsA("Model") and model.PrimaryPart then
-		return model
-	end
-	return nil
-end
-
 function UnitVisualController:CreateVisual(unit)
 	local def = Units.Get(unit.UnitId)
 	if not def then
 		return nil
 	end
-	local rarity = Theme.Rarity(def.Rarity)
-	local model: Model
-	local asset = findAsset(unit.UnitId)
-	if asset then
-		model = asset:Clone()
-	else
-		model = RigBuilder.Build({
-			Name = def.Name,
-			Scale = FIGHTER_SCALE,
-			Shirt = rarity,
-			Pants = Theme.Darken(rarity, 0.55),
-			Hair = Theme.Darken(rarity, 0.25),
-		})
-	end
+	local asset = FighterModel.FindAsset(def.Id)
+	local model: Model = FighterModel.Build(def, FIGHTER_SCALE)
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") then
 			part.Anchored = true

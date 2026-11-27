@@ -266,6 +266,24 @@ local function flushPlaytime(profile)
 	profile.PlaytimeMark = now
 end
 
+-- Live play time in seconds (saved Playtime + the current session since the last flush).
+function DataService:GetPlaytime(player): number
+	local profile = profiles[player]
+	if not profile then
+		return 0
+	end
+	return profile.Data.Playtime + math.max(0, Clock.Now() - profile.PlaytimeMark)
+end
+
+-- Moves the current session's time into Playtime and replicates it (milestone progress on the client).
+function DataService:FlushPlaytime(player)
+	local profile = profiles[player]
+	if profile and not profile.Released then
+		flushPlaytime(profile)
+		self:MarkDirty(player, "Playtime")
+	end
+end
+
 function DataService:SaveProfile(player, release: boolean?): boolean
 	local profile = profiles[player]
 	if not profile or profile.Released then

@@ -30,7 +30,7 @@ local ClickerController = {
 	Priority = 13,
 }
 
-local SIZE = 104
+local SIZE = 74
 local COMBAT = GameConfig.Combat
 local AUTO_PULSE = 0.35 -- seconds between the button's self-presses while Auto Clicker is on
 local P = Theme.Colors
@@ -73,8 +73,8 @@ function ClickerController:_feedback(manual: boolean?)
 		ZIndex = 2,
 	})
 	C.Corner(ring, UDim.new(0.5, 0))
-	local stroke = C.Stroke(ring, P.Gold, 4)
-	tween(ring, 0.35, { Size = UDim2.fromOffset(SIZE + 46, SIZE + 46) })
+	local stroke = C.Stroke(ring, P.Yellow, 4)
+	tween(ring, 0.35, { Size = UDim2.fromOffset(SIZE + 34, SIZE + 34) })
 	tween(stroke, 0.35, { Transparency = 1 }).Completed:Connect(function()
 		ring:Destroy()
 	end)
@@ -85,7 +85,7 @@ function ClickerController:_feedback(manual: boolean?)
 			Position = UDim2.new(0.5, math.random(-22, 22), 0, 4),
 			Size = UDim2.fromOffset(60, 26),
 			TextSize = 22,
-			TextColor3 = P.Gold,
+			TextColor3 = P.Yellow,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			ZIndex = 6,
 		})
@@ -112,7 +112,7 @@ function ClickerController:RefreshStatus()
 	self.State = state
 	local text = { Auto = "AUTO CLICKER", Full = "FULL SPEED", Slow = ("SLOW · x%g"):format(COMBAT.IdleAttackSpeed) }
 	self.StatusLabel.Text = text[state]
-	self.Status.BackgroundColor3 = if state == "Slow" then P.Ink else P.Gold
+	self.Status.BackgroundColor3 = if state == "Slow" then P.Ink else P.Yellow
 	self.StatusLabel.TextColor3 = if state == "Slow" then P.TextDim else P.Ink
 	self.StatusStroke.Color = if state == "Slow" then P.Line else P.Ink
 end
@@ -138,10 +138,10 @@ function ClickerController:Init(controllers)
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -14),
-		Size = UDim2.fromOffset(SIZE + 120, SIZE + 34),
+		Size = UDim2.fromOffset(SIZE + 120, SIZE + 30),
 	})
 	self.Holder = holder
-	-- Big round button: gold face, dark rim, the fighters' fist in the middle, "CLICK" under the fist.
+	-- Round button: gold face, dark rim, the click symbol (pointing hand) and a small "CLICK" caption.
 	local button = C.Create("TextButton", {
 		Name = "ClickButton",
 		Text = "",
@@ -155,24 +155,24 @@ function ClickerController:Init(controllers)
 	})
 	C.Corner(button, UDim.new(0.5, 0))
 	C.Gradient(button, Theme.Gradients.Gold.Top, Theme.Gradients.Gold.Bottom)
-	C.Stroke(button, P.Ink, 4)
-	local rim = C.Frame(button, { Name = "InnerRim", BackgroundTransparency = 1, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -10, 1, -10), ZIndex = 4 })
+	C.Stroke(button, P.Ink, 3.5)
+	local rim = C.Frame(button, { Name = "InnerRim", BackgroundTransparency = 1, Position = UDim2.fromOffset(4, 4), Size = UDim2.new(1, -8, 1, -8), ZIndex = 4 })
 	C.Corner(rim, UDim.new(0.5, 0))
 	local rimStroke = C.Stroke(rim, P.White, 2)
 	rimStroke.Transparency = 0.4
-	C.Icon(button, "fighters", { Size = 54, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.42, 0), Color = Theme.IconColors.fighters, ZIndex = 5 })
-	C.Title(button, "CLICK", { Name = "Caption", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, 0, 0, 20), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 2.5)
+	C.Icon(button, "click", { Name = "ClickIcon", Size = 40, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.42, 0), Color = P.White, Accent = P.Yellow, ZIndex = 5 })
+	C.Title(button, "CLICK", { Name = "Caption", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, 0, 0, 14), TextSize = 13, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 6 }, 2)
 	self.Button = button
 	self.Scale = C.Create("UIScale", { Name = "Press", Parent = button })
 	button.Activated:Connect(function()
 		self:Click()
 	end)
 	-- Status pill
-	local status = C.Frame(holder, { Name = "Status", BackgroundColor3 = P.Ink, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(136, 26), ZIndex = 4 })
+	local status = C.Frame(holder, { Name = "Status", BackgroundColor3 = P.Ink, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(118, 22), ZIndex = 4 })
 	C.Corner(status, UDim.new(0.5, 0))
 	self.StatusStroke = C.Stroke(status, P.Line, 2)
 	self.Status = status
-	self.StatusLabel = C.Title(status, "", { Size = UDim2.fromScale(1, 1), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 }, 1.5)
+	self.StatusLabel = C.Title(status, "", { Size = UDim2.fromScale(1, 1), TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5 }, 1.5)
 	-- Small "buy Auto Clicker" button (only when the pass exists and isn't owned)
 	self.BuyAuto = C.Button(holder, "AUTO", function()
 		local pass = autoClickerPass()
@@ -184,8 +184,8 @@ function ClickerController:Init(controllers)
 		Kind = "Gold",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0.5, SIZE / 2 + 10, 0, SIZE / 2),
-		Size = UDim2.fromOffset(62, 40),
-		TextSize = 15,
+		Size = UDim2.fromOffset(54, 34),
+		TextSize = 13,
 		Visible = false,
 		Confirm = false,
 	})

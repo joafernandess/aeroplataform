@@ -29,7 +29,6 @@ return function(t)
 				"Teleport",
 				"Items",
 				"Mounts",
-				"Achievements",
 				"Stats",
 				"Index",
 				"UpdateLog",

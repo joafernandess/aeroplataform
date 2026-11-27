@@ -35,7 +35,7 @@ return function(t)
 	t.describe("icons", function()
 		t.it("draws every contract name with primitives at 24, 48 and 72 px", function()
 			local Icons, Theme = load()
-			expect(#Icons.Names).toBe(36) -- 28 HUD icons + 8 navigation icons
+			expect(#Icons.Names).toBe(38) -- 28 HUD icons + 8 navigation icons + luck + click
 			local holder = screen()
 			for _, name in Icons.Names do
 				expect(Icons.Has(name)).toBe(true)
@@ -81,7 +81,7 @@ return function(t)
 			local serde = require("@lune/serde")
 			local manifest = serde.decode("json", fs.readFile("assets/UI_Icons/manifest.json"))
 			local seen = {}
-			for _, name in { "shop", "fighters", "settings", "codes", "quests", "teleport", "inventory", "mounts", "achievements", "stats", "index", "update", "yen" } do
+			for _, name in { "shop", "fighters", "settings", "codes", "quests", "teleport", "inventory", "mounts", "upgrades", "stats", "index", "update", "yen" } do
 				local color = Theme.IconColors[name]
 				expect(color ~= nil).toBe(true)
 				local key = string.format("%.3f,%.3f,%.3f", color.R, color.G, color.B)

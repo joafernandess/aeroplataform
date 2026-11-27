@@ -130,15 +130,15 @@ function TeleportController:_worldRow(data, world, order: number)
 	local row = C.Row(self.List, { Name = "World_" .. world.Id, Size = UDim2.new(1, -8, 0, 70), LayoutOrder = order })
 	local tile = C.Frame(row, { BackgroundColor3 = P.Bg, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 10, 0.5, 0), Size = UDim2.fromOffset(50, 50) })
 	C.Corner(tile, Theme.Radius.Tool)
-	C.Stroke(tile, if unlocked then P.Gold else P.Line, 2)
-	C.Icon(tile, if unlocked then "worlds" else "lock", { Size = 32, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Color = if unlocked then P.Gold else P.TextDim })
+	C.Stroke(tile, if unlocked then P.Yellow else P.Line, 2)
+	C.Icon(tile, if unlocked then "worlds" else "lock", { Size = 32, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Color = if unlocked then P.Yellow else P.TextDim })
 	C.Title(row, ("World %d · %s"):format(world.Order, world.Name), { Name = "WorldName", Position = UDim2.fromOffset(74, 9), Size = UDim2.new(1, -230, 0, 28), TextSize = 20, TextColor3 = if unlocked then P.White else P.TextDim, TextTruncate = Enum.TextTruncate.AtEnd }, 2)
 	local requirement = TeleportController.RequirementText(world)
 	local subtitle = if unlocked
 		then "Unlocked"
 		elseif not Features.MultipleWorlds then "Coming soon" .. (if requirement ~= "" then " · needs " .. requirement else "")
 		else "Needs " .. requirement
-	C.Label(row, subtitle, { Name = "Requirement", Position = UDim2.fromOffset(74, 37), Size = UDim2.new(1, -230, 0, 22), TextSize = 15, TextColor3 = if unlocked then P.Cyan else P.Gold, TextTruncate = Enum.TextTruncate.AtEnd })
+	C.Label(row, subtitle, { Name = "Requirement", Position = UDim2.fromOffset(74, 37), Size = UDim2.new(1, -230, 0, 22), TextSize = 15, TextColor3 = if unlocked then P.Cyan else P.Yellow, TextTruncate = Enum.TextTruncate.AtEnd })
 	local button = C.Button(row, if unlocked then "TRAVEL" else "LOCKED", if unlocked
 		then function()
 			task.spawn(function()

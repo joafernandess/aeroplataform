@@ -21,7 +21,7 @@ const ICONS = [
 	["Icon_Teleport", "teleport", "Left menu · TP"],
 	["Icon_Inventory", "inventory", "Right menu · Inventory"],
 	["Icon_Mounts", "mounts", "Right menu · Mounts"],
-	["Icon_Achievements", "achievements", "Right menu · Achievements"],
+	["Icon_Upgrades", "upgrades", "Right menu · Upgrades"],
 	["Icon_Stats", "stats", "Right menu · Stats"],
 	["Icon_Index", "index", "Right menu · Index"],
 	["Icon_UpdateLog", "update", "Top-right · Update Log card"],

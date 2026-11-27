@@ -188,6 +188,22 @@
 - Fighters sem a aba "Units" (só havia ela).
 - **240 testes passando**.
 
+### Upgrades (marcos) e Fighter Index no estilo do testplace
+- Achievements saiu da UI (botão, janela e ícone); o menu direito ficou Inventory, Mounts · Upgrades, Stats · Index
+  sem buracos. O `AchievementService` continua no servidor, desligado por `Features.Achievements = false`.
+- Upgrades virou o sistema de marcos (Yen I–VI, Luck I–III, Damage I–III) dentro do `ProgressionService`: regras
+  compartilhadas cliente/servidor, `ClaimMilestone` validado, bônus no `BoostService`, tempo de jogo replicado a cada
+  30 s. Janela com cards, estados, painel de detalhes, CLAIM, badge e toast.
+- Fighter Index refeito: chips de raridade, cards com busto 3D (ViewportFrame) ou silhueta "???", banners de mundo,
+  info do lutador (como obter + chance) e barra de descobertos; toast + badge + card pulando em novas descobertas.
+- Modelo de janela amarelo/preto (barra angular, corpo grafite metálico, X vermelho quadrado), rolagem amarela.
+  Componentes reutilizáveis em `UI/Cards`; `UI/FighterModel` compartilhado com o `UnitVisualController`.
+- Raridades: Legendary laranja, Mythical arco-íris (`Rarities.Gradient`, `Theme.RarityGradient`).
+- Botão CLICK menor (74 px) com o símbolo de clique.
+- Token de cor `Yellow` (o antigo `Gold` era sobrescrito pelo branco da moeda Gold).
+- Preview: ViewportFrame aparece como busto de referência; janelas novas também em 844×390.
+- **244 testes passando**, selene 0/0.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

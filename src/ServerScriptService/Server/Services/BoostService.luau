@@ -14,6 +14,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Progression = require(Shared.Config.Progression)
 local Formulas = require(Shared.Modules.Formulas)
 local Clock = require(Shared.Modules.Clock)
 
@@ -101,6 +102,12 @@ function BoostService:GetMultiplier(player, stat: string): number
 	local perk = PASS_PERK_FOR_STAT[stat]
 	if perk and services.ShopService then
 		multiplier *= services.ShopService:GetPerkValue(player, perk, 1)
+	end
+
+	-- Claimed milestone upgrades (Upgrades window): additive bonus per stat.
+	local milestone = Progression.MilestoneBonus(data, stat)
+	if milestone > 0 then
+		multiplier *= 1 + milestone
 	end
 
 	-- Additive bonuses from equipped units (e.g. +20% Yen) applied as one extra factor.

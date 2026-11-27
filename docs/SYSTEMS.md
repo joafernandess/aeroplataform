@@ -13,7 +13,7 @@ Arquivos: `Server/Services/DataService.luau`, `Server/Data/{DataTemplate,Migrati
 
 Campos do perfil (`DataTemplate.Create`): `Level`, `Experience`, `Currencies {Yen, Gems, Gold, Tokens}`,
 `Damage` (espelho de `Upgrades.Damage`), `Upgrades`, `Playtime`, `CurrentWorld`, `UnlockedWorlds`,
-`ClearedWorlds`, `Inventory {Units, Items, LockedItems}`, `EquippedUnits`, `Quests`, `Achievements`,
+`ClearedWorlds`, `Inventory {Units, Items, LockedItems}`, `EquippedUnits`, `Quests`, `Achievements`, `Milestones`,
 `Settings`, `Stats`, `SummonPity`, `SummonHistory`, `TransactionLog`, `ClaimedRewards`, `ActiveBoosts`,
 `RaidCooldowns`, `ProcessedReceipts`, `FirstJoin`, `LastJoin`, `DataVersion`.
 
@@ -126,6 +126,16 @@ validade opcional (`ExpiresAt`) e nível mínimo; recompensa uma vez por jogador
 `OnceKey = "Code:<CÓDIGO>"`). Remote `RedeemCode` com rate limit.
 Estado: **implementado e testado**.
 
+## Upgrades (marcos) — `ProgressionService` + `BoostService`
+`Config/Progression.Milestones`: bônus permanentes por categoria e nível (Yen I–VI, Luck I–III, Damage I–III), cada um
+com um requisito (`Kills`, `BossKills`, `YenEarned`, `Summons`, `MainQuests`, `Discovered`, `Playtime`) lido do perfil.
+Estados: Locked (nível anterior não resgatado) · InProgress · Claimable · Completed — as mesmas regras no cliente e no
+servidor (`Progression.MilestoneState`). `ClaimMilestone` (rate limit) valida e grava `data.Milestones[Id] = true`;
+o bônus entra em `BoostService:GetMultiplier` (aditivo por stat). Nomes ("Yen VI") e textos dos requisitos são
+gerados da config. O tempo de jogo é replicado a cada 30 s (`DataService:FlushPlaytime`).
+Conquistas (`AchievementService`) ficam desligadas por `Features.Achievements = false` (a UI foi removida).
+Estado: **implementado e testado**.
+
 ## Teleporte e Index — `WorldService`, `UnitService`
 `Worlds.GetTeleportPoints(mundo)`: spawn, orbe, cada zona e cada chefe; `TeleportToPoint` só aceita pontos do
 mundo atual. `data.Discovered`: todo lutador que o jogador já teve (summon, auto-venda, evolução) — base do Index.
@@ -137,13 +147,15 @@ HUD (estilo de botões de simulador): contador de Yen (bloco arredondado com moe
 colado em cima do menu esquerdo, boosts ativos embaixo dele; card **UPDATE LOG** no canto superior direito (selo NEW
 pulsando até o jogador ler, salvo em `Settings.LastSeenUpdate`); menus laterais montados a partir de `UI/Navigation`:
 - esquerda: [Shop largo] · Fighters, Settings · Codes, Quests · [Teleport largo]
-- direita: Inventory, Mounts · Achievements, Stats · [Index largo]
+- direita: Inventory, Mounts · Upgrades, Stats · [Index largo]
 Cada botão: fundo escuro tingido e borda na cor do ícone, nome dentro, tecla de atalho no canto (PC), badge vermelho
 de notificação; hover cresce e levanta o ícone, clique afunda, botões largos têm um brilho que passa de tempos em
 tempos. Os menus (com o Yen) ficam centralizados na altura e encolhem em telas pequenas (`UIController:LayoutNav`).
-Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
-Janelas (um único modelo, `C.Window`): barra de título em degradê azul com o nome e um X vermelho (sem repetir o
-ícone do menu dentro da janela), corpo azul-marinho, linha e aro dourados finos. Abrem com leve aumento + fade e fecham com leve redução + fade
+Badges: lutadores novos (Fighters), quests e upgrades para resgatar, lutadores novos no Index.
+Janelas (um único modelo, `C.Window`, no estilo do testplace): barra de título amarela angular com listras pretas e o
+nome em preto, X vermelho quadrado (sem repetir o ícone do menu dentro da janela), corpo preto/grafite com borda
+metálica e listras amarelas na borda de baixo. Peças reutilizáveis em `UI/Cards` (UpgradeCard, UpgradeDetailsPanel,
+FighterIndexCard, IndexWorldPanel, Chips, LabeledBar). Abrem com leve aumento + fade e fecham com leve redução + fade
 (CanvasGroup); arrastam pela barra de título (sem sair da tela); Esc ou o X fecham; nunca há cópias duplicadas
 e o botão do menu fica destacado enquanto a janela dele está aberta.
 - Shop: só game passes (`Config/Shop.GamePasses`): um card por pass com PassId real (imagem do Roblox, nome, o que
@@ -152,7 +164,7 @@ e o botão do menu fica destacado enquanto a janela dele está aberta.
 - Fighters: barra no topo — A (ordenar por nome), espada (ordenar por força), ¥ (modo vender: seleciona e confirma),
   cadeado (modo trancar: cada toque tranca/destranca, `LockUnit`); grade com Power em cada card, ✓ de equipado,
   contorno dourado no selecionado; painel de detalhes; Equip Best / Unequip All.
-- Settings: auto-ataque, números de dano, unidades de outros jogadores, gráficos baixos, auto-venda, volumes.
+- Settings: números de dano, unidades de outros jogadores, gráficos baixos, auto-venda, volumes.
 - Codes: campo + REDEEM, mensagens de sucesso / inválido / já usado / expirado (validação no servidor).
 - Quests: principal e diárias, barra de progresso, recompensa, Claim só quando completa.
 - Teleport: áreas do mundo atual (spawn, orbe, zonas, chefes) com GO; outros mundos com TRAVEL ou bloqueados com os
@@ -160,13 +172,20 @@ e o botão do menu fica destacado enquanto a janela dele está aberta.
 - Inventory: só itens (grade + painel de detalhes com Use / Sell / Lock); estado vazio sem itens. O Yen fica no HUD.
 - Mounts: grade pronta (raridade, equipado, Equip/Unequip) a partir de `Config/Mounts` + `data.Mounts`; hoje mostra
   "ainda não disponível" porque o sistema de montarias não existe.
-- Achievements: progresso com porcentagem, recompensa, Claim, concluídas destacadas.
+- Upgrades: grade de cards (ícone, nome, progresso, estado: bloqueado com cadeado, em progresso, CLAIM! pulsando,
+  concluído com ✓) + painel à direita (nome, categoria, bônus na cor da categoria, requisito, barra, estado, bônus
+  ativo, botão CLAIM) + barra "Upgrades completed X / Y". Toast quando um marco fica pronto.
 - Stats: poder do time por lutador; sessão (tempo, kills, chefes, Yen ganho, Yen gasto, Yen/min); total (kills,
   chefes, dano, Yen, summons, descobertos).
-- Index: abas por mundo, coleção com descobertos × silhuetas "???", porcentagem e barra.
+- Fighter Index: filtro por raridade (chips), grade de cards (busto 3D em ViewportFrame + nome na barra da raridade
+  quando descoberto; silhueta escura + "???" quando não, com a cor da raridade visível; Mythical em arco-íris),
+  painel à direita com um banner por mundo (clicável; mundos fora do build = "???") e as infos do lutador escolhido
+  (raridade, mundo, como obter + chance, descoberto ou não), barra "Fighters discovered X / Y". Novas descobertas:
+  toast, badge no botão do Index e o card "pula" ao abrir.
+- CLICK: botão redondo menor (74 px) com o símbolo de clique; status embaixo.
 - Update Log: `Config/UpdateLog` (versão, data, seções New features / Improvements / Bug fixes), mais nova primeiro.
-Também: Mundos, Upgrades e Raids (desligados no jogo base), notificações, números de dano, barras de vida,
+Também: Mundos e Raids (desligados no jogo base), notificações, números de dano, barras de vida,
 painel do alvo, indicador de zona, moedas voando.
-Atalhos: B Shop, F Fighters, P Settings, C Codes, Q Quests, T Teleport, K Inventory, N Mounts, J Achievements,
+Atalhos: B Shop, F Fighters, P Settings, C Codes, Q Quests, T Teleport, K Inventory, N Mounts, U Upgrades,
 V Stats, G Index; X / botão direito limpa o alvo.
 Estado: **implementado, compila, passa no linter e nos testes de cliente (Lune); não testado no Studio**.

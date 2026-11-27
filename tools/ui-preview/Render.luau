@@ -4,7 +4,7 @@
 	Supported: UDim2 Size/Position, AnchorPoint, Visible, ZIndex (sibling), UIListLayout, UIGridLayout,
 	UIPadding, UICorner, UIStroke, UISizeConstraint, AutomaticSize, ClipsDescendants/ScrollingFrame clipping,
 	UIGradient colours, Rotation (around the centre, also combined with a UIScale on the same object), text props,
-	ImageLabel/ImageButton (a local file path renders as <img>, tinted by ImageColor3; an rbxassetid:// shows a
+	ViewportFrame (a bust stand-in for the 3D view, tinted by ImageColor3), ImageLabel/ImageButton (a local file path renders as <img>, tinted by ImageColor3; an rbxassetid:// shows a
 	dashed placeholder box). Not supported: BillboardGuis (3D), UIGradient transparency.
 ]]
 
@@ -373,6 +373,19 @@ local function nodeHtml(inst, rect, parentRect): string
 		table.insert(parts, textHtml(inst, rect, tostring(inst.Text or "") == ""))
 	elseif className == "ImageLabel" or className == "ImageButton" then
 		table.insert(parts, imageHtml(inst))
+	elseif className == "ViewportFrame" then
+		-- 3D views can't be rendered offline: a bust stand-in, tinted by ImageColor3 (dark = silhouette).
+		local tint = inst.ImageColor3 or { R = 1, G = 1, B = 1 }
+		local white = tint.R > 0.99 and tint.G > 0.99 and tint.B > 0.99
+		local fill = if white then "rgba(214,218,228,.92)" else rgba(tint, 0)
+		table.insert(
+			parts,
+			string.format(
+				'<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" style="position:absolute;inset:0;width:100%%;height:100%%"><g fill="%s" stroke="rgba(0,0,0,.55)" stroke-width="2.5"><path d="M18 100 C18 74 30 66 50 66 C70 66 82 74 82 100 Z"/><circle cx="50" cy="42" r="20"/></g>%s</svg>',
+				fill,
+				if white then '<text x="94" y="12" text-anchor="end" font-family="Inter,sans-serif" font-weight="800" font-size="10" fill="rgba(255,255,255,.55)">3D</text>' else ""
+			)
+		)
 	end
 	local childRects, extent = computeChildRects(inst, rect)
 	if className == "ScrollingFrame" and extent > rect.h + 1 and enumName(inst.VerticalScrollBarInset) == "ScrollBar" then

@@ -22,13 +22,16 @@ return {
 	teleport = "", --      Icon_Teleport.png       left menu  · TP
 	inventory = "", --     Icon_Inventory.png      right menu · Inventory
 	mounts = "", --        Icon_Mounts.png         right menu · Mounts
-	achievements = "", --  Icon_Achievements.png   right menu · Achievements
+	upgrades = "", --      Icon_Upgrades.png       right menu · Upgrades
 	stats = "", --         Icon_Stats.png          right menu · Stats
 	index = "", --         Icon_Index.png          right menu · Index
 	update = "", --        Icon_UpdateLog.png      top-right Update Log card
 	yen = "", --           Icon_Yen.png            Yen counter above the left menu (also the Inventory wallet)
 
 	-- Other icons (currencies, small tools, window details) · assets/icons/png -----------------------------------
+	achievements = "",
+	luck = "",
+	click = "",
 	gems = "",
 	gold = "",
 	tokens = "",
@@ -40,7 +43,6 @@ return {
 	check = "",
 	close = "",
 	plus = "",
-	upgrades = "",
 	worlds = "",
 	raids = "",
 	boss = "",

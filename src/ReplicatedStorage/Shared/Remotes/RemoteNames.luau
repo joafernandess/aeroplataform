@@ -33,6 +33,7 @@ return {
 		-- Quests / achievements
 		"ClaimQuest",
 		"ClaimAchievement",
+		"ClaimMilestone",
 		-- Shop / upgrades
 		"BuyShopItem",
 		"BuyUpgrade",

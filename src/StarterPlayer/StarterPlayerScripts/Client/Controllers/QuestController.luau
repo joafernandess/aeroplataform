@@ -1,7 +1,7 @@
 --[[
 	QuestController
 	"Quests" window: the current main quest and the daily quests (with the reset countdown), each with progress
-	and Claim (ClaimQuest). Achievements have their own window (AchievementsController).
+	and Claim (ClaimQuest).
 	The Quests menu button shows a badge with the number of quests ready to claim.
 ]]
 

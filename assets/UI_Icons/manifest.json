@@ -39,9 +39,9 @@
 		"button": "Right menu · Mounts",
 		"rbxassetid": ""
 	},
-	"achievements": {
-		"png": "Icon_Achievements.png",
-		"button": "Right menu · Achievements",
+	"upgrades": {
+		"png": "Icon_Upgrades.png",
+		"button": "Right menu · Upgrades",
 		"rbxassetid": ""
 	},
 	"stats": {

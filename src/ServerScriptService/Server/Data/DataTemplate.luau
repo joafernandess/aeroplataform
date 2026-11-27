@@ -53,6 +53,7 @@ function DataTemplate.Create()
 			DailyDay = 0,
 		},
 		Achievements = {},
+		Milestones = {}, -- claimed milestone upgrades: [id] = true
 
 		Settings = {
 			MusicVolume = 0.5,

@@ -1,7 +1,7 @@
 --[[
 	Scene: window layouts that the base game keeps switched off (Lune)
 	Renders the game pass Shop with example pass ids, the Inventory item grid with its details panel (Features.Items
-	on), and the Teleport list with the other worlds.
+	on), the Teleport list with the other worlds, the Upgrades (milestones) and the Fighter Index.
 
 	Usage (repo root):
 	  lune run tools/ui-preview/scenes/windows [outputDir] [--png-icons]
@@ -71,6 +71,39 @@ TP.Window.Frame.Size = roblox.UDim2.fromOffset(600, 900)
 UI:Open("Teleport")
 task.wait(0.1)
 shot("03_teleport_worlds", "Teleport: áreas do mundo atual e mundos bloqueados com requisitos")
+
+-- Upgrades (milestones): some requirements reached, Yen I claimed
+TP.Window.Frame.Size = roblox.UDim2.fromOffset(600, 520)
+local data = session.Data
+data.Stats.TotalKills, data.Stats.TotalYenEarned, data.Playtime = 620, 12500, 3 * 3600
+data.Milestones.YEN_1 = true
+for _, key in { "Stats", "Playtime", "Milestones" } do
+	session.Harness.Services.DataService:MarkDirty(session.Player, key)
+end
+task.wait(0.1)
+UI:Open("Upgrades")
+task.wait(0.1)
+shot("04_upgrades", "Upgrades (marcos): cards com estado + painel de detalhes + barra de concluídos")
+local Up = session.Controller("UpgradeController")
+Up:Select("YEN_3")
+task.wait(0.05)
+shot("05_upgrades_locked", "Upgrades: card bloqueado selecionado (diz o que fazer antes)")
+
+-- Fighter Index: a few fighters discovered, one selected
+local Index = session.Controller("IndexController")
+local group = Index:_group()
+for i, def in group.Units do
+	if i % 2 == 1 then
+		data.Discovered[def.Id] = true
+	end
+end
+session.Harness.Services.DataService:MarkDirty(session.Player, "Discovered")
+task.wait(0.1)
+UI:Open("Index")
+task.wait(0.1)
+Index.Selected = group.Units[3].Id
+Index:Render()
+shot("06_index", "Fighter Index: descobertos x ???, filtro de raridade, mundos e info do lutador")
 
 print(("client warnings: %d"):format(#session.Runtime.Mocks.Warnings))
 for _, w in session.Runtime.Mocks.Warnings do

@@ -5,12 +5,18 @@
 	  Progression:AddPlayerXP(player, amount) -> (ok, { Level, Experience, LevelsGained })
 	  Progression:BuyUpgrade(player, upgradeId) -> (ok, newLevel | errorCode)
 	  Progression:GetUpgradeLevel(player, upgradeId) -> number
+	  Progression:ClaimMilestone(player, milestoneId) -> (ok, { Id, Bonus, Category } | errorCode)
+	  Progression:GetMilestoneState(player, milestoneId) -> "Locked" | "InProgress" | "Claimable" | "Completed"
+
+	Milestone upgrades (Config/Progression.Milestones, the Upgrades window) are checked with the shared rules
+	(Progression.MilestoneState) and live play time; their bonuses are applied by BoostService:GetMultiplier.
 
 	Level rewards (Config/Progression.Player.LevelRewards) are granted with a persisted OnceKey per level,
 	so they can never be granted twice even if a level is re-reached through data repair.
 	Unit levels live in UnitService (AddUnitXP); evolution in UnitService:Evolve.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
@@ -29,6 +35,8 @@ local ProgressionService = {
 
 ProgressionService.LevelUp = Signal.new() -- (player, newLevel, levelsGained)
 ProgressionService.UpgradePurchased = Signal.new() -- (player, upgradeId, newLevel)
+ProgressionService.MilestoneClaimed = Signal.new() -- (player, milestoneId)
+ProgressionService.PlaytimeFlushEvery = 30 -- seconds: replicate play time so Luck milestones show live progress
 
 local DataService, EconomyService
 
@@ -117,6 +125,42 @@ function ProgressionService:BuyUpgrade(player, upgradeId: string): (boolean, any
 	end)
 end
 
+-- Milestone upgrades ----------------------------------------------------------------------------------------------
+
+-- State of a milestone for this player, with live play time.
+function ProgressionService:GetMilestoneState(player, id: string): string?
+	local data = DataService:GetData(player)
+	local def = Progression.GetMilestone(id)
+	if not data or not def then
+		return nil
+	end
+	return Progression.MilestoneState(data, def, DataService:GetPlaytime(player))
+end
+
+function ProgressionService:ClaimMilestone(player, id: string): (boolean, any)
+	if not Features.Milestones then
+		return false, "FeatureDisabled"
+	end
+	local data = DataService:GetData(player)
+	if not data then
+		return false, "DataNotLoaded"
+	end
+	local def = Progression.GetMilestone(id)
+	if not def then
+		return false, "InvalidArguments"
+	end
+	local state = Progression.MilestoneState(data, def, DataService:GetPlaytime(player))
+	if state == "Completed" then
+		return false, "AlreadyClaimed"
+	elseif state ~= "Claimable" then
+		return false, "RequirementsNotMet"
+	end
+	data.Milestones[id] = true
+	DataService:MarkDirty(player, "Milestones")
+	ProgressionService.MilestoneClaimed:Fire(player, id)
+	return true, { Id = id, Bonus = def.Bonus, Category = def.Category }
+end
+
 function ProgressionService:Init(services)
 	self.Services = services
 	DataService = services.DataService
@@ -128,6 +172,24 @@ function ProgressionService:Init(services)
 		end
 		return self:BuyUpgrade(player, upgradeId)
 	end, { RateLimit = 5 })
+	Net.Handle("ClaimMilestone", function(player, id)
+		if not Validate.String(id, 32) then
+			return false, "InvalidArguments"
+		end
+		return self:ClaimMilestone(player, id)
+	end, { RateLimit = 4, Burst = 8 })
+end
+
+function ProgressionService:Start()
+	-- Keep PlayerData.Playtime fresh on the clients (play-time milestones).
+	task.spawn(function()
+		while true do
+			task.wait(ProgressionService.PlaytimeFlushEvery)
+			for _, player in Players:GetPlayers() do
+				DataService:FlushPlaytime(player)
+			end
+		end
+	end)
 end
 
 return ProgressionService

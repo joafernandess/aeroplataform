@@ -89,9 +89,9 @@ local windows = {
 	{ "UpdateLog", "08_update_log", "Update Log (card no canto superior direito)" },
 	{ "Codes", "09_codes", "Codes" },
 	{ "Teleport", "10_teleport", "TP — pontos do mundo 1" },
-	{ "Index", "11_index", "Index — lutadores descobertos e ???" },
-	{ "Items", "12_inventory", "Inventory — carteira e itens" },
-	{ "Achievements", "13_achievements", "Achievements" },
+	{ "Index", "11_index", "Fighter Index — descobertos, ??? e mundos" },
+	{ "Items", "12_inventory", "Inventory — itens" },
+	{ "Upgrades", "13_upgrades", "Upgrades — marcos (Yen / Luck / Damage)" },
 	{ "Stats", "14_stats", "Stats — poder do time, sessão e totais" },
 	{ "Quests", "15_quests", "Quests" },
 	{ "Mounts", "16_mounts", "Mounts (preparado, sistema ainda não existe)" },
@@ -112,6 +112,12 @@ shot("06_phone_hud", "Celular 844x390 — HUD", 844, 390)
 UI:Open("Fighters")
 task.wait(0.05)
 shot("07_phone_fighters", "Celular 844x390 — Fighters", 844, 390)
+UI:Open("Upgrades")
+task.wait(0.05)
+shot("07b_phone_upgrades", "Celular 844x390 — Upgrades", 844, 390)
+UI:Open("Index")
+task.wait(0.05)
+shot("07c_phone_index", "Celular 844x390 — Fighter Index", 844, 390)
 UI:Close()
 Fake.SetProperty(camera, "ViewportSize", roblox.Vector2.new(1280, 720))
 

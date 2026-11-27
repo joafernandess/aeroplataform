@@ -12,7 +12,8 @@
 local Features = {
 	MultipleWorlds = false, -- worlds 2-5, world unlock/teleport (base game = world 1 only)
 	Quests = true, -- main/daily quests (Quests menu)
-	Achievements = true, -- Achievements menu
+	Achievements = false, -- (removed from the UI; milestone Upgrades replace it)
+	Milestones = true, -- milestone Upgrades (Upgrades menu): permanent bonuses unlocked by playing
 	Raids = false,
 	Shop = false, -- currency shop + Robux products UI
 	Upgrades = false, -- permanent upgrades (Damage/Yen/Luck/...)

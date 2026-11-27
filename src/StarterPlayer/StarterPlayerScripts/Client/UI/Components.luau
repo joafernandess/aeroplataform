@@ -900,7 +900,8 @@ function C.Scroll(parent: Instance, props: { [string]: any }?)
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
 		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar, -- content never sits under the scrollbar
-		ScrollBarImageColor3 = P.Blue400,
+		ScrollBarImageColor3 = P.Yellow,
+		ScrollBarImageTransparency = 0.25,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
 		Size = UDim2.fromScale(1, 1),
@@ -953,9 +954,9 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 			local active = tabName == name
 			tab.Button.BackgroundTransparency = if active then 0 else 1
 			tab.Gradient.Enabled = active
-			tab.Label.TextColor3 = if active then P.White else P.TextDim
-			tab.Stroke.Enabled = active
-			tab.Underline.Visible = active
+			tab.Label.TextColor3 = if active then P.Ink else P.TextDim
+			tab.Stroke.Enabled = false
+			tab.Underline.Visible = false
 		end
 		onSelect(name)
 	end
@@ -970,11 +971,11 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 			Parent = well,
 		})
 		C.Corner(button, Theme.Radius.Tool)
-		local gradient = C.Gradient(button, G.Primary.Top, G.Primary.Bottom)
+		local gradient = C.Gradient(button, G.Gold.Top, G.Gold.Bottom) -- active tab = yellow
 		local label = C.Label(button, name, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Bold, TextSize = 18 })
 		local stroke = C.Outline(label, 2)
 		-- Gold underline marks the active tab (yellow = selected).
-		local underline = C.Frame(button, { Name = "Underline", BackgroundColor3 = P.Gold, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -24, 0, 3), Visible = false, ZIndex = 3 })
+		local underline = C.Frame(button, { Name = "Underline", BackgroundColor3 = P.Yellow, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -24, 0, 3), Visible = false, ZIndex = 3 })
 		C.Corner(underline, UDim.new(0.5, 0))
 		tabs[name] = { Button = button, Gradient = gradient, Label = label, Stroke = stroke, Underline = underline }
 		button.Activated:Connect(function()
@@ -1039,7 +1040,7 @@ function C.EmptyState(parent: Instance, _icon: string, title: string, message: s
 		TextSize = 28,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	}, 2.5)
-	C.Frame(holder, { Name = "GoldLine", BackgroundColor3 = P.Gold, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(56, 3) })
+	C.Frame(holder, { Name = "GoldLine", BackgroundColor3 = P.Yellow, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(56, 3) })
 	C.Label(holder, message, {
 		Name = "Message",
 		Position = UDim2.new(0.1, 0, 0, 86),
@@ -1136,13 +1137,30 @@ end
 
 -- Windows -------------------------------------------------------------------------------------------------------------
 
+-- Diagonal stripes ("///") clipped by `parent`: n bars of `w` px, `gap` apart, starting at x.
+local function stripes(parent: Instance, n: number, x: number, w: number, gap: number, color: Color3, z: number, transparency: number?)
+	for k = 0, n - 1 do
+		C.Frame(parent, {
+			Name = "Stripe",
+			BackgroundColor3 = color,
+			BackgroundTransparency = transparency or 0,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0, x + k * (w + gap), 0.5, 0),
+			Size = UDim2.new(0, w, 1.6, 0),
+			Rotation = 25,
+			ZIndex = z,
+		})
+	end
+end
+
 --[[
-	Standard window (one template for every menu):
-	  Frame   transparent holder: position, size, responsive UIScale, the dark outer outline
-	  Group   CanvasGroup with the whole window inside, so it can fade (GroupTransparency) while it scales
-	  Header  bright blue gradient title bar with speed-lines, a thin gold line under it, the title and a red round
-	          close button (X) inside the bar (it is also the drag handle). No icon: the menu button already has it.
-	  Content dark navy area for the window's own UI; a thin gold rim runs inside the window border
+	Standard window (one template for every menu), black and yellow:
+	  Frame   transparent holder: position, size, responsive UIScale and the dark outer outline
+	  Group   CanvasGroup with the whole window inside, so it can fade (GroupTransparency) while it scales;
+	          metallic graphite border, black inner panel with a few yellow "///" accents
+	  Header  bright yellow title bar with dark "///" stripes and the title in black, white stripes on the right
+	          and a red square close button (X) (the whole top strip is also the drag handle)
+	  Content dark area for the window's own UI
 	Returns { Frame, Group, Content, Title, Header, CloseButton }.
 ]]
 function C.Window(parent: Instance, title: string, size: UDim2?)
@@ -1155,9 +1173,10 @@ function C.Window(parent: Instance, title: string, size: UDim2?)
 		BackgroundTransparency = 1,
 		ZIndex = 10,
 	})
-	C.Corner(frame, Theme.Radius.Window)
-	C.Stroke(frame, P.Ink, Theme.Stroke.Window)
-	C.Create("UISizeConstraint", { MaxSize = Vector2.new(960, 640), Parent = frame })
+	C.Corner(frame, 10)
+	C.Stroke(frame, P.Ink, 4)
+	C.Create("UISizeConstraint", { MaxSize = Vector2.new(980, 640), Parent = frame })
+	-- metallic border
 	local group = C.Create("CanvasGroup", {
 		Name = "Group",
 		BackgroundColor3 = P.White,
@@ -1166,42 +1185,62 @@ function C.Window(parent: Instance, title: string, size: UDim2?)
 		ZIndex = 10,
 		Parent = frame,
 	})
-	C.Corner(group, Theme.Radius.Window)
-	C.Gradient(group, G.WindowBody.Top, G.WindowBody.Bottom)
-	local rim = C.Frame(group, { Name = "GoldRim", BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 11 })
-	C.Corner(rim, Theme.Radius.Window - 3)
-	local rimStroke = C.Stroke(rim, P.Gold, 2)
-	rimStroke.Transparency = 0.35
+	C.Corner(group, 10)
+	C.Gradient(group, G.WindowFrame.Top, G.WindowFrame.Bottom)
+	-- black inner panel
+	local inner = C.Frame(group, { Name = "Panel", BackgroundColor3 = P.White, Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 1, -16), ZIndex = 10 })
+	C.Corner(inner, 6)
+	C.Gradient(inner, G.WindowBody.Top, G.WindowBody.Bottom)
+	C.Stroke(inner, P.Ink, 2)
+	-- yellow accents on the bottom border
+	local accents = C.Frame(group, { Name = "Accents", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 8), ClipsDescendants = true, ZIndex = 11 })
+	stripes(accents, 3, 54, 6, 6, P.Yellow, 11)
+	local right = C.Frame(accents, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 120, 1, 0), ClipsDescendants = true, ZIndex = 11 })
+	stripes(right, 3, 30, 6, 6, P.Yellow, 11)
 
-	local header = C.Frame(group, { Name = "Header", BackgroundColor3 = P.White, Size = UDim2.new(1, 0, 0, 56), ClipsDescendants = true, Active = true, ZIndex = 12 })
-	C.Gradient(header, G.WindowHeader.Top, G.WindowHeader.Bottom)
-	C.SpeedLines(header, 8, { Start = 0.55, Spacing = 28, ZIndex = 13 })
-	C.Frame(header, { Name = "GoldLine", BackgroundColor3 = P.Gold, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
-
-	local titleLabel = C.Label(header, title, {
-		Font = Theme.Fonts.Display,
-		TextSize = Theme.TextSize.Display,
-		Position = UDim2.fromOffset(20, 1),
-		Size = UDim2.new(1, -130, 1, 0),
-		ZIndex = 15,
+	-- Title strip (drag handle) with the yellow bar
+	local header = C.Frame(group, { Name = "Header", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 68), Active = true, ZIndex = 12 })
+	local bar = C.Frame(header, {
+		Name = "TitleBar",
+		BackgroundColor3 = P.White,
+		Position = UDim2.fromOffset(18, 12),
+		Size = UDim2.new(1, -96, 0, 46),
+		ClipsDescendants = true,
+		ZIndex = 12,
 	})
-	C.Outline(titleLabel, 3)
+	C.Corner(bar, 4)
+	C.Gradient(bar, G.WindowHeader.Top, G.WindowHeader.Bottom)
+	C.Stroke(bar, P.Ink, 3)
+	stripes(bar, 3, 16, 7, 7, P.Ink, 13)
+	local gloss = C.Frame(bar, { Name = "Gloss", BackgroundColor3 = P.White, BackgroundTransparency = 0.7, Position = UDim2.fromOffset(0, 3), Size = UDim2.new(1, 0, 0, 5), ZIndex = 13 })
+	local _ = gloss
+	-- white "////" on the right of the bar
+	local tail = C.Frame(header, { Name = "Tail", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -84, 0, 2), Size = UDim2.fromOffset(70, 8), ClipsDescendants = true, ZIndex = 13 })
+	stripes(tail, 4, 8, 6, 7, P.White, 13, 0.15)
+	local titleLabel = C.Label(bar, title, {
+		Font = Theme.Fonts.Title,
+		TextSize = 32,
+		TextColor3 = P.Ink,
+		Position = UDim2.fromOffset(66, 0),
+		Size = UDim2.new(1, -80, 1, 0),
+		ZIndex = 14,
+	})
 
 	local close = C.Button(group, "", nil, {
 		Kind = "Close",
 		Icon = "close",
-		IconSize = 20,
+		IconSize = 22,
 		TextSize = 24,
-		Radius = 20,
+		Radius = 5,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0, 27),
-		Size = UDim2.fromOffset(40, 42),
-		StrokeThickness = 2.5,
+		Position = UDim2.new(1, -16, 0, 35),
+		Size = UDim2.fromOffset(48, 48),
+		StrokeThickness = 3,
 		Confirm = false,
 		ZIndex = 20,
 	})
 	close.Name = "Close"
-	local content = C.Frame(group, { Name = "Content", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 70), Size = UDim2.new(1, -32, 1, -84), ZIndex = 11 })
+	local content = C.Frame(group, { Name = "Content", BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 76), Size = UDim2.new(1, -40, 1, -92), ZIndex = 11 })
 	return {
 		Frame = frame,
 		Group = group,
@@ -1354,7 +1393,7 @@ function C.HighlightCard(card: Instance, mode: string?)
 		return
 	end
 	if mode == "Selected" then
-		stroke.Color = P.Gold -- yellow accent = selected
+		stroke.Color = P.Yellow -- yellow accent = selected
 		stroke.Thickness = 3
 		if scale then
 			scale.Scale = 1.04

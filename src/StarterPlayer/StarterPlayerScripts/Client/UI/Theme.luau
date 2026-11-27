@@ -15,16 +15,17 @@ local hex = Color3.fromHex
 
 local Theme = {}
 
+-- Panels are black / dark graphite (windows, cards, wells); blue stays for primary buttons, gold for accents.
 local palette = {
-	Ink = hex("05070D"),
-	Bg = hex("080C16"),
-	Panel = hex("0E1424"),
-	PanelAlt = hex("16203A"),
-	PanelLight = hex("1F2C4F"),
-	Line = hex("2A3A66"),
+	Ink = hex("07080A"),
+	Bg = hex("111216"),
+	Panel = hex("17181D"),
+	PanelAlt = hex("212329"),
+	PanelLight = hex("2D3038"),
+	Line = hex("3B3E47"),
 	White = hex("FFFFFF"),
-	TextDim = hex("A9B8D9"),
-	TextMuted = hex("6B7BA3"),
+	TextDim = hex("B5B8C1"),
+	TextMuted = hex("7B7F8A"),
 	Blue900 = hex("0A2A6B"),
 	Blue700 = hex("1546B8"),
 	Blue500 = hex("1E6BFF"),
@@ -49,6 +50,8 @@ Theme.Colors.Bad = palette.Ice -- attention text on dark panels (destructive but
 Theme.Colors.Info = palette.Blue500
 Theme.Colors.Alert = hex("FF3B4E") -- notification badges (count, NEW)
 Theme.Colors.Gold = hex("FFC21A") -- currency, selection and window accents (thin gold lines)
+Theme.Colors.Yellow = hex("FFC21A") -- testplace accent (window header, selection, claimable) — never overridden
+Theme.Colors.Green = hex("3ED45E") -- "discovered" / done text
 Theme.Colors.XP = palette.Cyan
 Theme.Colors.Crit = palette.Cyan
 -- Currency badges: one shade of the palette each (§6 of the brief)
@@ -67,10 +70,11 @@ Theme.Gradients = {
 	Close = { Top = hex("FF6B6B"), Bottom = hex("D9283A"), Lip = hex("7A0E1A") }, -- window close (X)
 	Gold = { Top = hex("FFE27A"), Bottom = hex("F0A800"), Lip = hex("8A5A00") }, -- selected tab / highlight
 	Disabled = { Top = hex("3A4560"), Bottom = hex("2A3247") },
-	WindowBody = { Top = hex("121A2E"), Bottom = hex("0A0F1C") },
-	WindowHeader = { Top = hex("2A7BFF"), Bottom = hex("0E3A9E") },
-	Progress = { Top = hex("4FD2FF"), Bottom = hex("1E6BFF") },
-	Portrait = { Top = hex("1F2C4F"), Bottom = hex("0A0F1C") },
+	WindowBody = { Top = hex("1C1D22"), Bottom = hex("0E0F12") },
+	WindowFrame = { Top = hex("4A4D56"), Bottom = hex("26282E") }, -- metallic border
+	WindowHeader = { Top = hex("FFE45C"), Bottom = hex("F5B400") }, -- yellow title bar
+	Progress = { Top = hex("FFE45C"), Bottom = hex("F2A900") },
+	Portrait = { Top = hex("2D3038"), Bottom = hex("111216") },
 	EnemyHealth = { Top = hex("FFFFFF"), Bottom = hex("BFD6FF") },
 }
 
@@ -143,6 +147,8 @@ Theme.Icons = {
 	Teleport = "⇄",
 	Update = "✎",
 	Bag = "▣",
+	Luck = "♣",
+	Click = "☝",
 }
 
 -- Uploaded icon images (asset ids), by icon name: see UI/IconAssets.luau (the file to edit after uploading).
@@ -161,7 +167,8 @@ Theme.IconColors = {
 	teleport = hex("2ED3FF"), -- cyan
 	inventory = hex("3D8BFF"), -- blue
 	mounts = hex("FF4FB8"), -- pink / magenta
-	achievements = hex("FFB81C"), -- gold
+	upgrades = hex("FFB81C"), -- gold
+	achievements = hex("FFB81C"), -- (no menu button any more)
 	stats = hex("FF4545"), -- red
 	index = hex("7C5CFF"), -- violet
 	update = hex("34E3A5"), -- mint
@@ -208,6 +215,20 @@ function Theme.Rarity(rarityId: string): Color3
 		return palette.TextDim
 	end
 	return Color3.fromRGB(def.Color[1], def.Color[2], def.Color[3])
+end
+
+-- Multi-colour rarities (e.g. Mythical = rainbow): a ColorSequence for a UIGradient, or nil for single colours.
+function Theme.RarityGradient(rarityId: string): ColorSequence?
+	local def = Rarities.Get(rarityId)
+	local stops = def and (def :: any).Gradient
+	if not stops or #stops < 2 then
+		return nil
+	end
+	local keypoints = {}
+	for i, c in stops do
+		table.insert(keypoints, ColorSequenceKeypoint.new((i - 1) / (#stops - 1), Color3.fromRGB(c[1], c[2], c[3])))
+	end
+	return ColorSequence.new(keypoints)
 end
 
 function Theme.Currency(currency: string): Color3

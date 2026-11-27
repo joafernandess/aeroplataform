@@ -1,6 +1,6 @@
 -- Reworked HUD on the REAL client bridged to the REAL server (tools/ui-preview/Session): side menu grids, top-right
 -- Update Log card, minimal player info, the Fighters NEW badge and every new window (Codes, Teleport, Index,
--- Inventory, Achievements, Stats, Mounts, Shop closed state).
+-- Inventory, Upgrades, Stats, Mounts, Shop closed state).
 local task = require("@lune/task")
 local roblox = require("@lune/roblox")
 local Session = require("../../tools/ui-preview/Session")
@@ -88,7 +88,7 @@ return function(t)
 			local right, rightRows = order(UI.RightNav)
 			expect(left).toBe("Shop,Fighters,Settings,Codes,Quests,Teleport")
 			expect(leftRows).toBe("1,2,2,1") -- wide Shop, 2x2, wide Teleport
-			expect(right).toBe("Items,Mounts,Achievements,Stats,Index")
+			expect(right).toBe("Items,Mounts,Upgrades,Stats,Index")
 			expect(rightRows).toBe("2,2,1") -- 2x2, wide Index
 			-- Reference style: face tinted by the icon colour, border in that colour, dark rim + shadow, the name
 			-- inside the button and the key badge (PC).
@@ -304,26 +304,90 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("shows discovered fighters and ??? silhouettes in the Index", function()
+		t.it("shows discovered fighters and ??? silhouettes in the Fighter Index, with filters and the discovered bar", function()
 			local s = Session.new()
+			local UI = s.Controller("UIController")
 			local Index = s.Controller("IndexController")
 			local State = s.Runtime:Require(CLIENT .. "State")
-			s.Controller("UIController"):Open("Index")
+			local Units = s.Runtime:Require("ReplicatedStorage/Shared/Config/Units")
+			UI:Open("Index")
 			task.wait(0.05)
 			local found, total = Index.Progress(State.Data)
 			expect(total > 0).toBe(true)
 			expect(found >= 1 and found <= total).toBe(true)
-			local hidden = 0
-			for _, child in Index.List:GetDescendants() do
-				if string.sub(child.Name, 1, 7) == "Hidden_" then
-					hidden += 1
+			expect(find(Index.Bar.Frame, "Label").Text).toBe("Fighters discovered")
+			expect(find(Index.Bar.Frame, "Count").Text).toBe(("%d / %d"):format(found, total))
+			-- The selected world's cards: discovered ones by id, the others as Hidden_<Rarity> silhouettes ("???")
+			local group = Index:_group()
+			local worldFound, worldTotal = Index.Progress(State.Data, group.World)
+			local hidden, cards = 0, 0
+			for _, child in Index.Grid:GetChildren() do
+				if child.ClassName == "TextButton" then
+					cards += 1
+					if string.sub(child.Name, 1, 7) == "Hidden_" then
+						hidden += 1
+						expect(find(child, "FighterName").Text).toBe("???")
+					end
 				end
 			end
-			expect(hidden).toBe(total - found)
-			for unitId in State.Data.Discovered do
-				expect(find(Index.List, unitId) ~= nil).toBe(true)
+			expect(cards).toBe(worldTotal)
+			expect(hidden).toBe(worldTotal - worldFound)
+			for _, def in group.Units do
+				if State.Data.Discovered[def.Id] then
+					expect(find(find(Index.Grid, def.Id), "FighterName").Text).toBe(def.Name)
+				end
 			end
-			expect(Index.Percent.Text).toBe(("%d%%"):format(math.floor(found / total * 100)))
+			-- Rarity filter: only that rarity's cards stay
+			local rarity = group.Units[1].Rarity
+			Index:SetFilter(rarity)
+			for _, child in Index.Grid:GetChildren() do
+				if child.ClassName == "TextButton" then
+					local def = Units.Get(child.Name)
+					expect(if def then def.Rarity else string.sub(child.Name, 8)).toBe(rarity)
+				end
+			end
+			Index:SetFilter("All")
+			-- Clicking a card fills the info box (rarity, world, how to obtain it)
+			Index.Grid:FindFirstChildWhichIsA("TextButton").Activated:Fire()
+			task.wait(0.02)
+			expect(Index.Selected ~= nil).toBe(true)
+			expect(find(Index.WorldPanel.Info, "Obtain") ~= nil).toBe(true)
+			expect(find(Index.WorldPanel.Info, "World") ~= nil).toBe(true)
+			-- One banner per world; worlds without a collection in this build are "???"
+			local banners = 0
+			for _, child in Index.WorldPanel.List:GetChildren() do
+				if child.ClassName == "TextButton" then
+					banners += 1
+				end
+			end
+			expect(banners).toBe(#s.Runtime:Require("ReplicatedStorage/Shared/Config/Worlds").List)
+			expect(find(Index.WorldPanel.List, group.World) ~= nil).toBe(true)
+			expect(#s.Runtime.Mocks.Warnings).toBe(0)
+		end)
+
+		t.it("announces new discoveries with an Index badge and pops their card", function()
+			local s = Session.new()
+			local UI = s.Controller("UIController")
+			local Index = s.Controller("IndexController")
+			local Units = s.Runtime:Require("ReplicatedStorage/Shared/Config/Units")
+			local group = Index:_group()
+			local newId = nil
+			for _, def in group.Units do
+				if not s.Data.Discovered[def.Id] then
+					newId = def.Id
+					break
+				end
+			end
+			expect(newId ~= nil).toBe(true)
+			s.Harness.Services.UnitService.MarkDiscovered(s.Player, s.Data, newId)
+			task.wait(0.1)
+			expect(UI.MenuBadges.Index).toBe(1)
+			expect(Index.Fresh[newId]).toBe(true)
+			UI:Open("Index")
+			task.wait(0.05)
+			expect(UI.MenuBadges.Index).toBe(0)
+			expect(find(find(Index.Grid, newId), "FighterName").Text).toBe(Units.Get(newId).Name)
+			expect(next(Index.Fresh)).toBeNil()
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
@@ -339,23 +403,62 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("badges claimable achievements and claims them from the Achievements window", function()
+		t.it("Upgrades: milestone cards with real states, the details panel, CLAIM and the menu badge", function()
 			local s = Session.new()
 			local UI = s.Controller("UIController")
-			local Ach = s.Controller("AchievementsController")
+			local Up = s.Controller("UpgradeController")
 			local State = s.Runtime:Require(CLIENT .. "State")
-			s.Data.Stats.TotalKills = math.max(s.Data.Stats.TotalKills, 100)
+			local Progression = s.Runtime:Require("ReplicatedStorage/Shared/Config/Progression")
+			s.Data.Stats.TotalKills = 60 -- Yen I needs 50 kills, Damage I needs 500
 			s.Harness.Services.DataService:MarkDirty(s.Player, "Stats")
 			task.wait(0.1)
-			local claimable = Ach.ClaimableCount(State.Data)
+			local _, total, claimable = Up:Counts(State.Data)
+			expect(total).toBe(#Progression.Milestones)
 			expect(claimable >= 1).toBe(true)
-			expect(UI.MenuBadges.Achievements).toBe(claimable)
-			UI:Open("Achievements")
+			expect(UI.MenuBadges.Upgrades).toBe(claimable)
+			UI:Open("Upgrades")
 			task.wait(0.05)
-			find(Ach.List:FindFirstChild("A_Kills"), "Claim").Activated:Fire()
+			-- One card per milestone, names generated from the config ("Yen I"), states from the shared rules
+			local cards = 0
+			for _, child in Up.Grid:GetChildren() do
+				if child.ClassName == "TextButton" then
+					cards += 1
+				end
+			end
+			expect(cards).toBe(total)
+			expect(find(find(Up.Grid, "YEN_1"), "UpgradeName").Text).toBe("Yen I")
+			expect(find(find(Up.Grid, "YEN_1"), "ClaimTag") ~= nil).toBe(true)
+			expect(Up:Info(State.Data, Progression.GetMilestone("YEN_2")).State).toBe("Locked")
+			expect(Up:Info(State.Data, Progression.GetMilestone("DMG_1")).State).toBe("InProgress")
+			expect(Up:Info(State.Data, Progression.GetMilestone("DMG_1")).ProgressText).toBe("60 / 500")
+			-- Default selection = first claimable; the panel shows the bonus, requirement and state
+			expect(Up.Selected).toBe("YEN_1")
+			local panel = Up.Details.Frame
+			expect(find(panel, "DetailName").Text).toBe("Yen I")
+			expect(find(panel, "Bonus").Text).toBe("+5% YEN")
+			expect(find(panel, "Requirement").Text).toBe("Defeat 50 enemies.")
+			expect(find(panel, "State").Text).toBe("READY TO CLAIM")
+			expect(Up.Details.ClaimButton.Visible).toBe(true)
+			-- Server rejects a locked milestone
+			expect(State.Request("ClaimMilestone", "YEN_3").ok).toBe(false)
+			expect(s.Data.Milestones.YEN_3).toBeNil()
+			-- CLAIM
+			Up.Details.ClaimButton.Activated:Fire()
 			task.wait(0.1)
-			expect(s.Data.Achievements.A_Kills).toBe(1)
-			expect(UI.MenuBadges.Achievements).toBe(claimable - 1)
+			expect(s.Data.Milestones.YEN_1).toBe(true)
+			expect(find(panel, "State").Text).toBe("COMPLETED")
+			expect(find(panel, "Total").Text).toBe("Active Yen bonus: +5%")
+			expect(UI.MenuBadges.Upgrades).toBe(claimable - 1)
+			expect(find(Up.Bar.Frame, "Count").Text).toBe(("1 / %d"):format(total))
+			expect(Up:Info(State.Data, Progression.GetMilestone("YEN_2")).State).toBe("InProgress")
+			-- Selecting a locked card: no CLAIM, says what to do first
+			find(Up.Grid, "YEN_3").Activated:Fire()
+			task.wait(0.02)
+			expect(find(panel, "State").Text).toBe("LOCKED")
+			expect(find(panel, "Note").Text).toBe("Claim Yen II first.")
+			expect(Up.Details.ClaimButton.Visible).toBe(false)
+			-- Play time milestones read hours
+			expect(find(find(Up.Grid, "LUCK_1"), "Text").Text).toBe("0h / 2h")
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 

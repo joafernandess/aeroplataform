@@ -58,6 +58,7 @@ export type PlayerData = {
 		DailyDay: number,
 	},
 	Achievements: { [string]: number }, -- highest tier claimed
+	Milestones: { [string]: boolean }, -- claimed milestone upgrades
 	Settings: { [string]: any },
 	Stats: { [string]: number },
 	SummonPity: { [string]: { [string]: number } },

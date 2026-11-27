@@ -31,7 +31,7 @@ Navigation.Left = {
 Navigation.Right = {
 	{ Window = "Items", Label = "Inventory", Icon = "inventory", Key = Enum.KeyCode.K },
 	{ Window = "Mounts", Label = "Mounts", Icon = "mounts", Key = Enum.KeyCode.N },
-	{ Window = "Achievements", Label = "Achievements", Icon = "achievements", Key = Enum.KeyCode.J },
+	{ Window = "Upgrades", Label = "Upgrades", Icon = "upgrades", Key = Enum.KeyCode.U },
 	{ Window = "Stats", Label = "Stats", Icon = "stats", Key = Enum.KeyCode.V },
 	{ Window = "Index", Label = "Index", Icon = "index", Key = Enum.KeyCode.G, Wide = true },
 } :: { Entry }

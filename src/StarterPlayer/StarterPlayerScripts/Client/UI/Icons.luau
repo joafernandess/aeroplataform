@@ -72,6 +72,8 @@ Icons.Names = {
 	"teleport",
 	"update",
 	"inventory",
+	"luck",
+	"click",
 }
 
 -- Theme.Icons key -> icon name (keys without an entry, e.g. Filter, stay glyph-only).
@@ -115,6 +117,8 @@ local THEME_KEYS = {
 	Teleport = "teleport",
 	Update = "update",
 	Bag = "inventory",
+	Luck = "luck",
+	Click = "click",
 }
 
 type Opts = {
@@ -635,6 +639,26 @@ Drawings.boss = function(d)
 	end
 	d:Disc(36, 46, 7, { Fill = "Accent", Layer = 2, Outline = false })
 	d:Disc(64, 46, 7, { Fill = "Accent", Layer = 2, Outline = false })
+end
+
+Drawings.luck = function(d)
+	-- Four-leaf clover with a stem.
+	d:Box(64, 80, 7, 26, { Rot = -28, Radius = 0.5 })
+	for _, p in { { 50, 29 }, { 70, 47 }, { 50, 65 }, { 30, 47 } } do
+		d:Disc(p[1], p[2], 32, { Layer = 1 })
+	end
+	d:Disc(50, 47, 14, { Fill = "Accent", Layer = 2, Outline = false })
+end
+
+Drawings.click = function(d)
+	-- Mouse with the left button pressed and three "click" rays.
+	d:Box(58, 60, 44, 64, { Radius = 0.45 })
+	d:Box(47, 41, 17, 24, { Fill = "Accent", Layer = 1, Outline = false, Radius = 0.35 })
+	d:Box(58, 42, 3, 24, { Fill = "Outline", Layer = 1, Outline = false })
+	d:Box(58, 55, 44, 3, { Fill = "Outline", Layer = 1, Outline = false })
+	d:Box(22, 26, 5, 14, { Rot = -45, Radius = 0.5 })
+	d:Box(14, 44, 14, 5, { Radius = 0.5 })
+	d:Box(38, 12, 5, 14, { Radius = 0.5 })
 end
 
 Drawings.zone = function(d)

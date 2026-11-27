@@ -215,9 +215,9 @@ function SessionStatsController:Render()
 		{ "Time", NumberFormat.Duration(self:SessionTime()) },
 		{ "Kills", NumberFormat.Abbreviate(self.Kills) },
 		{ "Bosses", NumberFormat.Abbreviate(self.Bosses) },
-		{ "Yen earned", NumberFormat.Abbreviate(math.floor(self.YenEarned)), P.Gold },
-		{ "Yen spent", NumberFormat.Abbreviate(math.floor(self.YenSpent)), P.Gold },
-		{ "Yen / min", NumberFormat.Abbreviate(math.floor(self:YenPerMinute())), P.Gold },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(self.YenEarned)), P.Yellow },
+		{ "Yen spent", NumberFormat.Abbreviate(math.floor(self.YenSpent)), P.Yellow },
+		{ "Yen / min", NumberFormat.Abbreviate(math.floor(self:YenPerMinute())), P.Yellow },
 	})
 
 	local stats = data.Stats
@@ -226,7 +226,7 @@ function SessionStatsController:Render()
 		{ "Kills", NumberFormat.Abbreviate(stats.TotalKills or 0) },
 		{ "Bosses", NumberFormat.Abbreviate(stats.BossKills or 0) },
 		{ "Damage", NumberFormat.Abbreviate(math.floor(stats.TotalDamage or 0)) },
-		{ "Yen earned", NumberFormat.Abbreviate(math.floor(stats.TotalYenEarned or 0)), P.Gold },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(stats.TotalYenEarned or 0)), P.Yellow },
 		{ "Summons", NumberFormat.Abbreviate(stats.TotalSummons or 0) },
 		{ "Discovered", tostring(count(data.Discovered)) },
 	})

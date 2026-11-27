@@ -53,6 +53,7 @@ local PARENTS = {
 	TextBox = { "GuiObject" },
 	ImageLabel = { "GuiObject" },
 	ImageButton = { "GuiButton", "GuiObject" },
+	ViewportFrame = { "GuiObject" },
 	ScreenGui = { "LayerCollector", "GuiBase2d" },
 	BillboardGui = { "LayerCollector", "GuiBase2d" },
 	UIListLayout = { "UIGridStyleLayout", "UILayout", "UIComponent" },
@@ -172,7 +173,7 @@ local function defaultFor(className: string, key: string)
 		return own[key]
 	end
 	local isText = className == "TextLabel" or className == "TextButton" or className == "TextBox"
-	local isGui = isText or className == "Frame" or className == "CanvasGroup" or className == "ScrollingFrame" or className == "ImageLabel" or className == "ImageButton"
+	local isGui = isText or className == "Frame" or className == "CanvasGroup" or className == "ScrollingFrame" or className == "ImageLabel" or className == "ImageButton" or className == "ViewportFrame"
 	if isGui and GUI_DEFAULTS[key] ~= nil then
 		return GUI_DEFAULTS[key]
 	end
