@@ -52,7 +52,11 @@ GameConfig.Combat = {
 	MaxCritChance = 0.75,
 	MaxTargetSelectDistance = 150, -- studs: how far from the character a manual target may be
 	FighterReach = 60, -- studs: fighters run to a clicked enemy this far from the player
-	AutoTargetRange = 45, -- studs: auto-attack picks the nearest enemy within this distance
+	AutoTargetRange = 45, -- studs: fighters pick the nearest enemy within this distance on their own
+	-- Clicker: fighters attack at full speed while the player keeps clicking (the CLICK button), slower otherwise.
+	IdleAttackSpeed = 0.5, -- attack speed multiplier when the player hasn't clicked recently
+	ClickActiveWindow = 0.6, -- seconds of full speed after each click
+	MaxClicksPerSecond = 12, -- server-side rate limit of the Click event
 	UnitRangeOrigin = "Character", -- ranges are measured from the player's HumanoidRootPart
 	MinAttackSpeed = 0.1,
 	MaxAttackSpeed = 10,

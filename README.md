@@ -17,7 +17,7 @@ upgrades, eventos, itens, fusão, evolução, traits...) estão desligados em
 
 ```bash
 rokit install          # Rojo, Lune, Selene, StyLua
-lune run tests/run     # 237 testes automatizados (fora do Roblox)
+lune run tests/run     # 240 testes automatizados (fora do Roblox)
 selene src             # lint
 rojo serve             # sincronizar com o Roblox Studio
 

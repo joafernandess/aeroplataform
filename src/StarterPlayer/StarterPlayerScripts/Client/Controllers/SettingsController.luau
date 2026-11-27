@@ -16,7 +16,6 @@ local SettingsController = {
 }
 
 local TOGGLES = {
-	{ Key = "AutoAttack", Label = "Auto attack nearest enemy" },
 	{ Key = "DamageNumbers", Label = "Show damage numbers" },
 	{ Key = "ShowOtherUnits", Label = "Show other players' units" },
 	{ Key = "LowGraphics", Label = "Low graphics mode" },

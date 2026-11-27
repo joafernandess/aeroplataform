@@ -37,24 +37,19 @@ return function(t)
 			expect(fired ~= nil and #fired > 0).toBe(true)
 		end)
 
-		t.it("ignores enemies out of range, in other zones, or when AutoAttack is off", function()
-			local h, _, data, V = setup()
+		t.it("ignores enemies out of range or in other zones", function()
+			local h, _, _, V = setup()
 			local Enemy = h.Services.EnemyService
 			local far = Enemy:Spawn("W1_Bandit", V.new(500, 3, 0), "World:W1")
 			local otherZone = Enemy:Spawn("W2_Pirate", V.new(3, 3, 0), "World:W2")
 			run(h, 5)
 			expect(far.Health).toBe(far.MaxHealth)
 			expect(otherZone.Health).toBe(otherZone.MaxHealth)
-			data.Settings.AutoAttack = false
-			local near = Enemy:Spawn("W1_Bandit", V.new(3, 3, 0), "World:W1")
-			run(h, 5)
-			expect(near.Health).toBe(near.MaxHealth)
 		end)
 
-		t.it("manual target works with AutoAttack off and validates distance/zone", function()
-			local h, player, data, V = setup()
+		t.it("manual target validates distance/zone", function()
+			local h, player, _, V = setup()
 			local Enemy = h.Services.EnemyService
-			data.Settings.AutoAttack = false
 			local tooFar = Enemy:Spawn("W1_Bandit", V.new(1000, 3, 0), "World:W1")
 			local wrongZone = Enemy:Spawn("W1_Bandit", V.new(2, 3, 0), "World:W2")
 			local good = Enemy:Spawn("W1_Bandit", V.new(4, 3, 0), "World:W1")
@@ -66,6 +61,48 @@ return function(t)
 			run(h, 30)
 			expect(good.Alive).toBe(false)
 			expect(h.Services.CombatService:GetState(player).Target).toBe(nil)
+		end)
+
+		t.it("clicker: fighters attack at full speed while clicking, half speed otherwise, always with Auto Clicker", function()
+			local h, player, _, V = setup()
+			local Enemy, Combat = h.Services.EnemyService, h.Services.CombatService
+			local idleSpeed = h.GameConfig.Combat.IdleAttackSpeed
+			expect(idleSpeed < 1).toBe(true)
+			local function damageOver(seconds: number, click: boolean): number
+				Combat.Random = h.Mocks.Random.new(77)
+				local enemy = Enemy:Spawn("W1_NineTails", V.new(4, 3, 0), "World:W1")
+				local steps = math.floor(seconds / 0.1)
+				for i = 1, steps do
+					if click and i % 3 == 0 then
+						h.Net.Send(player, "Click")
+					end
+					h:Advance(0.1)
+					Combat:Step(h.PreciseNow)
+				end
+				local dealt = enemy.MaxHealth - enemy.Health
+				Enemy:Despawn(enemy)
+				return dealt
+			end
+			local idle = damageOver(20, false)
+			h:Advance(2)
+			local clicking = damageOver(20, true)
+			expect(idle > 0).toBe(true)
+			expect(clicking / idle > 1.6).toBe(true)
+			-- the Click event only refreshes the timer (rate-limited); IsClicking reflects it
+			h.Net.Send(player, "Click")
+			expect(Combat:IsClicking(player, h.PreciseNow)).toBe(true)
+			expect(Combat:IsClicking(player, h.PreciseNow + h.GameConfig.Combat.ClickActiveWindow + 0.1)).toBe(false)
+			-- Auto Clicker pass: always clicking
+			local shop = h.Services.ShopService
+			local original = shop.GetPerkValue
+			shop.GetPerkValue = function(self, p, perk, default)
+				if perk == "AutoClicker" then
+					return 1
+				end
+				return original(self, p, perk, default)
+			end
+			expect(Combat:IsClicking(player, h.PreciseNow + 100)).toBe(true)
+			shop.GetPerkValue = original
 		end)
 
 		t.it("defense reduces damage and every hit deals at least 1", function()
@@ -101,7 +138,7 @@ return function(t)
 			local Enemy = h.Services.EnemyService
 			local a = Enemy:Spawn("W1_MaskedElite", V.new(5, 3, 0), "World:W1")
 			local b = Enemy:Spawn("W1_MaskedElite", V.new(8, 3, 4), "World:W1")
-			run(h, 3) -- special is ready 2s after the unit first acts
+			run(h, 5) -- special is ready 2s after the unit first acts (attacks are slower without clicking)
 			local casts = h.Net.Fired[player].AbilityCast
 			expect(casts ~= nil and #casts > 0).toBe(true)
 			expect(a.Health < a.MaxHealth).toBe(true)

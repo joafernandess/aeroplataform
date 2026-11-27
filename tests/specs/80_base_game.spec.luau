@@ -76,19 +76,17 @@ return function(t)
 		end)
 
 		t.it("fighters run to a clicked enemy within reach and auto-target nearby ones", function()
-			local h, player, data, V = setup()
+			local h, player, _, V = setup()
 			local Enemy, Combat = h.Services.EnemyService, h.Services.CombatService
 			local reach = h.GameConfig.Combat.FighterReach
 			local clicked = Enemy:Spawn("W1_Bandit", V.new(reach - 5, 3, 0), "World:W1")
-			data.Settings.AutoAttack = false
 			Combat:SetTarget(player, clicked.Id)
 			for _ = 1, 400 do
 				h:Advance(0.1)
 				Combat:Step(h.PreciseNow)
 			end
 			expect(clicked.Alive).toBe(false)
-			-- Auto-attack only grabs enemies inside AutoTargetRange
-			data.Settings.AutoAttack = true
+			-- Fighters only pick enemies inside AutoTargetRange on their own
 			local far = Enemy:Spawn("W1_Bandit", V.new(h.GameConfig.Combat.AutoTargetRange + 10, 3, 0), "World:W1")
 			for _ = 1, 50 do
 				h:Advance(0.1)

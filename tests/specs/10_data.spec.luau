@@ -111,7 +111,7 @@ return function(t)
 			expect(data.Inventory.Items.Junk).toBeNil()
 			expect(#data.EquippedUnits).toBe(1)
 			expect(data.CurrentWorld).toBe("W1")
-			expect(data.Settings.AutoAttack).toBe(true)
+			expect(data.Settings.DamageNumbers).toBe(true)
 		end)
 
 		t.it("refuses profiles written by a newer data version", function()

@@ -338,4 +338,38 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 	end)
+
+	t.describe("clicker", function()
+		t.it("the CLICK button sends clicks to the server and shows the attack speed state", function()
+			local s = Session.new()
+			local Clicker = s.Controller("ClickerController")
+			local Combat = s.Harness.Services.CombatService
+			local root = s.Controller("UIController"):GetRoot()
+			local holder = root:FindFirstChild("Clicker")
+			expect(holder ~= nil).toBe(true)
+			expect(holder.AnchorPoint.X).toBe(0.5) -- bottom-centre
+			expect(holder.Position.X.Scale).toBe(0.5)
+			expect(holder.Position.Y.Scale).toBe(1)
+			-- no Auto Clicker pass on Roblox yet: no buy button
+			expect(Clicker.BuyAuto.Visible).toBe(false)
+			local now = 100
+			Clicker.Clock = function()
+				return now
+			end
+			Clicker:RefreshStatus()
+			expect(Clicker.StatusLabel.Text).toBe("SLOW · x0.5")
+			Clicker.Button.Activated:Fire()
+			task.wait(0.03)
+			expect(Combat:GetState(s.Player).LastClick ~= nil).toBe(true)
+			expect(Clicker.Clicks).toBe(1)
+			expect(Clicker.StatusLabel.Text).toBe("FULL SPEED")
+			now += 5
+			Clicker:RefreshStatus()
+			expect(Clicker.StatusLabel.Text).toBe("SLOW · x0.5")
+			Clicker.AutoClicker = true
+			Clicker:RefreshStatus()
+			expect(Clicker.StatusLabel.Text).toBe("AUTO CLICKER")
+			expect(#s.Runtime.Mocks.Warnings).toBe(0)
+		end)
+	end)
 end

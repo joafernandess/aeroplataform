@@ -60,5 +60,6 @@ return {
 	-- Client -> Server fire-and-forget (RemoteEvent).
 	ClientEvents = {
 		"SetTarget", -- (enemyRuntimeId | nil)
+		"Click", -- () the CLICK button: keeps the fighters at full attack speed for a moment
 	},
 }

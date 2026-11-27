@@ -66,7 +66,11 @@ Estado: **implementado e testado** (inclui teste estatístico com 20.000 rolagen
 
 ## D. Combat — `CombatService` (+ `Combat/AbilityHandlers`)
 - Loop a cada 0,1 s; cada unidade equipada tem seu temporizador (Attack Speed) e cooldown de especial.
-- Alvo manual (`SetTarget`, validado por zona e distância) ou automático (inimigo mais próximo no alcance, se `AutoAttack`).
+- Alvo manual (`SetTarget`, validado por zona e distância) ou automático (inimigo mais próximo no alcance).
+- Clicker: o botão CLICK (centro, embaixo) manda `Click`; por `Combat.ClickActiveWindow` (0,6 s) depois de cada clique
+  os lutadores atacam na velocidade total, sem clicar atacam a `Combat.IdleAttackSpeed` (metade). O game pass
+  Auto Clicker (perk `AutoClicker`) mantém a velocidade total sem clicar. Tudo decidido no servidor
+  (`CombatService:IsClicking`, rate limit de 12 cliques/s).
 - Dano = Damage da unidade × multiplicador do jogador (upgrades/boosts/eventos/passes) × passivas de time × buff Rally × bônus contra chefes × crítico; defesa reduz (`Formulas.DamageAfterDefense`).
 - Habilidades especiais por **registro** (`AbilityHandlers.Register(tipo, fn)`): Strike, Cleave, Execute, Frenzy, Rally. Novos tipos não exigem mudar o CombatService.
 - Números de dano agrupados por tick para o cliente.

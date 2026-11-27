@@ -179,6 +179,15 @@
 - Fighters: barra com A (nome), espada (força), ¥ (vender) e cadeado (trancar personagens).
 - **237 testes passando**.
 
+### Clicker no lugar do auto-ataque
+- Botão CLICK no centro de baixo: cada clique mantém os lutadores na velocidade total por 0,6 s; sem clicar eles
+  continuam lutando sozinhos na metade da velocidade. Validado no servidor (`CombatService`, evento `Click` com
+  limite de 12/s). Game pass Auto Clicker (PassId a criar) deixa sempre na velocidade total; o botão AUTO para
+  comprar aparece só quando o pass existir. Status embaixo do botão: FULL SPEED / SLOW · x0.5 / AUTO CLICKER.
+- Removido o ajuste "Auto attack" (Settings, servidor e perfil): os lutadores sempre escolhem o inimigo mais próximo.
+- Fighters sem a aba "Units" (só havia ela).
+- **240 testes passando**.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

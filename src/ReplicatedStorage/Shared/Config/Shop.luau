@@ -47,6 +47,7 @@ Shop.GamePasses = {
 	{ Id = "GP_2xDamage", PassId = 0, Name = "2x Damage", Description = "Permanently doubles damage.", Perks = { DamageMultiplier = 2 } },
 	{ Id = "GP_ExtraEquip", PassId = 0, Name = "+2 Equip Slots", Description = "Equip two more units.", Perks = { ExtraEquipSlots = 2 } },
 	{ Id = "GP_Lucky", PassId = 0, Name = "Lucky", Description = "+50% summon luck.", Perks = { LuckMultiplier = 1.5 } },
+	{ Id = "GP_AutoClicker", PassId = 0, Name = "Auto Clicker", Description = "Clicks for you: your fighters always attack at full speed.", Perks = { AutoClicker = 1 } },
 } :: { GamePass }
 
 Shop.ItemsById = {} :: { [string]: ShopItem }

@@ -55,7 +55,6 @@ function DataTemplate.Create()
 		Achievements = {},
 
 		Settings = {
-			AutoAttack = true,
 			MusicVolume = 0.5,
 			SFXVolume = 0.5,
 			DamageNumbers = true,

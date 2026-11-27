@@ -13,7 +13,9 @@ Legenda: [Studio] exige Roblox Studio/site · [Código] pode ser feito na nuvem
 - [ ] [Studio] Sincronizar com Rojo e rodar o jogo; revisar a Output (ver `STUDIO_SETUP.md`).
 - [ ] [Studio] Verificar visualmente todas as janelas (PC e celular). Ajustar tamanhos/escala para telas pequenas.
 - [ ] [Studio] Ativar API Services e testar save/load real; definir `GameConfig.Data.StoreName` final.
-- [ ] [Studio] Criar Developer Products / Game Passes e preencher IDs em `Config/Shop.luau`.
+- [ ] [Studio] Criar os Game Passes (2x Yen, 2x Damage, +2 Equip Slots, Lucky, Auto Clicker) no Creator Hub e
+      preencher os `PassId` em `Config/Shop.luau` (a Shop e o botão AUTO do clicker aparecem sozinhos).
+- [ ] [Design] Ajustar `Combat.IdleAttackSpeed` / `ClickActiveWindow` depois de jogar (ritmo do clicker).
 - [ ] [Código] Definir datas reais do evento de lançamento (`Config/Events.luau`, `EV_LaunchLuck`).
 - [ ] [Código] Preencher `GameConfig.Admin.UserIds` com os UserIds dos administradores.
 - [ ] [Código/Design] Balanceamento: custos de mundos, HP de inimigos, taxas de banner (planilha recomendada).

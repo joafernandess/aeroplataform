@@ -1,7 +1,7 @@
 --[[
 	SettingsService
 	Validated player settings. Each setting has a type and (for numbers) a range; anything else is rejected.
-	Settings that affect the server (AutoAttack, DamageNumbers, AutoDelete*) are read directly from
+	Settings that affect the server (DamageNumbers, AutoDelete*) are read directly from
 	PlayerData.Settings by the relevant service.
 ]]
 
@@ -16,7 +16,6 @@ local SettingsService = {
 }
 
 SettingsService.Schema = {
-	AutoAttack = { Type = "boolean" },
 	MusicVolume = { Type = "number", Min = 0, Max = 1 },
 	SFXVolume = { Type = "number", Min = 0, Max = 1 },
 	DamageNumbers = { Type = "boolean" },

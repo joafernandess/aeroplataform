@@ -1,12 +1,16 @@
 --[[
 	CombatService
 	Server-side combat simulation. Units are virtual attackers that orbit the player's character; the
-	server decides every hit. The client only chooses a target (SetTarget) and renders effects.
+	server decides every hit. The client only chooses a target (SetTarget), sends clicks (Click) and renders effects.
+
+	Clicker: fighters always pick the nearest enemy on their own, but attack at GameConfig.Combat.IdleAttackSpeed
+	(half speed) unless the player clicked within ClickActiveWindow seconds — or owns the Auto Clicker game pass
+	(perk AutoClicker), which keeps them at full speed without clicking.
 
 	Per tick (GameConfig.Combat.TickRate):
 	  for each player with a character:
 	    for each equipped unit whose attack timer is ready:
-	      target = manual target (if alive, same zone, in range)  or  nearest enemy in range (AutoAttack)
+	      target = manual target (if alive, same zone, in range)  or  nearest enemy in range
 	      if the unit's special is off cooldown -> AbilityHandlers.Execute (Strike/Cleave/Execute/...)
 	      else -> normal hit
 	Damage = UnitStats.Damage x player Damage multiplier (upgrades/boosts/events/passes)
@@ -44,7 +48,7 @@ CombatService.Random = nil :: any
 
 local states: { [any]: any } = {}
 
-local DataService, UnitService, EnemyService, BoostService, WorldService
+local DataService, UnitService, EnemyService, BoostService, WorldService, ShopService
 
 local function getState(player)
 	local state = states[player]
@@ -53,6 +57,21 @@ local function getState(player)
 		states[player] = state
 	end
 	return state
+end
+
+-- Clicker ------------------------------------------------------------------------------------------------------
+
+function CombatService:RegisterClick(player, now: number?)
+	getState(player).LastClick = now or Clock.Precise()
+end
+
+-- True while the player's fighters attack at full speed: a recent click or the Auto Clicker pass.
+function CombatService:IsClicking(player, now: number): boolean
+	if ShopService and ShopService:GetPerkValue(player, "AutoClicker", 0) > 0 then
+		return true
+	end
+	local last = getState(player).LastClick
+	return last ~= nil and now - last <= COMBAT.ClickActiveWindow
 end
 
 function CombatService:GetState(player)
@@ -161,8 +180,9 @@ function CombatService:StepPlayer(player, now: number)
 	end
 	local state = getState(player)
 	local zoneKey = WorldService:GetZoneKey(player)
-	local autoAttack = data.Settings.AutoAttack ~= false
+	local autoAttack = true -- fighters always pick the nearest enemy; clicking only changes how fast they attack
 	local playerMultiplier = nil
+	local clickSpeed = if self:IsClicking(player, now) then 1 else COMBAT.IdleAttackSpeed
 
 	for _, unit in UnitService:GetEquippedUnits(player) do
 		local unitState = state.Units[unit.Uid]
@@ -186,7 +206,7 @@ function CombatService:StepPlayer(player, now: number)
 				unitState.NextAttack = now + IDLE_RECHECK
 			else
 				playerMultiplier = playerMultiplier or self:GetPlayerDamageMultiplier(player, state, now)
-				local speed = stats.AttackSpeed
+				local speed = stats.AttackSpeed * clickSpeed
 				local buff = unitState.SpeedBuff
 				if buff then
 					if buff.ExpiresAt > now then
@@ -254,6 +274,7 @@ function CombatService:Init(services)
 	EnemyService = services.EnemyService
 	BoostService = services.BoostService
 	WorldService = services.WorldService
+	ShopService = services.ShopService
 	if not CombatService.Random then
 		CombatService.Random = RNG.new()
 	end
@@ -274,6 +295,9 @@ function CombatService:Init(services)
 		end
 		self:SetTarget(player, runtimeId)
 	end, { RateLimit = 8, Burst = 16 })
+	Net.On("Click", function(player)
+		self:RegisterClick(player)
+	end, { RateLimit = COMBAT.MaxClicksPerSecond, Burst = COMBAT.MaxClicksPerSecond * 2 })
 end
 
 function CombatService:Start()
