@@ -1,0 +1,23 @@
+name: Luau checks
+
+on:
+  push:
+    paths: ["src/**", "tests/**", "selene.toml", "stylua.toml", "roblox_lite.yml", ".github/workflows/luau.yml"]
+  pull_request:
+    paths: ["src/**", "tests/**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Lune, Selene, StyLua
+        run: cargo install lune selene stylua --locked
+      - name: Format
+        run: stylua --check src tests
+      - name: Lint
+        run: selene src
+      - name: Tests
+        run: lune run tests/run

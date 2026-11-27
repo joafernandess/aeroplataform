@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>tokens</title>
+  <g transform="rotate(-15 64 64)" stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ticket body with side notches -->
+    <path d="M24 35 H104 Q112 35 112 43 V54 A10 10 0 0 0 112 74 V85 Q112 93 104 93 H24 Q16 93 16 85 V74 A10 10 0 0 0 16 54 V43 Q16 35 24 35 Z" fill="#FFFFFF"/>
+    <!-- stub -->
+    <path d="M42 35 H24 Q16 35 16 43 V54 A10 10 0 0 1 16 74 V85 Q16 93 24 93 H42 Z" fill="#4FD2FF"/>
+    <!-- star -->
+    <path d="M78 39 L84.2 54.5 L100.8 55.6 L88 66.2 L92.1 82.4 L78 73.5 L63.9 82.4 L68 66.2 L55.2 55.6 L71.8 54.5 Z" fill="#1E6BFF" stroke-width="6"/>
+    <!-- outline on top -->
+    <path d="M24 35 H104 Q112 35 112 43 V54 A10 10 0 0 0 112 74 V85 Q112 93 104 93 H24 Q16 93 16 85 V74 A10 10 0 0 0 16 54 V43 Q16 35 24 35 Z" fill="none"/>
+  </g>
+</svg>

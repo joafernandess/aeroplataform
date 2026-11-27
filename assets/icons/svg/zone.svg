@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>zone</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ground ring -->
+    <ellipse cx="64" cy="108" rx="30" ry="10" fill="#4FD2FF"/>
+    <!-- pin -->
+    <path d="M64 106 C54 92 24 72 24 48 C24 26 42 10 64 10 C86 10 104 26 104 48 C104 72 74 92 64 106 Z" fill="#FFFFFF"/>
+    <circle cx="64" cy="48" r="17" fill="#1E6BFF"/>
+  </g>
+  <path d="M56 42 A9 9 0 0 1 63 38" fill="none" stroke="#4FD2FF" stroke-width="5" stroke-linecap="round"/>
+</svg>

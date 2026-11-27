@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>sort</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- up arrow -->
+    <path d="M40 12 L66 46 H52 V114 H28 V46 H14 Z" fill="#FFFFFF"/>
+    <!-- down arrow -->
+    <path d="M88 116 L114 82 H100 V14 H76 V82 H62 Z" fill="#4FD2FF"/>
+  </g>
+</svg>

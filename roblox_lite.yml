@@ -1,0 +1,33 @@
+# Minimal Roblox std for Selene when the full API dump can't be downloaded
+# (selene generate-roblox-std needs setup.rbxcdn.com). Declares Roblox globals as `any`.
+# With network access you can switch selene.toml back to std = "roblox".
+base: luau
+name: roblox_lite
+globals:
+  game: { any: true }
+  workspace: { any: true }
+  script: { any: true }
+  plugin: { any: true }
+  shared: { any: true }
+  task: { any: true }
+  Instance: { any: true }
+  Vector3: { any: true }
+  Vector2: { any: true }
+  CFrame: { any: true }
+  Color3: { any: true }
+  UDim: { any: true }
+  UDim2: { any: true }
+  Enum: { any: true }
+  Random: { any: true }
+  TweenInfo: { any: true }
+  RaycastParams: { any: true }
+  NumberRange: { any: true }
+  NumberSequence: { any: true }
+  NumberSequenceKeypoint: { any: true }
+  ColorSequenceKeypoint: { any: true }
+  ColorSequence: { any: true }
+  DateTime: { any: true }
+  warn: { any: true }
+  tick: { any: true }
+  time: { any: true }
+  typeof: { any: true }

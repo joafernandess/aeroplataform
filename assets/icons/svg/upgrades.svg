@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>upgrades</title>
+  <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <!-- chevrons -->
+    <path d="M28 106 L64 84 L100 106" stroke="#05070D" stroke-width="28"/>
+    <path d="M28 106 L64 84 L100 106" stroke="#1E6BFF" stroke-width="12"/>
+    <path d="M28 86 L64 64 L100 86" stroke="#05070D" stroke-width="28"/>
+    <path d="M28 86 L64 64 L100 86" stroke="#4FD2FF" stroke-width="12"/>
+  </g>
+  <!-- arrow -->
+  <path d="M64 8 L106 50 H82 V64 H46 V50 H22 Z" fill="#FFFFFF" stroke="#05070D" stroke-width="8" stroke-linejoin="round"/>
+</svg>

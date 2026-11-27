@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>team</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- side members (behind) -->
+    <path d="M10 104 C10 88 20 78 32 78 C44 78 54 88 54 104 Z" fill="#4FD2FF"/>
+    <circle cx="32" cy="54" r="15" fill="#4FD2FF"/>
+    <path d="M74 104 C74 88 84 78 96 78 C108 78 118 88 118 104 Z" fill="#4FD2FF"/>
+    <circle cx="96" cy="54" r="15" fill="#4FD2FF"/>
+    <!-- leader (front) -->
+    <path d="M30 116 C30 94 45 82 64 82 C83 82 98 94 98 116 Z" fill="#FFFFFF"/>
+    <circle cx="64" cy="48" r="20" fill="#FFFFFF"/>
+  </g>
+</svg>

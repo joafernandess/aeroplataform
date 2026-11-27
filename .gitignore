@@ -1,0 +1,8 @@
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+sourcemap.json
+ui-preview-out/
+node_modules/
+.claude/worktrees/

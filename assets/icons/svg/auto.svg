@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>auto</title>
+  <g stroke="#05070D" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- two clockwise arrows forming a loop -->
+    <path d="M110.4 51.6 A48 48 0 0 1 72.3 111.3 L73.7 119.1 L53.3 101.5 L67.8 85.7 L69.2 93.5 A30 30 0 0 0 93 56.2 Z" fill="#4FD2FF"/>
+    <path d="M17.6 76.4 A48 48 0 0 1 55.7 16.7 L54.3 8.9 L74.7 26.5 L60.2 42.3 L58.8 34.5 A30 30 0 0 0 35 71.8 Z" fill="#4FD2FF"/>
+    <!-- shared sword design at 80 %, tip and pommel through the gaps (stroke 10 x .8 = 8) -->
+    <g transform="translate(64 64) rotate(45) scale(.8) translate(-64 -64)" stroke-width="10">
+      <path d="M54 84 V30 L64 10 L74 30 V84 Z" fill="#FFFFFF"/>
+      <path d="M64 18 L69 30.5 V79 H64 Z" fill="#CFEFFF" stroke="none"/>
+      <rect x="57" y="96" width="14" height="14" rx="3" fill="#1546B8"/>
+      <rect x="38" y="82" width="52" height="14" rx="7" fill="#1E6BFF"/>
+      <circle cx="64" cy="114" r="7" fill="#4FD2FF"/>
+    </g>
+  </g>
+</svg>
