@@ -172,6 +172,13 @@
 - Preview: CanvasGroup, arrastar (InputChanged) e cena `tools/ui-preview/scenes/windows` com Shop/Items ligados.
 - **236 testes passando**, selene 0/0.
 
+### Ajustes pedidos nas janelas
+- Inventory sem carteira (o Yen já está no HUD). Shop virou loja de game passes (preço em Robux, BUY/OWNED,
+  bônus aplicados pelo servidor); a loja por moedas continua no servidor, mas fora da UI.
+- Sem ícone repetido dentro das janelas: tirado o ícone do título, das telas vazias e dos botões REDEEM/GO.
+- Fighters: barra com A (nome), espada (força), ¥ (vender) e cadeado (trancar personagens).
+- **237 testes passando**.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

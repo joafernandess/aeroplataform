@@ -5,10 +5,12 @@
 	(Items and currencies live in the Inventory window, ItemsController.)
 	Also owns the NEW badge on the Fighters menu button: fighters obtained this session while the window was
 	closed (summons, quest rewards...) are counted until the Fighters window is opened.
+	Toolbar (top): A = sort by name, sword = sort by power, ¥ = sell mode, padlock = lock mode.
 	Modes:
 	  Browse  - click a card to inspect it
 	  Fuse    - pick fodder for the selected target, then confirm (FuseUnits)
-	  Delete  - multi-select units to sell (DeleteUnits)
+	  Delete  - (¥) multi-select fighters to sell, then confirm (DeleteUnits; locked/equipped ones are refused)
+	  Lock    - (padlock) each tap locks / unlocks that fighter (LockUnit)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,7 +39,7 @@ InventoryController.MultiSelect = {} :: { [string]: boolean }
 InventoryController.NewUids = {} :: { [string]: boolean }
 InventoryController.KnownUids = nil :: { [string]: boolean }?
 
-local SORTS = { "Power", "Rarity", "Level" }
+local SORTS = { "Power", "Name" } -- sword / "A" buttons
 
 local function sortedUnits(data, sortBy: string)
 	local equipped = TableUtil.ToSet(data.EquippedUnits)
@@ -54,6 +56,12 @@ local function sortedUnits(data, sortBy: string)
 		local ea, eb = equipped[a.Uid] == true, equipped[b.Uid] == true
 		if ea ~= eb then
 			return ea
+		end
+		if sortBy == "Name" then
+			if a.Def.Name ~= b.Def.Name then
+				return a.Def.Name < b.Def.Name -- A to Z
+			end
+			return a.Power > b.Power
 		end
 		local ka, kb
 		if sortBy == "Rarity" then
@@ -92,21 +100,25 @@ function InventoryController:Render()
 	local slots = Formulas.EquipSlots(data.Upgrades.EquipSlots or 0, 0)
 	self.UnitsCounter.Set(("%d/%d"):format(count, capacity), if count >= capacity then "Full" elseif count >= capacity * 0.9 then "Near" else "Normal")
 	self.EquippedCounter.Set(("%d/%d"):format(#data.EquippedUnits, slots), if #data.EquippedUnits >= slots then "Near" else "Normal")
-	self.SortLabel.Text = "Sort: " .. self.SortBy
-	C.SetKind(self.SellModeButton, if self.Mode == "Delete" then "Primary" else "Danger")
-	C.SetSelected(self.SellModeButton, self.Mode == "Delete")
+	C.SetToolActive(self.Tools.SortName, self.SortBy == "Name")
+	C.SetToolActive(self.Tools.SortPower, self.SortBy == "Power")
+	C.SetToolActive(self.Tools.SellMode, self.Mode == "Delete")
+	C.SetToolActive(self.Tools.LockMode, self.Mode == "Lock")
+	self.ToolHint.Text = if self.SortBy == "Name" then "Sorted by name" else "Sorted by power"
 
 	local modeText = {
 		Browse = "",
 		Fuse = "FUSE: select fodder units, then Confirm",
-		Delete = "DELETE: select units to sell, then Confirm",
+		Delete = "SELL: select fighters to sell, then Confirm",
+		Lock = "LOCK: tap fighters to lock / unlock them",
 	}
 	self.ModeLabel.Text = modeText[self.Mode]
 	local selecting = self.Mode ~= "Browse"
 	self.ModeBar.Visible = selecting
 	self.Toolbar.Visible = not selecting
-	self.ConfirmButton.Visible = self.Mode ~= "Browse"
-	self.CancelButton.Visible = self.Mode ~= "Browse"
+	self.ConfirmButton.Visible = self.Mode == "Delete" or self.Mode == "Fuse"
+	self.CancelButton.Visible = selecting
+	C.SetText(self.CancelButton, if self.Mode == "Lock" then "Done" else "Cancel")
 
 	C.Clear(self.Grid)
 	local equipped = TableUtil.ToSet(data.EquippedUnits)
@@ -126,6 +138,8 @@ function InventoryController:Render()
 		}, function()
 			if self.Mode == "Browse" then
 				self:Select(entry.Uid)
+			elseif self.Mode == "Lock" then
+				task.spawn(State.Request, "LockUnit", entry.Uid, not unit.Locked)
 			elseif entry.Uid ~= self.SelectedUid then
 				self.MultiSelect[entry.Uid] = if self.MultiSelect[entry.Uid] then nil else true
 				self:Render()
@@ -193,19 +207,31 @@ function InventoryController:Init(controllers)
 	local unitsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 54), Size = UDim2.new(1, 0, 1, -54) })
 	self.UnitsPage = unitsPage
 
-	-- Toolbar: sort (cycles) + sell mode
+	-- Toolbar: A = sort by name, sword = sort by power, ¥ = sell mode, padlock = lock mode
 	local toolbar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44) })
 	C.List(toolbar, Enum.FillDirection.Horizontal, 8)
 	self.Toolbar = toolbar
-	C.ToolButton(toolbar, Theme.Icons.Sort, function()
-		local index = table.find(SORTS, self.SortBy) or 1
-		self.SortBy = SORTS[index % #SORTS + 1]
-		self:Render()
-	end, { LayoutOrder = 1 })
-	self.SortLabel = C.Title(toolbar, "Sort: Power", { Size = UDim2.fromOffset(150, 44), TextSize = 16, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 2 }, 2)
-	self.SellModeButton = C.Button(toolbar, "SELL MODE", function()
-		self:SetMode(if self.Mode == "Delete" then "Browse" else "Delete")
-	end, { Kind = "Danger", Confirm = false, Size = UDim2.fromOffset(140, 44), TextSize = 16, LayoutOrder = 3 })
+	local function tool(name: string, glyph: string, order: number, onClick: () -> ())
+		local button = C.ToolButton(toolbar, glyph, onClick, { Name = name, LayoutOrder = order })
+		return button
+	end
+	self.Tools = {
+		SortName = tool("SortName", "A", 1, function()
+			self.SortBy = "Name"
+			self:Render()
+		end),
+		SortPower = tool("SortPower", "kills", 2, function()
+			self.SortBy = "Power"
+			self:Render()
+		end),
+		SellMode = tool("SellMode", "yen", 3, function()
+			self:SetMode(if self.Mode == "Delete" then "Browse" else "Delete")
+		end),
+		LockMode = tool("LockMode", "lock", 4, function()
+			self:SetMode(if self.Mode == "Lock" then "Browse" else "Lock")
+		end),
+	}
+	self.ToolHint = C.Title(toolbar, "Sorted by power", { Name = "ToolHint", Size = UDim2.fromOffset(150, 44), TextSize = 15, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 5 }, 2)
 
 	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44), Visible = false })
 	self.ModeBar = modeBar

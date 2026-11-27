@@ -1025,27 +1025,25 @@ function C.Section(parent: Instance, text: string, order: number?, props: { [str
 end
 
 --[[
-	Empty / "not available yet" state: dim icon in a round well, a title and a short message, centred.
-	Used whenever a window has nothing real to show, so a menu button never opens a blank or fake screen.
+	Empty / "not available yet" state: a title and a short message, centred (no icon: the window's menu button
+	already shows it). Used whenever a window has nothing real to show, so a menu button never opens a blank or
+	fake screen. (`_icon` is kept in the signature so callers can stay unchanged.)
 ]]
-function C.EmptyState(parent: Instance, icon: string, title: string, message: string, props: { [string]: any }?)
-	local holder = C.Frame(parent, { Name = "EmptyState", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 236) })
+function C.EmptyState(parent: Instance, _icon: string, title: string, message: string, props: { [string]: any }?)
+	local holder = C.Frame(parent, { Name = "EmptyState", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 150) })
 	apply(holder, props)
-	local well = C.Frame(holder, { Name = "Well", BackgroundColor3 = P.PanelAlt, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), Size = UDim2.fromOffset(96, 96) })
-	C.Corner(well, UDim.new(0.5, 0))
-	C.Stroke(well, P.Line, 3)
-	centeredIcon(well, icon, 56, { Color = P.TextDim })
 	C.Title(holder, title, {
 		Name = "Title",
-		Position = UDim2.fromOffset(0, 122),
-		Size = UDim2.new(1, 0, 0, 32),
-		TextSize = 26,
+		Position = UDim2.fromOffset(0, 30),
+		Size = UDim2.new(1, 0, 0, 34),
+		TextSize = 28,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	}, 2.5)
+	C.Frame(holder, { Name = "GoldLine", BackgroundColor3 = P.Gold, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 72), Size = UDim2.fromOffset(56, 3) })
 	C.Label(holder, message, {
 		Name = "Message",
-		Position = UDim2.new(0.1, 0, 0, 158),
-		Size = UDim2.new(0.8, 0, 0, 66),
+		Position = UDim2.new(0.1, 0, 0, 86),
+		Size = UDim2.new(0.8, 0, 0, 60),
 		TextSize = 17,
 		TextColor3 = P.TextDim,
 		TextWrapped = true,
@@ -1142,12 +1140,12 @@ end
 	Standard window (one template for every menu):
 	  Frame   transparent holder: position, size, responsive UIScale, the dark outer outline
 	  Group   CanvasGroup with the whole window inside, so it can fade (GroupTransparency) while it scales
-	  Header  bright blue gradient title bar with speed-lines, a thin gold line under it, the menu's icon tile,
-	          the title and a red round close button (X) inside the bar (it is also the drag handle)
+	  Header  bright blue gradient title bar with speed-lines, a thin gold line under it, the title and a red round
+	          close button (X) inside the bar (it is also the drag handle). No icon: the menu button already has it.
 	  Content dark navy area for the window's own UI; a thin gold rim runs inside the window border
 	Returns { Frame, Group, Content, Title, Header, CloseButton }.
 ]]
-function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
+function C.Window(parent: Instance, title: string, size: UDim2?)
 	local frame = C.Frame(parent, {
 		Name = title,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1180,26 +1178,10 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	C.SpeedLines(header, 8, { Start = 0.55, Spacing = 28, ZIndex = 13 })
 	C.Frame(header, { Name = "GoldLine", BackgroundColor3 = P.Gold, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
 
-	-- Title tile: same look as the HUD menu buttons (tinted face, border in the icon's colour).
-	local tile = C.Frame(header, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
-	local tileIcon = Icons.Resolve(icon or "fighters")
-	C.MenuTile(tile, Theme.Radius.Tool, if tileIcon then Theme.IconColors[tileIcon] else nil)
-	if tileIcon then
-		local tint = Theme.IconColors[tileIcon] or P.White
-		centeredIcon(tile, tileIcon, 32, { Color = tint, Accent = tint:Lerp(P.White, 0.55), ZIndex = 16 })
-	else
-		C.Title(tile, icon :: string, {
-			Size = UDim2.fromScale(1, 1),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextSize = 24,
-			TextColor3 = P.Blue500,
-			ZIndex = 16,
-		}, 0.01)
-	end
 	local titleLabel = C.Label(header, title, {
 		Font = Theme.Fonts.Display,
 		TextSize = Theme.TextSize.Display,
-		Position = UDim2.fromOffset(66, 1),
+		Position = UDim2.fromOffset(20, 1),
 		Size = UDim2.new(1, -130, 1, 0),
 		ZIndex = 15,
 	})

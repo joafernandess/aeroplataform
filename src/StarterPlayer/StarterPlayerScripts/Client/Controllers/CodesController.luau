@@ -66,16 +66,12 @@ function CodesController:Init(controllers)
 	self.Window = window
 	local content = window.Content
 
-	-- Gift icon + short explanation
+	-- Short explanation
 	local intro = C.Frame(content, { Name = "Intro", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 84) })
-	local well = C.Frame(intro, { BackgroundColor3 = P.PanelAlt, Position = UDim2.fromOffset(4, 6), Size = UDim2.fromOffset(72, 72) })
-	C.Corner(well, UDim.new(0.5, 0))
-	C.Stroke(well, P.Line, 3)
-	C.Icon(well, "codes", { Size = 44, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Color = P.Cyan })
-	C.Title(intro, "Redeem a code", { Position = UDim2.fromOffset(92, 10), Size = UDim2.new(1, -96, 0, 30), TextSize = 26 }, 2.5)
+	C.Title(intro, "Redeem a code", { Position = UDim2.fromOffset(4, 10), Size = UDim2.new(1, -8, 0, 30), TextSize = 26 }, 2.5)
 	C.Label(intro, "Enter a code from the game's announcements to get free rewards. Each code works once.", {
-		Position = UDim2.fromOffset(92, 42),
-		Size = UDim2.new(1, -96, 0, 40),
+		Position = UDim2.fromOffset(4, 42),
+		Size = UDim2.new(1, -8, 0, 40),
 		TextSize = 15,
 		TextColor3 = P.TextDim,
 		TextWrapped = true,
@@ -100,8 +96,6 @@ function CodesController:Init(controllers)
 	end, {
 		Name = "Redeem",
 		Kind = "Primary",
-		Icon = "codes",
-		IconSize = 22,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -4, 0, 0),
 		Size = UDim2.fromOffset(150, 56),

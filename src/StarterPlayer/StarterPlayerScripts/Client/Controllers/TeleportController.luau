@@ -116,8 +116,6 @@ function TeleportController:_pointRow(world, point, order: number)
 	end, {
 		Name = "Go",
 		Kind = if point.Kind == "Boss" then "Accent" else "Primary",
-		Icon = "teleport",
-		IconSize = 20,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -12, 0.5, 0),
 		Size = UDim2.fromOffset(112, 48),
@@ -152,7 +150,7 @@ function TeleportController:_worldRow(data, world, order: number)
 		else nil, {
 		Name = if unlocked then "Travel" else "Locked",
 		Kind = if unlocked then "Primary" else "Dark",
-		Icon = if unlocked then "teleport" else "lock",
+		Icon = if unlocked then nil else "lock",
 		IconSize = 18,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -12, 0.5, 0),

@@ -434,6 +434,14 @@ function Fake.CreateClientServices(serverTime: () -> number)
 		MarketplaceService = {
 			PromptProductPurchase = function() end,
 			PromptGamePassPurchase = function() end,
+			PromptGamePassPurchaseFinished = Fake.Signal(),
+			-- Offline preview: product info / ownership lookups fail like an unreachable web API would.
+			GetProductInfo = function()
+				error("MarketplaceService unavailable in the preview")
+			end,
+			UserOwnsGamePassAsync = function()
+				error("MarketplaceService unavailable in the preview")
+			end,
 		},
 	}
 	return services, localPlayer, playerGui

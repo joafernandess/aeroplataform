@@ -1,7 +1,7 @@
 --[[
 	Scene: window layouts that the base game keeps switched off (Lune)
-	Turns on Features.Shop and Features.Items (client and server) to render the open Shop (category tabs + item
-	cards) and the Inventory item grid with its details panel, plus the Teleport list scrolled to the other worlds.
+	Renders the game pass Shop with example pass ids, the Inventory item grid with its details panel (Features.Items
+	on), and the Teleport list with the other worlds.
 
 	Usage (repo root):
 	  lune run tools/ui-preview/scenes/windows [outputDir] [--png-icons]
@@ -42,9 +42,20 @@ local function shot(name: string, caption: string)
 	print("wrote " .. name)
 end
 
+-- Game pass shop with two released passes (fake ids; prices filled in as Roblox would return them)
+local Shop = session.Runtime:Require("ReplicatedStorage/Shared/Config/Shop")
+local ShopC = session.Controller("ShopController")
+Shop.GamePasses[1].PassId, Shop.GamePasses[2].PassId, Shop.GamePasses[3].PassId = 101, 102, 103
+ShopC.Info[101] = { PriceInRobux = 199 }
+ShopC.Info[102] = { PriceInRobux = 299 }
+ShopC.Info[103] = { PriceInRobux = 149 }
+ShopC.Owned[103] = true
+ShopC.Refresh = function(self)
+	self:Render()
+end
 UI:Open("Shop")
 task.wait(0.1)
-shot("01_shop_open", "Shop aberta (Features.Shop = true): abas de categoria, cards com preço e Buy")
+shot("01_shop_passes", "Shop de game passes (ids de exemplo): preço em Robux, BUY / OWNED")
 
 local inv = session.Data.Inventory.Items
 inv.EvolutionStone, inv.XPPotionSmall, inv.XPPotionMedium, inv.TraitCrystal, inv.ShinobiScroll = 2, 14, 3, 1, 6

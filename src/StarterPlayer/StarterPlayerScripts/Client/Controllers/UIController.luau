@@ -65,24 +65,6 @@ local CLOSE_TIME = 0.12
 local DRAG_KEEP = 60 -- px of a dragged window that must stay on screen
 
 -- Icon shown in each window's header tile (icon names from UI/Icons).
-local WINDOW_ICONS = {
-	Fighters = "fighters",
-	Summon = "summon",
-	Worlds = "worlds",
-	Quests = "quests",
-	Shop = "shop",
-	Upgrades = "upgrades",
-	Raids = "raids",
-	Settings = "settings",
-	Items = "inventory",
-	Codes = "codes",
-	Teleport = "teleport",
-	Mounts = "mounts",
-	Achievements = "achievements",
-	Stats = "stats",
-	Index = "index",
-	UpdateLog = "update",
-}
 
 function UIController:GetRoot(): ScreenGui
 	return self.Root
@@ -189,7 +171,7 @@ function UIController:LayoutNav()
 end
 
 function UIController:CreateWindow(name: string, title: string, size: UDim2?, onOpen: ((...any) -> ())?)
-	local window = C.Window(self.Root, title, size, WINDOW_ICONS[name])
+	local window = C.Window(self.Root, title, size)
 	self:AddScaled(window.Frame, "Window")
 	self:_makeDraggable(window)
 	window.Name = name

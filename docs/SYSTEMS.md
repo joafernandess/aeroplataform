@@ -138,20 +138,22 @@ Cada botão: fundo escuro tingido e borda na cor do ícone, nome dentro, tecla d
 de notificação; hover cresce e levanta o ícone, clique afunda, botões largos têm um brilho que passa de tempos em
 tempos. Os menus (com o Yen) ficam centralizados na altura e encolhem em telas pequenas (`UIController:LayoutNav`).
 Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
-Janelas (um único modelo, `C.Window`): barra de título em degradê azul com o ícone do menu e um X vermelho, corpo
-azul-marinho, linha e aro dourados finos. Abrem com leve aumento + fade e fecham com leve redução + fade
+Janelas (um único modelo, `C.Window`): barra de título em degradê azul com o nome e um X vermelho (sem repetir o
+ícone do menu dentro da janela), corpo azul-marinho, linha e aro dourados finos. Abrem com leve aumento + fade e fecham com leve redução + fade
 (CanvasGroup); arrastam pela barra de título (sem sair da tela); Esc ou o X fecham; nunca há cópias duplicadas
 e o botão do menu fica destacado enquanto a janela dele está aberta.
-- Shop: abas de categoria, cards (ícone, nome, o que dá, preço com a moeda, Buy / x10) e carteira; mostra "a loja
-  está fechada" enquanto `Features.Shop` = false.
-- Fighters: grade (retrato, nível, estrelas, raridade, nome e Power em cada card, ✓ de equipado, contorno dourado
-  no selecionado) + painel de detalhes (stats, equipar/desequipar, travar, vender...), Equip Best / Unequip All.
+- Shop: só game passes (`Config/Shop.GamePasses`): um card por pass com PassId real (imagem do Roblox, nome, o que
+  dá, preço em Robux, BUY → prompt do Roblox, OWNED se já tem); os bônus são aplicados pelo `ShopService`. Sem
+  passes criados, mostra "Game passes coming soon".
+- Fighters: barra no topo — A (ordenar por nome), espada (ordenar por força), ¥ (modo vender: seleciona e confirma),
+  cadeado (modo trancar: cada toque tranca/destranca, `LockUnit`); grade com Power em cada card, ✓ de equipado,
+  contorno dourado no selecionado; painel de detalhes; Equip Best / Unequip All.
 - Settings: auto-ataque, números de dano, unidades de outros jogadores, gráficos baixos, auto-venda, volumes.
 - Codes: campo + REDEEM, mensagens de sucesso / inválido / já usado / expirado (validação no servidor).
 - Quests: principal e diárias, barra de progresso, recompensa, Claim só quando completa.
 - Teleport: áreas do mundo atual (spawn, orbe, zonas, chefes) com GO; outros mundos com TRAVEL ou bloqueados com os
   requisitos da config ("Coming soon" enquanto `Features.MultipleWorlds` = false).
-- Inventory: carteira + grade de itens com painel de detalhes (Use / Sell / Lock); estado vazio sem itens.
+- Inventory: só itens (grade + painel de detalhes com Use / Sell / Lock); estado vazio sem itens. O Yen fica no HUD.
 - Mounts: grade pronta (raridade, equipado, Equip/Unequip) a partir de `Config/Mounts` + `data.Mounts`; hoje mostra
   "ainda não disponível" porque o sistema de montarias não existe.
 - Achievements: progresso com porcentagem, recompensa, Claim, concluídas destacadas.

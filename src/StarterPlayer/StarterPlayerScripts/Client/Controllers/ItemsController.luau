@@ -1,8 +1,8 @@
 --[[
 	ItemsController
-	"Items" window (the right menu's Inventory button; fighters have their own Fighters window):
-	  Wallet  every currency the game currently uses, abbreviated (live)
-	  Items   grid of item cards (icon tinted by rarity, quantity, name, gold outline on the selected one) and a
+	"Items" window (the right menu's Inventory button; fighters have their own Fighters window; the Yen counter is
+	always on the HUD):
+	  grid of item cards (icon tinted by rarity, quantity, name, gold outline on the selected one) and a
 	          details panel for the selected item: name, rarity, description, quantity and its actions —
 	          Use / Sell 1 / Lock (server-validated: UseItem, SellItem, LockItem)
 	While Features.Items is off the game has no items, so the section says so instead of showing an empty grid.
@@ -11,7 +11,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
-local GameConfig = require(Shared.Config.GameConfig)
 local Features = require(Shared.Config.Features)
 local Items = require(Shared.Config.Items)
 local Rarities = require(Shared.Config.Rarities)
@@ -30,20 +29,8 @@ local ItemsController = {
 ItemsController.SelectedItem = nil :: string?
 
 local CARD = UDim2.fromOffset(96, 112)
-local WALLET_H = 104 -- section title + tiles
 
 local P = Theme.Colors
-
--- Currencies shown in the wallet (Yen only in the base game).
-function ItemsController.WalletCurrencies(): { string }
-	local list = {}
-	for _, currency in GameConfig.Economy.Currencies do
-		if currency == "Yen" or Features.PremiumCurrencies then
-			table.insert(list, currency)
-		end
-	end
-	return list
-end
 
 -- Owned item ids (known to the config), sorted by rarity then name.
 function ItemsController.OwnedItems(data): { string }
@@ -62,24 +49,6 @@ function ItemsController.OwnedItems(data): { string }
 		return da.Name < db.Name
 	end)
 	return ids
-end
-
-function ItemsController:RenderWallet(data)
-	C.Clear(self.Wallet)
-	C.Section(self.Wallet, "Wallet", 1)
-	local tiles = C.Frame(self.Wallet, { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 64), LayoutOrder = 2 })
-	C.List(tiles, Enum.FillDirection.Horizontal, 10)
-	for i, currency in ItemsController.WalletCurrencies() do
-		local tile, value = C.StatTile(tiles, currency, NumberFormat.Abbreviate(math.floor(data.Currencies[currency] or 0)), {
-			Name = currency,
-			Size = UDim2.fromOffset(160, 64),
-			LayoutOrder = i,
-		})
-		tile:FindFirstChildOfClass("UIStroke").Color = P.Gold
-		value.Position = UDim2.fromOffset(44, 22)
-		value.Size = UDim2.new(1, -50, 0, 32)
-		C.Icon(tile, Theme.Icons[currency] or currency, { Size = 28, Position = UDim2.fromOffset(10, 24), Color = Theme.Currency(currency) })
-	end
 end
 
 function ItemsController:_card(itemId: string, count: number, order: number)
@@ -158,7 +127,6 @@ function ItemsController:Render()
 	if not data or not self.Window.Frame.Visible then
 		return
 	end
-	self:RenderWallet(data)
 	C.Clear(self.List)
 	if not Features.Items then
 		self.ItemsPane.Visible = false
@@ -191,14 +159,11 @@ function ItemsController:Init(controllers)
 		self:Render()
 	end)
 	local content = self.Window.Content
-	self.Wallet = C.Frame(content, { Name = "WalletArea", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, WALLET_H) })
-	C.List(self.Wallet, Enum.FillDirection.Vertical, 4)
-	C.Create("UIPadding", { PaddingLeft = UDim.new(0, 4), Parent = self.Wallet })
 	-- Empty / unavailable states
-	self.List = C.Scroll(content, { Name = "ItemsList", Position = UDim2.fromOffset(0, WALLET_H), Size = UDim2.new(1, 0, 1, -WALLET_H) })
+	self.List = C.Scroll(content, { Name = "ItemsList" })
 	C.List(self.List, Enum.FillDirection.Vertical, 8)
 	-- Grid + details
-	local pane = C.Frame(content, { Name = "ItemsPane", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, WALLET_H), Size = UDim2.new(1, 0, 1, -WALLET_H), Visible = false })
+	local pane = C.Frame(content, { Name = "ItemsPane", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false })
 	self.ItemsPane = pane
 	self.Grid = C.Scroll(pane, { Name = "Grid", Size = UDim2.new(0.64, 0, 1, 0) })
 	C.Grid(self.Grid, CARD, 10)
@@ -211,7 +176,7 @@ function ItemsController:Init(controllers)
 end
 
 function ItemsController:Start()
-	State.Observe({ "Currencies", "Inventory" }, function()
+	State.Observe({ "Inventory" }, function()
 		self:Render()
 	end)
 end

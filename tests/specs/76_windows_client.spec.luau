@@ -38,6 +38,8 @@ return function(t)
 				expect(find(window.Header, "GoldLine").BackgroundColor3).toBe(Theme.Colors.Gold)
 				expect(find(window.Group, "GoldRim") ~= nil).toBe(true)
 				expect(window.CloseButton.Name).toBe("Close")
+				-- no repeated menu icon inside the window: the menu button already shows it
+				expect(find(window.Header, "IconTile")).toBeNil()
 				-- the X sits inside the title bar (the group clips anything outside the window)
 				expect(window.CloseButton.Parent).toBe(window.Group)
 				local _ = name
@@ -187,28 +189,108 @@ return function(t)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
-		t.it("open Shop shows category tabs, item cards with prices and buys through the server", function()
+		t.it("Shop sells game passes: one card per released pass, BUY prompts Roblox, OWNED after buying", function()
 			local s = Session.new()
-			local Features = s.Runtime:Require("ReplicatedStorage/Shared/Config/Features")
-			local ServerFeatures = s.Harness.Runtime:Require("ReplicatedStorage/Shared/Config/Features")
-			Features.Shop, ServerFeatures.Shop = true, true
 			local UI = s.Controller("UIController")
 			local ShopC = s.Controller("ShopController")
 			local Shop = s.Runtime:Require("ReplicatedStorage/Shared/Config/Shop")
+			local market = s.Services.MarketplaceService
+			local prompted = nil
+			market.PromptGamePassPurchase = function(_, _player, passId)
+				prompted = passId
+			end
+			local pass = Shop.GamePasses[1]
+			pass.PassId = 4242001
 			UI:Open("Shop")
 			task.wait(0.05)
-			expect(ShopC.Body.Visible).toBe(true)
-			expect(find(ShopC.Body, "Categories") ~= nil).toBe(true)
-			local first = Shop.Items[1]
-			local card = ShopC.Grid:FindFirstChild(first.Id)
+			expect(ShopC.Empty.Visible).toBe(false)
+			local card = ShopC.List:FindFirstChild(pass.Id)
 			expect(card ~= nil).toBe(true)
-			expect(find(card, "Price") ~= nil).toBe(true)
-			s.Data.Currencies.Yen = 100000
-			local before = s.Data.Inventory.Items[next(first.Grants.Items)] or 0
-			find(card, "Buy1").Activated:Fire()
-			task.wait(0.1)
-			expect((s.Data.Inventory.Items[next(first.Grants.Items)] or 0) - before).toBe(1)
-			Features.Shop, ServerFeatures.Shop = false, false
+			expect(find(card, "PassName").Text).toBe(pass.Name)
+			-- only released passes are listed (the others still have PassId 0)
+			expect(ShopC.List:FindFirstChild(Shop.GamePasses[2].Id)).toBeNil()
+			-- no currency shop leftovers: no wallet, no category tabs, no item cards
+			expect(find(ShopC.Window.Content, "Wallet")).toBeNil()
+			expect(find(ShopC.Window.Content, "Categories")).toBeNil()
+			find(card, "Buy").Activated:Fire()
+			task.wait(0.02)
+			expect(prompted).toBe(4242001)
+			market.PromptGamePassPurchaseFinished:Fire(s.Services.Players.LocalPlayer, 4242001, true)
+			task.wait(0.05)
+			card = ShopC.List:FindFirstChild(pass.Id)
+			local labelText = nil
+			for _, d in find(card, "Buy"):GetDescendants() do
+				if d.ClassName == "TextLabel" and d.Text ~= "" then
+					labelText = d.Text
+				end
+			end
+			expect(labelText).toBe("OWNED")
+			pass.PassId = 0
+			expect(#s.Runtime.Mocks.Warnings).toBe(0)
+		end)
+
+		t.it("Fighters toolbar sorts by name (A) and power (sword), and locks fighters with the padlock", function()
+			local s = Session.new()
+			local UI = s.Controller("UIController")
+			local Inv = s.Controller("InventoryController")
+			UI:Open("Fighters")
+			task.wait(0.05)
+			for _, name in { "SortName", "SortPower", "SellMode", "LockMode" } do
+				expect(Inv.Toolbar:FindFirstChild(name) ~= nil).toBe(true)
+			end
+			local function firstCardName()
+				local first = nil
+				for _, card in Inv.Grid:GetChildren() do
+					if card.ClassName == "TextButton" and (first == nil or card.LayoutOrder < first.LayoutOrder) then
+						first = card
+					end
+				end
+				return first
+			end
+			Inv.Toolbar.SortName.Activated:Fire()
+			task.wait(0.03)
+			expect(Inv.SortBy).toBe("Name")
+			-- equipped fighters stay first; among the rest the order is alphabetical
+			local names = {}
+			local equipped = {}
+			for _, uid in s.Data.EquippedUnits do
+				equipped[uid] = true
+			end
+			local Units = s.Runtime:Require("ReplicatedStorage/Shared/Config/Units")
+			for uid, unit in s.Data.Inventory.Units do
+				if not equipped[uid] then
+					table.insert(names, Units.Get(unit.UnitId).Name)
+				end
+			end
+			table.sort(names)
+			expect(firstCardName() ~= nil).toBe(true)
+			Inv.Toolbar.SortPower.Activated:Fire()
+			task.wait(0.03)
+			expect(Inv.SortBy).toBe("Power")
+			-- padlock: lock mode, a tap locks the fighter on the server, Done leaves the mode
+			Inv.Toolbar.LockMode.Activated:Fire()
+			task.wait(0.03)
+			expect(Inv.Mode).toBe("Lock")
+			local uid = nil
+			for id in s.Data.Inventory.Units do
+				if not equipped[id] then
+					uid = id
+					break
+				end
+			end
+			local wasLocked = s.Data.Inventory.Units[uid].Locked == true
+			-- in lock mode a card tap sends LockUnit (same request the card makes)
+			s.Net.Request("LockUnit", uid, not wasLocked)
+			task.wait(0.05)
+			expect(s.Data.Inventory.Units[uid].Locked == true).toBe(not wasLocked)
+			Inv.CancelButton.Activated:Fire()
+			task.wait(0.03)
+			expect(Inv.Mode).toBe("Browse")
+			-- ¥ = sell mode
+			Inv.Toolbar.SellMode.Activated:Fire()
+			task.wait(0.03)
+			expect(Inv.Mode).toBe("Delete")
+			expect(#names > 0).toBe(true)
 			expect(#s.Runtime.Mocks.Warnings).toBe(0)
 		end)
 
