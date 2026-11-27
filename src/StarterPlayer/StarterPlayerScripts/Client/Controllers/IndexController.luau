@@ -1,7 +1,7 @@
 --[[
 	IndexController
 	"Index" window: the collection of every fighter the player can currently obtain (the pools of the visible
-	summon banners, plus evolved forms when Features.Evolution is on), grouped by banner and sorted by rarity.
+	summon banners, plus evolved forms when Features.Evolution is on), one tab per world, sorted by rarity.
 
 	A fighter counts as discovered once the player has ever owned it — the server records it in data.Discovered
 	(UnitService.MarkDiscovered: summons, auto-sold rolls and evolutions). Undiscovered fighters show as dark
@@ -16,6 +16,7 @@ local Units = require(Shared.Config.Units)
 local Rarities = require(Shared.Config.Rarities)
 local Features = require(Shared.Config.Features)
 local GameConfig = require(Shared.Config.GameConfig)
+local Worlds = require(Shared.Config.Worlds)
 
 local Client = script.Parent.Parent
 local C = require(Client.UI.Components)
@@ -72,7 +73,13 @@ function IndexController.Groups()
 			end
 			return a.Name < b.Name
 		end)
-		table.insert(groups, { Title = banner.Name, Units = units })
+		local world = Worlds.Get(banner.World)
+		table.insert(groups, {
+			Title = banner.Name,
+			World = banner.World,
+			WorldName = if world then world.Name else banner.World,
+			Units = units,
+		})
 	end
 	return groups
 end
@@ -129,45 +136,47 @@ function IndexController:Render()
 		C.EmptyState(self.List, "index", "Nothing to collect yet", "Fighters will be listed here once a summon is available.")
 		return
 	end
-	local order = 0
-	for _, group in groups do
-		order += 1
-		local groupFound = 0
-		for _, def in group.Units do
-			if data.Discovered[def.Id] then
-				groupFound += 1
-			end
+	-- World selection (tabs): only the selected world's collection is listed.
+	local group = groups[1]
+	for _, g in groups do
+		if g.WorldName == self.SelectedWorld then
+			group = g
 		end
-		C.Section(self.List, ("%s  ·  %d/%d"):format(group.Title, groupFound, #group.Units), order)
-		local rows = math.ceil(#group.Units / PER_ROW)
-		order += 1
-		local grid = C.Frame(self.List, {
-			Name = "Grid",
-			BackgroundTransparency = 1,
-			Size = UDim2.new(1, -8, 0, rows * CARD.Y.Offset + math.max(rows - 1, 0) * CARD_GAP + 4),
-			LayoutOrder = order,
-		})
-		C.Grid(grid, CARD, CARD_GAP)
-		for i, def in group.Units do
-			if data.Discovered[def.Id] then
-				local card = C.UnitCard(grid, {
-					Name = def.Name,
-					Rarity = def.Rarity,
-					Level = 1,
-					Stars = 0,
-					Locked = false,
-					Equipped = false,
-					HideLevel = true,
-					Footer = string.upper(def.Rarity),
-					FooterColor = Theme.Rarity(def.Rarity),
-					FooterFont = Theme.Fonts.Title,
-					FooterSize = 12,
-				})
-				card.Name = def.Id
-				card.LayoutOrder = i
-			else
-				hiddenCard(grid, def, i)
-			end
+	end
+	local groupFound = 0
+	for _, def in group.Units do
+		if data.Discovered[def.Id] then
+			groupFound += 1
+		end
+	end
+	C.Section(self.List, ("%s  ·  %d/%d"):format(group.Title, groupFound, #group.Units), 1)
+	local rows = math.ceil(#group.Units / PER_ROW)
+	local grid = C.Frame(self.List, {
+		Name = "Grid",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -8, 0, rows * CARD.Y.Offset + math.max(rows - 1, 0) * CARD_GAP + 4),
+		LayoutOrder = 2,
+	})
+	C.Grid(grid, CARD, CARD_GAP)
+	for i, def in group.Units do
+		if data.Discovered[def.Id] then
+			local card = C.UnitCard(grid, {
+				Name = def.Name,
+				Rarity = def.Rarity,
+				Level = 1,
+				Stars = 0,
+				Locked = false,
+				Equipped = false,
+				HideLevel = true,
+				Footer = string.upper(def.Rarity),
+				FooterColor = Theme.Rarity(def.Rarity),
+				FooterFont = Theme.Fonts.Title,
+				FooterSize = 12,
+			})
+			card.Name = def.Id
+			card.LayoutOrder = i
+		else
+			hiddenCard(grid, def, i)
 		end
 	end
 end
@@ -188,9 +197,27 @@ function IndexController:Init(controllers)
 		TextColor3 = P.Cyan,
 		TextXAlignment = Enum.TextXAlignment.Right,
 	})
-	self.List = C.Scroll(content, { Position = UDim2.fromOffset(0, 48), Size = UDim2.new(1, 0, 1, -48) })
+	-- World tabs (one per world with a summon in this build)
+	local names = {}
+	for _, group in IndexController.Groups() do
+		table.insert(names, group.WorldName)
+	end
+	self.SelectedWorld = names[1]
+	if #names > 0 then
+		local tabs = C.Tabs(content, names, function(name)
+			self.SelectedWorld = name
+			self:Render()
+		end)
+		tabs.Frame.Position = UDim2.fromOffset(4, 46)
+		tabs.Frame.Name = "WorldTabs"
+		self.Tabs = tabs
+	end
+	self.List = C.Scroll(content, { Position = UDim2.fromOffset(0, 98), Size = UDim2.new(1, 0, 1, -98) })
 	C.List(self.List, Enum.FillDirection.Vertical, 6)
 	C.Create("UIPadding", { PaddingLeft = UDim.new(0, 4), Parent = self.List })
+	if self.Tabs then
+		self.Tabs.Select(self.SelectedWorld)
+	end
 end
 
 function IndexController:Start()

@@ -26,6 +26,8 @@ local G = Theme.Gradients
 
 -- Per-button parts, keyed weakly by the TextButton.
 local buttons: { [Instance]: any } = setmetatable({}, { __mode = "k" }) :: any
+-- Side-menu button states (C.NavButton), keyed weakly by the TextButton.
+local navStates: { [Instance]: any } = setmetatable({}, { __mode = "k" }) :: any
 
 function C.Create(className: string, props: { [string]: any }?): any
 	local instance = Instance.new(className)
@@ -512,9 +514,9 @@ function C.MenuTile(button: GuiObject, radius: number, color: Color3?)
 		glowStroke.Transparency = 0.55
 	end
 	local function paint(state: string)
-		local face = faces[state] or faces.Idle
+		local face = faces[if state == "Selected" then "Hover" else state] or faces.Idle
 		gradient.Color = ColorSequence.new(face[1], face[2])
-		stroke.Color = if state == "Idle" then border else borderHover
+		stroke.Color = if state == "Idle" then border elseif state == "Selected" then P.White else borderHover
 	end
 	return paint, shadow
 end
@@ -555,6 +557,20 @@ function C.ShineSweep(tile: GuiObject, every: number?)
 		end
 	end)
 	return sweep
+end
+
+-- Marks a side-menu button as the one whose window is open (lit face, white border, slightly bigger).
+function C.SetNavSelected(button: Instance, selected: boolean)
+	local state = navStates[button]
+	if state and state.Selected ~= selected then
+		state.Selected = selected
+		state.Settle(0.16)
+	end
+end
+
+function C.IsNavSelected(button: Instance): boolean
+	local state = navStates[button]
+	return state ~= nil and state.Selected
 end
 
 --[[
@@ -629,25 +645,29 @@ function C.NavButton(parent: Instance, info, onClick: (() -> ())?)
 	end
 
 	local fx = C.Create("UIScale", { Name = "FX", Parent = button })
-	local hovering = false
+	local state = { Selected = false, Hovering = false }
 	local function to(target: Instance, goals: { [string]: any }, time: number, style: Enum.EasingStyle?)
 		TweenService:Create(target, TweenInfo.new(time, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
 	end
 	local rest = iconHolder.Position
 	local lifted = rest - UDim2.fromOffset(0, 3)
+	-- Resting look: idle, or "selected" (lit face, white border, slightly bigger) while its window is open.
+	local function settle(time: number)
+		local up = state.Hovering or state.Selected
+		paint(if state.Hovering then "Hover" elseif state.Selected then "Selected" else "Idle")
+		to(fx, { Scale = if state.Hovering then 1.06 elseif state.Selected then 1.04 else 1 }, time, Enum.EasingStyle.Back)
+		to(iconFx, { Scale = if up then 1.12 else 1 }, time, Enum.EasingStyle.Back)
+		to(iconHolder, { Position = if up then lifted else rest }, time)
+	end
+	state.Settle = settle
+	navStates[button] = state
 	button.MouseEnter:Connect(function()
-		hovering = true
-		paint("Hover")
-		to(fx, { Scale = 1.06 }, 0.16, Enum.EasingStyle.Back)
-		to(iconFx, { Scale = 1.12 }, 0.16, Enum.EasingStyle.Back)
-		to(iconHolder, { Position = lifted }, 0.16)
+		state.Hovering = true
+		settle(0.16)
 	end)
 	button.MouseLeave:Connect(function()
-		hovering = false
-		paint("Idle")
-		to(fx, { Scale = 1 }, 0.14)
-		to(iconFx, { Scale = 1 }, 0.14)
-		to(iconHolder, { Position = rest }, 0.14)
+		state.Hovering = false
+		settle(0.14)
 	end)
 	button.MouseButton1Down:Connect(function()
 		paint("Press")
@@ -655,9 +675,7 @@ function C.NavButton(parent: Instance, info, onClick: (() -> ())?)
 		to(iconFx, { Scale = 0.94 }, 0.06)
 	end)
 	button.MouseButton1Up:Connect(function()
-		paint(if hovering then "Hover" else "Idle")
-		to(fx, { Scale = if hovering then 1.06 else 1 }, 0.18, Enum.EasingStyle.Back)
-		to(iconFx, { Scale = if hovering then 1.12 else 1 }, 0.18, Enum.EasingStyle.Back)
+		settle(0.18)
 	end)
 	if onClick then
 		button.Activated:Connect(onClick)
@@ -937,6 +955,7 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 			tab.Gradient.Enabled = active
 			tab.Label.TextColor3 = if active then P.White else P.TextDim
 			tab.Stroke.Enabled = active
+			tab.Underline.Visible = active
 		end
 		onSelect(name)
 	end
@@ -954,7 +973,10 @@ function C.Tabs(parent: Instance, names: { string }, onSelect: (string) -> ())
 		local gradient = C.Gradient(button, G.Primary.Top, G.Primary.Bottom)
 		local label = C.Label(button, name, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Font = Theme.Fonts.Bold, TextSize = 18 })
 		local stroke = C.Outline(label, 2)
-		tabs[name] = { Button = button, Gradient = gradient, Label = label, Stroke = stroke }
+		-- Gold underline marks the active tab (yellow = selected).
+		local underline = C.Frame(button, { Name = "Underline", BackgroundColor3 = P.Gold, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -24, 0, 3), Visible = false, ZIndex = 3 })
+		C.Corner(underline, UDim.new(0.5, 0))
+		tabs[name] = { Button = button, Gradient = gradient, Label = label, Stroke = stroke, Underline = underline }
 		button.Activated:Connect(function()
 			api.Select(name)
 		end)
@@ -1117,9 +1139,13 @@ end
 -- Windows -------------------------------------------------------------------------------------------------------------
 
 --[[
-	Standard window: dark body with inner rim, straight blue header with speed-lines and a cyan energy line,
-	white title icon tile, LuckiestGuy title and a round white close button overlapping the corner.
-	Returns { Frame, Content, Title, Header, CloseButton }.
+	Standard window (one template for every menu):
+	  Frame   transparent holder: position, size, responsive UIScale, the dark outer outline
+	  Group   CanvasGroup with the whole window inside, so it can fade (GroupTransparency) while it scales
+	  Header  bright blue gradient title bar with speed-lines, a thin gold line under it, the menu's icon tile,
+	          the title and a red round close button (X) inside the bar (it is also the drag handle)
+	  Content dark navy area for the window's own UI; a thin gold rim runs inside the window border
+	Returns { Frame, Group, Content, Title, Header, CloseButton }.
 ]]
 function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	local frame = C.Frame(parent, {
@@ -1128,25 +1154,31 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 		Position = UDim2.fromScale(0.5, 0.52),
 		Size = size or Theme.WindowSize,
 		Visible = false,
-		BackgroundColor3 = P.White,
+		BackgroundTransparency = 1,
 		ZIndex = 10,
 	})
 	C.Corner(frame, Theme.Radius.Window)
 	C.Stroke(frame, P.Ink, Theme.Stroke.Window)
-	C.Gradient(frame, G.WindowBody.Top, G.WindowBody.Bottom)
 	C.Create("UISizeConstraint", { MaxSize = Vector2.new(960, 640), Parent = frame })
-	local rim = C.Frame(frame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 11 })
+	local group = C.Create("CanvasGroup", {
+		Name = "Group",
+		BackgroundColor3 = P.White,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = frame,
+	})
+	C.Corner(group, Theme.Radius.Window)
+	C.Gradient(group, G.WindowBody.Top, G.WindowBody.Bottom)
+	local rim = C.Frame(group, { Name = "GoldRim", BackgroundTransparency = 1, Position = UDim2.fromOffset(3, 3), Size = UDim2.new(1, -6, 1, -6), ZIndex = 11 })
 	C.Corner(rim, Theme.Radius.Window - 3)
-	C.Stroke(rim, P.Line, Theme.Stroke.Rim)
+	local rimStroke = C.Stroke(rim, P.Gold, 2)
+	rimStroke.Transparency = 0.35
 
-	local header = C.Frame(frame, { Name = "Header", BackgroundColor3 = P.White, Size = UDim2.new(1, 0, 0, 56), ClipsDescendants = true, ZIndex = 12 })
-	C.Corner(header, Theme.Radius.Window)
+	local header = C.Frame(group, { Name = "Header", BackgroundColor3 = P.White, Size = UDim2.new(1, 0, 0, 56), ClipsDescendants = true, Active = true, ZIndex = 12 })
 	C.Gradient(header, G.WindowHeader.Top, G.WindowHeader.Bottom)
-	-- Square off the header's bottom corners with a strip matching the bottom of the gradient.
-	local fill = C.Frame(header, { BackgroundColor3 = P.White, Position = UDim2.new(0, 0, 1, -20), Size = UDim2.new(1, 0, 0, 20), ZIndex = 12 })
-	C.Gradient(fill, G.WindowHeader.Top:Lerp(G.WindowHeader.Bottom, 0.64), G.WindowHeader.Bottom)
-	C.SpeedLines(header, 8, { Start = 0.62, Spacing = 28, ZIndex = 13 })
-	C.Frame(header, { Name = "EnergyLine", BackgroundColor3 = P.Cyan, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
+	C.SpeedLines(header, 8, { Start = 0.55, Spacing = 28, ZIndex = 13 })
+	C.Frame(header, { Name = "GoldLine", BackgroundColor3 = P.Gold, Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3), ZIndex = 14 })
 
 	-- Title tile: same look as the HUD menu buttons (tinted face, border in the icon's colour).
 	local tile = C.Frame(header, { Name = "IconTile", BackgroundColor3 = P.White, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, -1), Size = UDim2.fromOffset(40, 40), ZIndex = 15 })
@@ -1167,28 +1199,30 @@ function C.Window(parent: Instance, title: string, size: UDim2?, icon: string?)
 	local titleLabel = C.Label(header, title, {
 		Font = Theme.Fonts.Display,
 		TextSize = Theme.TextSize.Display,
-		Position = UDim2.fromOffset(62, 1),
-		Size = UDim2.new(1, -120, 1, 0),
+		Position = UDim2.fromOffset(66, 1),
+		Size = UDim2.new(1, -130, 1, 0),
 		ZIndex = 15,
 	})
 	C.Outline(titleLabel, 3)
 
-	local close = C.Button(frame, "", nil, {
-		Kind = "Secondary",
+	local close = C.Button(group, "", nil, {
+		Kind = "Close",
 		Icon = "close",
-		IconSize = 22,
+		IconSize = 20,
 		TextSize = 24,
-		Radius = 22,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -10, 0, 12),
-		Size = UDim2.fromOffset(44, 48),
+		Radius = 20,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0, 27),
+		Size = UDim2.fromOffset(40, 42),
+		StrokeThickness = 2.5,
 		Confirm = false,
 		ZIndex = 20,
 	})
 	close.Name = "Close"
-	local content = C.Frame(frame, { BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 70), Size = UDim2.new(1, -32, 1, -84), ZIndex = 11 })
+	local content = C.Frame(group, { Name = "Content", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 70), Size = UDim2.new(1, -32, 1, -84), ZIndex = 11 })
 	return {
 		Frame = frame,
+		Group = group,
 		Content = content,
 		Title = titleLabel,
 		Header = header,
@@ -1338,7 +1372,7 @@ function C.HighlightCard(card: Instance, mode: string?)
 		return
 	end
 	if mode == "Selected" then
-		stroke.Color = P.Cyan
+		stroke.Color = P.Gold -- yellow accent = selected
 		stroke.Thickness = 3
 		if scale then
 			scale.Scale = 1.04

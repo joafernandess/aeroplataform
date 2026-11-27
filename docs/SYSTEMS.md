@@ -138,10 +138,27 @@ Cada botão: fundo escuro tingido e borda na cor do ícone, nome dentro, tecla d
 de notificação; hover cresce e levanta o ícone, clique afunda, botões largos têm um brilho que passa de tempos em
 tempos. Os menus (com o Yen) ficam centralizados na altura e encolhem em telas pequenas (`UIController:LayoutNav`).
 Badges: lutadores novos (Fighters), quests e conquistas para resgatar.
-Janelas: Fighters (grade, ordenação, venda em massa, detalhes), Summon (orbe), Quests, Achievements, Codes,
-Teleport, Index (descobertos × silhuetas "???"), Inventory, Stats (poder do time por lutador, sessão, totais),
-Update Log (`Config/UpdateLog`, mais nova primeiro), Settings (inclui o auto-ataque), Mounts (preparada: o
-sistema ainda não existe e a janela diz isso), Shop (diz que está fechada enquanto `Features.Shop` = false).
+Janelas (um único modelo, `C.Window`): barra de título em degradê azul com o ícone do menu e um X vermelho, corpo
+azul-marinho, linha e aro dourados finos. Abrem com leve aumento + fade e fecham com leve redução + fade
+(CanvasGroup); arrastam pela barra de título (sem sair da tela); Esc ou o X fecham; nunca há cópias duplicadas
+e o botão do menu fica destacado enquanto a janela dele está aberta.
+- Shop: abas de categoria, cards (ícone, nome, o que dá, preço com a moeda, Buy / x10) e carteira; mostra "a loja
+  está fechada" enquanto `Features.Shop` = false.
+- Fighters: grade (retrato, nível, estrelas, raridade, nome e Power em cada card, ✓ de equipado, contorno dourado
+  no selecionado) + painel de detalhes (stats, equipar/desequipar, travar, vender...), Equip Best / Unequip All.
+- Settings: auto-ataque, números de dano, unidades de outros jogadores, gráficos baixos, auto-venda, volumes.
+- Codes: campo + REDEEM, mensagens de sucesso / inválido / já usado / expirado (validação no servidor).
+- Quests: principal e diárias, barra de progresso, recompensa, Claim só quando completa.
+- Teleport: áreas do mundo atual (spawn, orbe, zonas, chefes) com GO; outros mundos com TRAVEL ou bloqueados com os
+  requisitos da config ("Coming soon" enquanto `Features.MultipleWorlds` = false).
+- Inventory: carteira + grade de itens com painel de detalhes (Use / Sell / Lock); estado vazio sem itens.
+- Mounts: grade pronta (raridade, equipado, Equip/Unequip) a partir de `Config/Mounts` + `data.Mounts`; hoje mostra
+  "ainda não disponível" porque o sistema de montarias não existe.
+- Achievements: progresso com porcentagem, recompensa, Claim, concluídas destacadas.
+- Stats: poder do time por lutador; sessão (tempo, kills, chefes, Yen ganho, Yen gasto, Yen/min); total (kills,
+  chefes, dano, Yen, summons, descobertos).
+- Index: abas por mundo, coleção com descobertos × silhuetas "???", porcentagem e barra.
+- Update Log: `Config/UpdateLog` (versão, data, seções New features / Improvements / Bug fixes), mais nova primeiro.
 Também: Mundos, Upgrades e Raids (desligados no jogo base), notificações, números de dano, barras de vida,
 painel do alvo, indicador de zona, moedas voando.
 Atalhos: B Shop, F Fighters, P Settings, C Codes, Q Quests, T Teleport, K Inventory, N Mounts, J Achievements,

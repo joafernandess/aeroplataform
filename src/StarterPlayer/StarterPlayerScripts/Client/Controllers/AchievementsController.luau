@@ -84,7 +84,11 @@ function AchievementsController:Render()
 				Rewards = Rewards.Describe(entry.Tier.Rewards),
 				Progress = entry.Value,
 				Target = entry.Tier.Goal,
-				ProgressText = ("%s / %s"):format(NumberFormat.Abbreviate(math.min(entry.Value, entry.Tier.Goal)), NumberFormat.Abbreviate(entry.Tier.Goal)),
+				ProgressText = ("%s / %s  (%d%%)"):format(
+					NumberFormat.Abbreviate(math.min(entry.Value, entry.Tier.Goal)),
+					NumberFormat.Abbreviate(entry.Tier.Goal),
+					math.floor(math.min(entry.Value / entry.Tier.Goal, 1) * 100)
+				),
 				CanClaim = entry.CanClaim,
 				Claimed = false,
 			}, function()

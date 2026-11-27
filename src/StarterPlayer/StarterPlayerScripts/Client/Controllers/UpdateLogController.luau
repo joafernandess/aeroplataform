@@ -2,7 +2,8 @@
 	UpdateLogController
 	Top-right "UPDATE LOG" card (latest update's title) and the Update Log window.
 
-	Content comes from Shared/Config/UpdateLog (newest entry first); nothing is hard-coded here. The card shows a
+	Content comes from Shared/Config/UpdateLog (newest entry first, each entry split in sections such as New features /
+	Improvements / Bug fixes); nothing is hard-coded here. The card shows a
 	cyan NEW tag until the player opens the window once for the latest entry; that is remembered on the server
 	in Settings.LastSeenUpdate (UpdateSetting), so it survives rejoining.
 ]]
@@ -66,15 +67,19 @@ end
 
 -- Window ---------------------------------------------------------------------------------------------------------
 
+local SECTION_H = 30
+
 function UpdateLogController:_entry(entry, order: number, latest: boolean)
-	local items = entry.Items or {}
 	local height = 52
-	for _, item in items do
-		height += itemHeight(item)
+	for _, section in entry.Sections do
+		height += SECTION_H
+		for _, item in section.Items do
+			height += itemHeight(item)
+		end
 	end
 	local card = C.Row(self.List, { Name = entry.Id, Size = UDim2.new(1, -8, 0, height + 10), LayoutOrder = order })
 	if latest then
-		card:FindFirstChildOfClass("UIStroke").Color = P.Cyan
+		card:FindFirstChildOfClass("UIStroke").Color = P.Gold
 	end
 	C.Title(card, entry.Title, { Name = "EntryTitle", Position = UDim2.fromOffset(16, 8), Size = UDim2.new(1, -200, 0, 30), TextSize = 24 }, 2.5)
 	-- Right side: LATEST tag and/or the date.
@@ -87,26 +92,39 @@ function UpdateLogController:_entry(entry, order: number, latest: boolean)
 		C.Label(date, entry.Date, { Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = P.TextDim, TextXAlignment = Enum.TextXAlignment.Center })
 	end
 	if latest then
-		local tag = C.Frame(tags, { Name = "Latest", BackgroundColor3 = P.Cyan, Size = UDim2.fromOffset(72, 26), LayoutOrder = 1 })
+		local tag = C.Frame(tags, { Name = "Latest", BackgroundColor3 = P.Gold, Size = UDim2.fromOffset(72, 26), LayoutOrder = 1 })
 		C.Corner(tag, UDim.new(0.5, 0))
 		C.Stroke(tag, P.Ink, 2)
 		C.Title(tag, "LATEST", { Size = UDim2.fromScale(1, 1), TextSize = 14, TextColor3 = P.Ink, TextXAlignment = Enum.TextXAlignment.Center }, 0.01)
 	end
 	local y = 46
-	for i, item in items do
-		local h = itemHeight(item)
-		local dot = C.Frame(card, { Name = "Bullet", BackgroundColor3 = P.Cyan, Position = UDim2.fromOffset(20, y + 8), Size = UDim2.fromOffset(7, 7) })
-		C.Corner(dot, UDim.new(0.5, 0))
-		C.Label(card, item, {
-			Name = "Item" .. i,
-			Position = UDim2.fromOffset(36, y),
-			Size = UDim2.new(1, -52, 0, h),
-			TextSize = 16,
-			TextColor3 = P.Ice,
-			TextWrapped = true,
-			TextYAlignment = Enum.TextYAlignment.Top,
-		})
-		y += h
+	local n = 0
+	for _, section in entry.Sections do
+		-- Section heading: gold caps ("NEW FEATURES", "IMPROVEMENTS", "BUG FIXES"...)
+		C.Title(card, string.upper(section.Title), {
+			Name = "Section",
+			Position = UDim2.fromOffset(16, y + 4),
+			Size = UDim2.new(1, -32, 0, 22),
+			TextSize = 15,
+			TextColor3 = P.Gold,
+		}, 1.5)
+		y += SECTION_H
+		for _, item in section.Items do
+			n += 1
+			local h = itemHeight(item)
+			local dot = C.Frame(card, { Name = "Bullet", BackgroundColor3 = P.Gold, Position = UDim2.fromOffset(22, y + 8), Size = UDim2.fromOffset(7, 7) })
+			C.Corner(dot, UDim.new(0.5, 0))
+			C.Label(card, item, {
+				Name = "Item" .. n,
+				Position = UDim2.fromOffset(38, y),
+				Size = UDim2.new(1, -54, 0, h),
+				TextSize = 16,
+				TextColor3 = P.Ice,
+				TextWrapped = true,
+				TextYAlignment = Enum.TextYAlignment.Top,
+			})
+			y += h
+		end
 	end
 end
 

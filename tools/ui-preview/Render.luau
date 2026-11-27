@@ -358,9 +358,12 @@ local function nodeHtml(inst, rect, parentRect): string
 		table.insert(styles, "transform:" .. table.concat(list, " ") .. ";transform-origin:0 0;")
 	end
 	local className = Fake.Data(inst).ClassName
-	local clips = className == "ScrollingFrame" or inst.ClipsDescendants == true
+	local clips = className == "ScrollingFrame" or className == "CanvasGroup" or inst.ClipsDescendants == true
 	if clips then
 		table.insert(styles, "overflow:hidden;")
+	end
+	if className == "CanvasGroup" and (inst.GroupTransparency or 0) > 0 then
+		table.insert(styles, string.format("opacity:%.3f;", 1 - inst.GroupTransparency))
 	end
 	local parts = { '<div class="g" style="' .. table.concat(styles) .. '">' }
 	if className == "TextLabel" or className == "TextButton" then

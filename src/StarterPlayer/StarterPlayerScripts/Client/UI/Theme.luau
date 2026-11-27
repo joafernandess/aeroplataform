@@ -48,6 +48,7 @@ Theme.Colors.Good = palette.Cyan
 Theme.Colors.Bad = palette.Ice -- attention text on dark panels (destructive buttons use the inverted "Danger" kind)
 Theme.Colors.Info = palette.Blue500
 Theme.Colors.Alert = hex("FF3B4E") -- notification badges (count, NEW)
+Theme.Colors.Gold = hex("FFC21A") -- currency, selection and window accents (thin gold lines)
 Theme.Colors.XP = palette.Cyan
 Theme.Colors.Crit = palette.Cyan
 -- Currency badges: one shade of the palette each (§6 of the brief)
@@ -63,6 +64,8 @@ Theme.Gradients = {
 	Secondary = { Top = hex("FFFFFF"), Bottom = hex("C9DAFF"), Lip = hex("6F86B8") },
 	Dark = { Top = hex("233257"), Bottom = hex("151F38"), Lip = hex("070B16") },
 	Danger = { Top = hex("1A1F2B"), Bottom = hex("05070D"), Lip = hex("000000") },
+	Close = { Top = hex("FF6B6B"), Bottom = hex("D9283A"), Lip = hex("7A0E1A") }, -- window close (X)
+	Gold = { Top = hex("FFE27A"), Bottom = hex("F0A800"), Lip = hex("8A5A00") }, -- selected tab / highlight
 	Disabled = { Top = hex("3A4560"), Bottom = hex("2A3247") },
 	WindowBody = { Top = hex("121A2E"), Bottom = hex("0A0F1C") },
 	WindowHeader = { Top = hex("2A7BFF"), Bottom = hex("0E3A9E") },

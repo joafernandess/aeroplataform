@@ -1,6 +1,7 @@
 --[[
 	InventoryController
-	"Fighters" window: unit grid + embedded details panel (UnitDetailsController).
+	"Fighters" window: unit grid (portrait, level, stars, rarity strip, name and Power on every card; equipped ✓,
+	gold outline on the selected one) + embedded details panel (UnitDetailsController).
 	(Items and currencies live in the Inventory window, ItemsController.)
 	Also owns the NEW badge on the Fighters menu button: fighters obtained this session while the window was
 	closed (summons, quest rewards...) are counted until the Fighters window is opened.
@@ -18,6 +19,7 @@ local Rarities = require(Shared.Config.Rarities)
 local UnitStats = require(Shared.Modules.UnitStats)
 local Formulas = require(Shared.Modules.Formulas)
 local TableUtil = require(Shared.Modules.TableUtil)
+local NumberFormat = require(Shared.Modules.NumberFormat)
 
 local Client = script.Parent.Parent
 local C = require(Client.UI.Components)
@@ -118,6 +120,9 @@ function InventoryController:Render()
 			Locked = unit.Locked,
 			Equipped = equipped[entry.Uid] == true,
 			Trait = unit.Trait,
+			Footer = NumberFormat.Abbreviate(entry.Power) .. " " .. Theme.Icons.Power,
+			FooterColor = Theme.Colors.Gold,
+			FooterSize = 15,
 		}, function()
 			if self.Mode == "Browse" then
 				self:Select(entry.Uid)
@@ -213,7 +218,7 @@ function InventoryController:Init(controllers)
 	end, { Kind = "Secondary", Position = UDim2.new(1, -88, 0, 0), Size = UDim2.fromOffset(88, 44), TextSize = 16, Visible = false })
 
 	local gridHolder = C.Scroll(unitsPage, { Position = UDim2.fromOffset(0, 52), Size = UDim2.new(0.58, 0, 1, -52 - 68) })
-	C.Grid(gridHolder, UDim2.fromOffset(100, 124), 10)
+	C.Grid(gridHolder, UDim2.fromOffset(100, 136), 10)
 	C.Create("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 6), Parent = gridHolder })
 	self.Grid = gridHolder
 

@@ -1,7 +1,10 @@
 --[[
 	UIController
 	Owns the root ScreenGui, the two side menu grids (built from UI/Navigation) and the window registry.
-	Only one window is open at a time; opening one pops it in (TweenService) over a dark scrim.
+	Only one window is open at a time (no duplicates: each window is created once by its controller). Opening one
+	scales it up and fades it in over a dark scrim; closing scales it down and fades it out. Windows can be dragged
+	by their title bar (kept on screen), Escape or the red X closes them, and the open window's menu button stays
+	highlighted.
 
 	  UI:CreateWindow(name, title, size?, onOpen?) -> window { Frame, Content, Title }
 	  UI:Open(name, ...)  UI:Close(name?)  UI:Toggle(name)  UI:IsOpen(name)
@@ -58,6 +61,8 @@ UIController.MenuBadges = {} :: { [string]: number } -- window name -> badge cou
 
 local BADGE_SIZE = 24
 local OPEN_TIME = 0.18
+local CLOSE_TIME = 0.12
+local DRAG_KEEP = 60 -- px of a dragged window that must stay on screen
 
 -- Icon shown in each window's header tile (icon names from UI/Icons).
 local WINDOW_ICONS = {
@@ -186,6 +191,7 @@ end
 function UIController:CreateWindow(name: string, title: string, size: UDim2?, onOpen: ((...any) -> ())?)
 	local window = C.Window(self.Root, title, size, WINDOW_ICONS[name])
 	self:AddScaled(window.Frame, "Window")
+	self:_makeDraggable(window)
 	window.Name = name
 	window.OnOpen = onOpen
 	window.CloseButton.Activated:Connect(function()
@@ -209,9 +215,15 @@ function UIController:Open(name: string, ...: any)
 		self:Close(self.Current)
 	end
 	self.Current = name
+	window.Closing = nil -- cancels a close animation still running
 	window.Frame.Visible = true
+	window.Frame.Position = self:_clampWindow(window.Frame, window.Frame.Position)
 	self.Scrim.Visible = true
 	self:_animateOpen(window)
+	local button = self.MenuButtons[name]
+	if button then
+		C.SetNavSelected(button, true)
+	end
 	UIController.WindowChanged:Fire(name)
 	if window.OnOpen then
 		task.spawn(window.OnOpen, ...)
@@ -219,17 +231,114 @@ function UIController:Open(name: string, ...: any)
 end
 
 -- Pop-in: the window's responsive UIScale grows from 86% to its target size and the scrim fades in.
-function UIController:_animateOpen(window)
+-- The window's responsive UIScale entry (and the scale it should rest at).
+function UIController:_scaleEntry(window): (any, number)
 	for _, entry in self.Scaled do
 		if entry.Gui == window.Frame then
-			local target = self:_scaleFor(entry.Gui, entry.Kind)
-			entry.Scale.Scale = target * 0.86
-			TweenService:Create(entry.Scale, TweenInfo.new(OPEN_TIME, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = target }):Play()
-			break
+			return entry, self:_scaleFor(entry.Gui, entry.Kind)
 		end
+	end
+	return nil, 1
+end
+
+-- Open: slight scale-up from 88% with a fade-in of the whole window (CanvasGroup) and the dark scrim.
+function UIController:_animateOpen(window)
+	local entry, target = self:_scaleEntry(window)
+	if entry then
+		entry.Scale.Scale = target * 0.88
+		TweenService:Create(entry.Scale, TweenInfo.new(OPEN_TIME, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = target }):Play()
+	end
+	local outline = window.Frame:FindFirstChildOfClass("UIStroke")
+	if window.Group then
+		window.Group.GroupTransparency = 1
+		TweenService:Create(window.Group, TweenInfo.new(OPEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+	end
+	if outline then
+		outline.Transparency = 1
+		TweenService:Create(outline, TweenInfo.new(OPEN_TIME), { Transparency = 0 }):Play()
 	end
 	self.Scrim.BackgroundTransparency = 1
 	TweenService:Create(self.Scrim, TweenInfo.new(OPEN_TIME), { BackgroundTransparency = 0.55 }):Play()
+end
+
+-- Close: slight scale-down with a fade-out, then hide (unless it was reopened meanwhile).
+function UIController:_animateClose(window, hideScrim: boolean)
+	local token = {}
+	window.Closing = token
+	local entry, target = self:_scaleEntry(window)
+	local info = TweenInfo.new(CLOSE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	if entry then
+		TweenService:Create(entry.Scale, info, { Scale = target * 0.92 }):Play()
+	end
+	local outline = window.Frame:FindFirstChildOfClass("UIStroke")
+	if outline then
+		TweenService:Create(outline, info, { Transparency = 1 }):Play()
+	end
+	if hideScrim then
+		TweenService:Create(self.Scrim, info, { BackgroundTransparency = 1 }):Play()
+	end
+	local function finish()
+		if window.Closing ~= token then
+			return -- reopened while closing
+		end
+		window.Closing = nil
+		window.Frame.Visible = false
+		if entry then
+			entry.Scale.Scale = target
+		end
+		if hideScrim and self.Current == nil then
+			self.Scrim.Visible = false
+		end
+	end
+	if window.Group then
+		local fade = TweenService:Create(window.Group, info, { GroupTransparency = 1 })
+		fade.Completed:Connect(finish)
+		fade:Play()
+	else
+		finish()
+	end
+end
+
+-- Keeps a (dragged) window reachable: its header stays on screen and at least DRAG_KEEP px of it are visible.
+function UIController:_clampWindow(frame: GuiObject, position: UDim2): UDim2
+	local root = self:GetRootSize()
+	local scale = frame:FindFirstChildOfClass("UIScale")
+	local s = if scale then scale.Scale else 1
+	local w, h = frame.Size.X.Offset * s, frame.Size.Y.Offset * s
+	local cx = root.X * position.X.Scale + position.X.Offset
+	local cy = root.Y * position.Y.Scale + position.Y.Offset
+	cx = math.clamp(cx, DRAG_KEEP - w / 2, root.X - DRAG_KEEP + w / 2)
+	cy = math.clamp(cy, h / 2, math.max(h / 2, root.Y - DRAG_KEEP + h / 2))
+	return UDim2.new(position.X.Scale, cx - root.X * position.X.Scale, position.Y.Scale, cy - root.Y * position.Y.Scale)
+end
+
+-- Drag a window by its title bar (mouse or touch).
+function UIController:_makeDraggable(window)
+	local frame = window.Frame
+	local dragging, startPoint, startPosition = nil, nil, nil
+	window.Header.InputBegan:Connect(function(input)
+		local kind = input.UserInputType
+		if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
+			dragging = input
+			startPoint = input.Position
+			startPosition = frame.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then
+			return
+		end
+		local kind = input.UserInputType
+		if kind == Enum.UserInputType.MouseMovement or (kind == Enum.UserInputType.Touch and input == dragging) then
+			local delta = input.Position - startPoint
+			frame.Position = self:_clampWindow(frame, startPosition + UDim2.fromOffset(delta.X, delta.Y))
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if dragging and (input == dragging or input.UserInputType == Enum.UserInputType.MouseButton1) then
+			dragging = nil
+		end
+	end)
 end
 
 function UIController:Close(name: string?)
@@ -238,15 +347,21 @@ function UIController:Close(name: string?)
 		return
 	end
 	local window = self.Windows[target]
+	local wasCurrent = self.Current == target
+	if wasCurrent then
+		self.Current = nil
+	end
 	if window then
-		window.Frame.Visible = false
+		self:_animateClose(window, wasCurrent)
 		if window.OnClose then
 			task.spawn(window.OnClose)
 		end
 	end
-	if self.Current == target then
-		self.Current = nil
-		self.Scrim.Visible = false
+	local button = self.MenuButtons[target]
+	if button then
+		C.SetNavSelected(button, false)
+	end
+	if wasCurrent then
 		UIController.WindowChanged:Fire(nil)
 	end
 end
@@ -436,6 +551,11 @@ function UIController:Start()
 	watchCamera()
 
 	UserInputService.InputBegan:Connect(function(input, processed)
+		-- Escape closes the open window (checked first: Roblox may also mark it as processed).
+		if input.KeyCode == Enum.KeyCode.Escape and self.Current then
+			self:Close()
+			return
+		end
 		if processed then
 			return
 		end

@@ -161,6 +161,17 @@
   hover/clique animados, badges vermelhos pulsando. Atalhos novos sem conflito com as teclas padrão do Roblox.
 - Preview: suporte a `UITextSizeConstraint` e a degradê só de transparência.
 
+### Sistema de janelas no estilo das referências
+- Modelo único de janela: título em degradê azul, X vermelho dentro da barra, corpo azul-marinho, aro e linha
+  dourados; animação de abrir (aumento + fade) e fechar (redução + fade) com CanvasGroup; arrastar pela barra de
+  título com limite na tela; Esc fecha; botão do menu fica destacado com a janela aberta; abas ativas com sublinhado
+  dourado; item selecionado com contorno dourado.
+- Conteúdo: Shop com abas e cards (quando ligada), Power nos cards do Fighters, Teleport por mundo com mundos
+  bloqueados e requisitos, Inventory em grade com detalhes, Mounts pronto para dados reais (`Config/Mounts`),
+  Achievements com %, Stats com Yen gasto e dano total, Index com abas por mundo, Update Log com seções.
+- Preview: CanvasGroup, arrastar (InputChanged) e cena `tools/ui-preview/scenes/windows` com Shop/Items ligados.
+- **236 testes passando**, selene 0/0.
+
 ### Números
 - 77 arquivos Luau em `src/` (~9.800 linhas), ~2.200 linhas de testes.
 

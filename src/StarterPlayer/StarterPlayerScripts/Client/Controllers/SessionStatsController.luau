@@ -2,8 +2,8 @@
 	SessionStatsController
 	The "Stats" window (right menu) and the session counters behind it:
 	  Team power    total (equipped fighters' Power with the Damage upgrade) and each fighter's share
-	  This session  play time, kills, bosses, Yen earned, Yen per minute (client-only, never saved)
-	  All time      saved lifetime stats from the profile (data.Stats) and fighters discovered
+	  This session  play time, kills, bosses, Yen earned, Yen spent, Yen per minute (client-only, never saved)
+	  All time      saved lifetime stats from the profile (kills, bosses, damage, Yen, summons) and fighters discovered
 	  Best fighter  highest-Power fighter owned
 
 	Yen income tracker (the "Yen / min" tile):
@@ -34,13 +34,15 @@ local SessionStatsController = {
 
 local RATE_WINDOW = 60
 local MIN_RATE_SPAN = 15
-local TILE_W, TILE_H, TILE_GAP = 126, 62, 8
+local TILE_H, TILE_GAP = 62, 8
+local CONTENT_W = 720 - 32 - 4 - 14 -- window width minus padding and scrollbar
 
 SessionStatsController.Changed = Signal.new() -- fired whenever a counter changes
 SessionStatsController.Clock = os.clock -- overridable in tests
 SessionStatsController.Kills = 0
 SessionStatsController.Bosses = 0
 SessionStatsController.YenEarned = 0
+SessionStatsController.YenSpent = 0
 SessionStatsController.Best = nil :: { Name: string, Rarity: string, Level: number, Power: number }?
 
 -- Counters -------------------------------------------------------------------------------------------------------
@@ -101,6 +103,10 @@ function SessionStatsController:_onCurrencies(data)
 		local unexplained = (yen - self.LastYen) - self.PendingKillYen
 		if unexplained > 0 then
 			self:RecordYen(unexplained)
+		elseif unexplained < 0 then
+			-- Spent (summons, upgrades...): kill Yen already counted above can't make this negative.
+			self.YenSpent += -unexplained
+			self.Changed:Fire()
 		end
 	end
 	-- Each Currencies update already includes every kill reported before it.
@@ -155,8 +161,9 @@ function SessionStatsController:_tiles(order: number, tiles)
 	local row = C.Frame(self.List, { Name = "Tiles", BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, TILE_H), LayoutOrder = order })
 	C.List(row, Enum.FillDirection.Horizontal, TILE_GAP)
 	local labels = {}
+	local tileW = math.floor((CONTENT_W - (#tiles - 1) * TILE_GAP) / #tiles)
 	for i, tile in tiles do
-		local _, value = C.StatTile(row, tile[1], tile[2], { Name = tile[1], Size = UDim2.fromOffset(TILE_W, TILE_H), LayoutOrder = i })
+		local _, value = C.StatTile(row, tile[1], tile[2], { Name = tile[1], Size = UDim2.fromOffset(tileW, TILE_H), LayoutOrder = i })
 		if tile[3] then
 			value.TextColor3 = tile[3]
 		end
@@ -208,8 +215,9 @@ function SessionStatsController:Render()
 		{ "Time", NumberFormat.Duration(self:SessionTime()) },
 		{ "Kills", NumberFormat.Abbreviate(self.Kills) },
 		{ "Bosses", NumberFormat.Abbreviate(self.Bosses) },
-		{ "Yen earned", NumberFormat.Abbreviate(math.floor(self.YenEarned)), P.Cyan },
-		{ "Yen / min", NumberFormat.Abbreviate(math.floor(self:YenPerMinute())), P.Cyan },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(self.YenEarned)), P.Gold },
+		{ "Yen spent", NumberFormat.Abbreviate(math.floor(self.YenSpent)), P.Gold },
+		{ "Yen / min", NumberFormat.Abbreviate(math.floor(self:YenPerMinute())), P.Gold },
 	})
 
 	local stats = data.Stats
@@ -217,8 +225,9 @@ function SessionStatsController:Render()
 	self:_tiles(31, {
 		{ "Kills", NumberFormat.Abbreviate(stats.TotalKills or 0) },
 		{ "Bosses", NumberFormat.Abbreviate(stats.BossKills or 0) },
+		{ "Damage", NumberFormat.Abbreviate(math.floor(stats.TotalDamage or 0)) },
+		{ "Yen earned", NumberFormat.Abbreviate(math.floor(stats.TotalYenEarned or 0)), P.Gold },
 		{ "Summons", NumberFormat.Abbreviate(stats.TotalSummons or 0) },
-		{ "Yen earned", NumberFormat.Abbreviate(math.floor(stats.TotalYenEarned or 0)), P.Cyan },
 		{ "Discovered", tostring(count(data.Discovered)) },
 	})
 
@@ -241,6 +250,7 @@ function SessionStatsController:RefreshSession()
 	labels["Kills"].Text = NumberFormat.Abbreviate(self.Kills)
 	labels["Bosses"].Text = NumberFormat.Abbreviate(self.Bosses)
 	labels["Yen earned"].Text = NumberFormat.Abbreviate(math.floor(self.YenEarned))
+	labels["Yen spent"].Text = NumberFormat.Abbreviate(math.floor(self.YenSpent))
 	labels["Yen / min"].Text = NumberFormat.Abbreviate(math.floor(self:YenPerMinute()))
 end
 

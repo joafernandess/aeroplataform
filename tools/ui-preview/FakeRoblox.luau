@@ -46,6 +46,7 @@ end
 local PARENTS = {
 	GuiObject = { "GuiBase2d" },
 	Frame = { "GuiObject" },
+	CanvasGroup = { "GuiObject" },
 	ScrollingFrame = { "GuiObject" },
 	TextLabel = { "GuiObject" },
 	TextButton = { "GuiButton", "GuiObject" },
@@ -109,6 +110,7 @@ local DEFAULTS = {
 	UICorner = { CornerRadius = roblox.UDim.new(0, 8) },
 	UIStroke = { Thickness = 1, Color = roblox.Color3.new(0, 0, 0), Transparency = 0 },
 	ScrollingFrame = { ScrollBarThickness = 12 },
+	CanvasGroup = { GroupTransparency = 0 },
 	TextBox = { PlaceholderText = "", PlaceholderColor3 = roblox.Color3.fromRGB(178, 178, 178), ClearTextOnFocus = true, Text = "" },
 	UIScale = { Scale = 1 },
 	UIGradient = { Rotation = 0 },
@@ -170,7 +172,7 @@ local function defaultFor(className: string, key: string)
 		return own[key]
 	end
 	local isText = className == "TextLabel" or className == "TextButton" or className == "TextBox"
-	local isGui = isText or className == "Frame" or className == "ScrollingFrame" or className == "ImageLabel" or className == "ImageButton"
+	local isGui = isText or className == "Frame" or className == "CanvasGroup" or className == "ScrollingFrame" or className == "ImageLabel" or className == "ImageButton"
 	if isGui and GUI_DEFAULTS[key] ~= nil then
 		return GUI_DEFAULTS[key]
 	end
@@ -411,7 +413,7 @@ function Fake.CreateClientServices(serverTime: () -> number)
 		Players = { LocalPlayer = localPlayer, PlayerAdded = Fake.Signal(), PlayerRemoving = Fake.Signal(), GetPlayers = function()
 			return { localPlayer }
 		end },
-		UserInputService = { InputBegan = Fake.Signal(), InputEnded = Fake.Signal(), TouchEnabled = false, KeyboardEnabled = true },
+		UserInputService = { InputBegan = Fake.Signal(), InputEnded = Fake.Signal(), InputChanged = Fake.Signal(), TouchEnabled = false, KeyboardEnabled = true },
 		TweenService = tweenService,
 		RunService = {
 			RenderStepped = Fake.Signal(),
