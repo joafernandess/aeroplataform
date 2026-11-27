@@ -194,9 +194,6 @@ function InventoryController:Init(controllers)
 	self.Window = window
 	local content = window.Content
 
-	local tabs = C.Tabs(content, { "Units" }, function()
-		self:Render()
-	end)
 	-- Capacity counters (top-right of the content area)
 	local counters = C.Frame(content, { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 5), Size = UDim2.fromOffset(260, 34) })
 	C.List(counters, Enum.FillDirection.Horizontal, 10, Enum.HorizontalAlignment.Right)
@@ -207,8 +204,8 @@ function InventoryController:Init(controllers)
 	local unitsPage = C.Frame(content, { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 54), Size = UDim2.new(1, 0, 1, -54) })
 	self.UnitsPage = unitsPage
 
-	-- Toolbar: A = sort by name, sword = sort by power, ¥ = sell mode, padlock = lock mode
-	local toolbar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44) })
+	-- Toolbar (top-left, where a tab bar would be): A = sort by name, sword = sort by power, ¥ = sell, padlock = lock
+	local toolbar = C.Frame(content, { Name = "Toolbar", BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44) })
 	C.List(toolbar, Enum.FillDirection.Horizontal, 8)
 	self.Toolbar = toolbar
 	local function tool(name: string, glyph: string, order: number, onClick: () -> ())
@@ -233,7 +230,7 @@ function InventoryController:Init(controllers)
 	}
 	self.ToolHint = C.Title(toolbar, "Sorted by power", { Name = "ToolHint", Size = UDim2.fromOffset(150, 44), TextSize = 15, TextColor3 = Theme.Colors.TextDim, LayoutOrder = 5 }, 2)
 
-	local modeBar = C.Frame(unitsPage, { BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44), Visible = false })
+	local modeBar = C.Frame(content, { Name = "ModeBar", BackgroundTransparency = 1, Size = UDim2.new(0.58, 0, 0, 44), Visible = false })
 	self.ModeBar = modeBar
 	self.ModeLabel = C.Title(modeBar, "", { Size = UDim2.new(1, -210, 1, 0), TextSize = 14, TextColor3 = Theme.Colors.Cyan, TextWrapped = true }, 1.5)
 	self.ConfirmButton = C.Button(modeBar, "CONFIRM", function()
@@ -243,7 +240,7 @@ function InventoryController:Init(controllers)
 		self:SetMode("Browse")
 	end, { Kind = "Secondary", Position = UDim2.new(1, -88, 0, 0), Size = UDim2.fromOffset(88, 44), TextSize = 16, Visible = false })
 
-	local gridHolder = C.Scroll(unitsPage, { Position = UDim2.fromOffset(0, 52), Size = UDim2.new(0.58, 0, 1, -52 - 68) })
+	local gridHolder = C.Scroll(unitsPage, { Name = "Grid", Size = UDim2.new(0.58, 0, 1, -68) })
 	C.Grid(gridHolder, UDim2.fromOffset(100, 136), 10)
 	C.Create("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 6), Parent = gridHolder })
 	self.Grid = gridHolder
@@ -271,7 +268,7 @@ function InventoryController:Init(controllers)
 	C.Corner(self.Details, Theme.Radius.Card)
 	C.Stroke(self.Details, Theme.Colors.Ink, Theme.Stroke.Card)
 	C.Padding(self.Details, 14)
-	tabs.Select("Units")
+	self:Render()
 end
 
 -- NEW badge -------------------------------------------------------------------------------------------------------
