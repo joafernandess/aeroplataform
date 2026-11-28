@@ -339,6 +339,23 @@ async def on_app_command_error(
             ),
             security=True,
         )
+    elif isinstance(original, db.PlatformError):
+        # The Aero Platform did not answer properly (down, wrong URL, 404...)
+        embed = error_embed(
+            "Aero Platform unavailable",
+            "The key server did not answer this request, so nothing was "
+            f"changed.\nError: `{str(original)[:200]}`\n\n"
+            "Staff: check that PLATFORM_API_URL points at the running "
+            "platform backend.",
+        )
+        logmod.log_event(
+            error_embed(
+                f"Platform error on /{name}",
+                f"User: {interaction.user.mention}\n"
+                f"URL: `{config.PLATFORM_API_URL}`\nError: `{str(original)[:300]}`",
+            ),
+            security=True,
+        )
     else:
         log.exception("Error in slash command", exc_info=original)
         logmod.log_event(
