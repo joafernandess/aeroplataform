@@ -704,3 +704,29 @@ def recent_events(limit: int = 200, key: str | None = None) -> list[dict]:
 def feed_missing(exc: Exception) -> bool:
     """True when the platform is an older version without /executions."""
     return "404" in str(exc)
+
+
+# ===========================================================================
+# Operations (platform only): sales ledger, scripts on/off (shutdown)
+# ===========================================================================
+def list_sales() -> list[dict]:
+    """Latest sales recorded on the platform (newest first, up to 200)."""
+    if not HTTP_MODE:
+        raise PlatformError("Sales need the Aero Platform bridge.")
+    return _call("GET", "/sales") or []
+
+
+def list_scripts() -> list[dict]:
+    """Every script on the platform with its game and enabled flag."""
+    if not HTTP_MODE:
+        raise PlatformError("Script control needs the Aero Platform bridge.")
+    return _call("GET", "/scripts") or []
+
+
+def set_script_enabled(script_id: int, enabled: bool) -> dict:
+    """Turns a script on/off. Off = every execution and heartbeat is refused
+    ("This script is disabled by the staff"), so running players get kicked
+    at their next AutoKick check."""
+    if not HTTP_MODE:
+        raise PlatformError("Script control needs the Aero Platform bridge.")
+    return _call("POST", f"/scripts/{int(script_id)}", {"enabled": 1 if enabled else 0})

@@ -26,6 +26,8 @@ from discord import app_commands, ui
 from discord.ext import commands
 
 import catalog
+import coupons
+import theme
 import config
 import logger
 import shop_config
@@ -260,6 +262,57 @@ class PaymentsModal(ui.Modal, title="Payment details"):
 # ---------------------------------------------------------------------------
 # Editor view
 # ---------------------------------------------------------------------------
+class CouponEditModal(ui.Modal, title="Create / edit a coupon"):
+    code = ui.TextInput(label="Code (letters, numbers, - and _)", max_length=24)
+    percent = ui.TextInput(label="Discount % (0 = delete the coupon)", max_length=3, default="10")
+    max_uses = ui.TextInput(
+        label="Max uses (empty = unlimited)", required=False, max_length=6
+    )
+
+    def __init__(self, editor: "ShopEditorView") -> None:
+        super().__init__()
+        self.editor = editor
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        code = coupons.normalize_code(self.code.value)
+        try:
+            percent = int(str(self.percent.value).strip() or "0")
+            uses_raw = str(self.max_uses.value).strip()
+            max_uses = int(uses_raw) if uses_raw else None
+        except ValueError:
+            await interaction.response.send_message(
+                embed=error_embed("Not saved", "Discount and max uses must be numbers."),
+                ephemeral=True,
+            )
+            return
+        if not coupons.valid_code(code) or not 0 <= percent <= 100:
+            await interaction.response.send_message(
+                embed=error_embed(
+                    "Not saved",
+                    "Code: 3-24 letters/numbers/-/_. Discount: 0-100.",
+                ),
+                ephemeral=True,
+            )
+            return
+        if percent == 0:
+            removed = await asyncio.to_thread(coupons.delete, code)
+            text = f"Coupon `{code}` deleted." if removed else f"`{code}` did not exist."
+        else:
+            await asyncio.to_thread(coupons.upsert, code, percent, max_uses)
+            text = (
+                f"`{code}` — **{percent}% off**, "
+                f"{'unlimited uses' if not max_uses else f'{max_uses} uses'}."
+            )
+        logger.log_event(
+            info_embed("Coupon saved", f"By: {interaction.user.mention}\n{text}")
+        )
+        data = await asyncio.to_thread(shop_config.load)
+        await self.editor.refresh(data)
+        await interaction.response.send_message(
+            embed=success_embed("Coupons updated", text), ephemeral=True
+        )
+
+
 class ShopEditorView(ui.View):
     def __init__(self, bot: commands.Bot, data: dict) -> None:
         super().__init__(timeout=900)
@@ -299,6 +352,7 @@ class ShopEditorView(ui.View):
             ("Add product", "➕", self._on_add),
             ("Texts", "📝", self._on_texts),
             ("Payments", "💳", self._on_payments),
+            ("Coupons", "🏷️", self._on_coupons),
         ):
             button = ui.Button(label=label, emoji=emoji, style=discord.ButtonStyle.secondary, row=2)
             button.callback = cb
@@ -371,6 +425,9 @@ class ShopEditorView(ui.View):
         data = await asyncio.to_thread(shop_config.load)
         await interaction.response.send_modal(TextsModal(self, data))
 
+    async def _on_coupons(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(CouponEditModal(self))
+
     async def _on_payments(self, interaction: discord.Interaction) -> None:
         data = await asyncio.to_thread(shop_config.load)
         await interaction.response.send_modal(PaymentsModal(self, data))
@@ -378,10 +435,17 @@ class ShopEditorView(ui.View):
 
 def editor_embeds(data: dict) -> list[discord.Embed]:
     from cogs import shop as shop_cog
+    listed = coupons.all_coupons()
+    coupon_lines = "\n".join(
+        f"{theme.e('coupon')} `{code}` — {c.get('percent')}% • used "
+        f"{c.get('used', 0)}/{c.get('max_uses') or '∞'}"
+        for code, c in sorted(listed.items())
+    ) or "No coupons yet."
     head = info_embed(
         "🛠️ Shop editor",
-        "Change products, prices and payment details below. Saving updates "
-        "every shop panel already posted. Preview:",
+        "Change products, prices, payment details and coupons below. Saving "
+        f"updates every shop panel already posted.\n\n**Coupons**\n{coupon_lines}"
+        "\n\n**Preview:**",
     )
     return [head, shop_cog.build_shop_embed(data)]
 

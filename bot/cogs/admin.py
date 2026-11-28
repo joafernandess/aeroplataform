@@ -27,6 +27,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import blacklist
 import catalog
 import config
 import platform_bridge as db
@@ -464,6 +465,13 @@ class AdminCog(commands.Cog):
         if await asyncio.to_thread(db.ban_user, user.id, reason, days):
             # Banned keys are unusable: take the buyer role away now
             await remove_buyer_role(self.bot, user.id, f"Banned: {reason or '-'}")
+            # Blacklist their HWIDs / Roblox accounts so an alt key is caught
+            row = await asyncio.to_thread(db.get_user_key, user.id)
+            if row is not None:
+                await asyncio.to_thread(
+                    blacklist.add_key_identity, row["key"],
+                    f"/ban: {reason or '-'}", str(interaction.user), row["hwid"],
+                )
             logger.log_event(
                 error_embed(
                     "User banned",

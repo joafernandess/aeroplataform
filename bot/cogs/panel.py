@@ -17,6 +17,7 @@ from discord.ext import commands
 from discord import ui
 
 import catalog
+import theme
 import config
 import platform_bridge as db
 import i18n
@@ -443,6 +444,11 @@ class PanelView(ui.View):
         # timeout=None + fixed custom_ids = the buttons keep working
         # even after the bot restarts.
         super().__init__(timeout=None)
+        theme.skin(self, {
+            "panel:redeem_key": "redeem", "panel:get_script": "script",
+            "panel:get_role": "role", "panel:reset_hwid": "hwid",
+            "panel:get_stats": "stats", "panel:language": "language",
+        })
 
     # ------------------------------------------------------------------
     # Helpers
@@ -780,11 +786,20 @@ class PanelView(ui.View):
 # Panel building
 # ---------------------------------------------------------------------------
 def build_panel_embed() -> discord.Embed:
+    e = theme.e
+    guide = "\n".join([
+        f"{e('redeem')} **Redeem Key** — link your key to your Discord",
+        f"{e('script')} **Get Script** — your personal loader",
+        f"{e('role')} **Get Role** — buyer role and channels",
+        f"{e('hwid')} **Reset HWID** — moved to another PC",
+        f"{e('stats')} **Get Stats** — executions, expiry and more",
+    ])
     embed = discord.Embed(
-        title=config.PANEL_TITLE,
-        description=config.PANEL_DESCRIPTION,
+        title=f"{e('aero')} {config.PANEL_TITLE}",
+        description=f"{config.PANEL_DESCRIPTION}\n\n{theme.divider()}\n{guide}",
         color=config.PANEL_COLOR,
     )
+    embed.set_footer(text=f"{theme.BRAND} • Key panel")
     return embed
 
 

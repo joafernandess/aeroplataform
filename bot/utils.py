@@ -8,13 +8,14 @@ import discord
 from discord import app_commands
 
 import config
+import theme
 
 _PRICE_RE = re.compile(r"[\d]+(?:[.,]\d+)?")
 
-GREEN = 0x57F287
-RED = 0xED4245
-ORANGE = 0xFAA61A
-BLUE = 0x5865F2
+GREEN = theme.SUCCESS
+RED = theme.ERROR
+ORANGE = theme.WARNING
+BLUE = theme.AERO
 
 
 def admin_only():
@@ -63,23 +64,34 @@ def staff_only():
 
 
 def success_embed(title: str = "Success!", description: str = "") -> discord.Embed:
-    """Embed with a green bar, like the bot replies in the video."""
-    return discord.Embed(
-        title=title, description=description, color=GREEN
+    """Green-mint card for confirmations (Aero theme)."""
+    embed = discord.Embed(
+        title=theme.titled("success", title), description=description, color=theme.SUCCESS
     )
+    return theme.footer(embed)
 
 
 def error_embed(title: str, description: str = "") -> discord.Embed:
-    """Embed with a red bar (error replies)."""
-    return discord.Embed(
-        title=title, description=description, color=RED
+    """Rose card for errors and security events (Aero theme)."""
+    embed = discord.Embed(
+        title=theme.titled("error", title), description=description, color=theme.ERROR
     )
+    return theme.footer(embed)
+
+
+def warning_embed(title: str, description: str = "") -> discord.Embed:
+    embed = discord.Embed(
+        title=theme.titled("warning", title), description=description, color=theme.WARNING
+    )
+    return theme.footer(embed)
 
 
 def info_embed(title: str, description: str = "") -> discord.Embed:
-    return discord.Embed(
-        title=title, description=description, color=BLUE
+    """Aero-blue card for information."""
+    embed = discord.Embed(
+        title=theme.titled("info", title), description=description, color=theme.AERO
     )
+    return theme.footer(embed)
 
 
 def price_to_cents(price: str | None) -> int:

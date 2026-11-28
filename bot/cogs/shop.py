@@ -30,12 +30,16 @@ from discord.ext import commands, tasks
 from discord import ui
 
 import catalog
+import coupons
+import transcripts
+import theme
 import config
 import platform_bridge as db
 import logger
 from payments import MercadoPagoClient, PaymentError
 from roles import grant_buyer_role
 from utils import (
+    warning_embed,
     error_embed,
     success_embed,
     info_embed,
@@ -82,34 +86,39 @@ def _product_id(product: dict) -> str:
 
 
 def build_shop_embed(data: dict) -> discord.Embed:
+    e = theme.e
     embed = discord.Embed(
-        title=data.get("title", "Script Shop"),
-        description=data.get("description", ""),
+        title=f"{e('shop')} {data.get('title', 'Script Shop')}",
+        description=f"{data.get('description', '')}\n{theme.divider()}",
         color=config.PANEL_COLOR,
     )
     for product in _products(data):
+        days = product.get("days", 30)
+        validity = "Lifetime" if days in (0, "0") else f"{days} days"
         embed.add_field(
-            name=product.get("name", "Product"),
+            name=f"{e('key')} {product.get('name', 'Product')}",
             value=(
-                f"`{product.get('price', '-')}`\n"
+                f"## {product.get('price', '-')}\n"
+                f"{e('clock')} {validity}\n"
                 f"{product.get('description', '')}"
             ),
             inline=True,
         )
     payments = data.get("payments") or {}
     methods = []
-    if payments.get("pix_key"):
-        methods.append("💳 Pix")
+    if config.MERCADOPAGO_ACCESS_TOKEN:
+        methods.append(f"{e('pix')} Pix (automatic)")
+    elif payments.get("pix_key"):
+        methods.append(f"{e('pix')} Pix")
     if (payments.get("paypal_url") or "").startswith("http"):
-        methods.append("🅿️ PayPal")
+        methods.append(f"{e('paypal')} PayPal")
     embed.add_field(
-        name="Payment methods",
-        value=("\n".join(methods) if methods else "Ask a staff member"),
+        name=f"{e('money')} Payment methods",
+        value=(" • ".join(methods) if methods else "Ask a staff member"),
         inline=False,
     )
     embed.set_footer(
-        text="Click Open ticket to buy - the ticket is private "
-        "(only you and the staff can see it)."
+        text=f"{theme.BRAND} • Private ticket: only you and the staff can see it"
     )
     return embed
 
@@ -141,6 +150,82 @@ def _delivery_embed(result: dict, title: str) -> discord.Embed:
         f"**Product:** {result['product'].get('name', 'Product')} "
         f"({result['product'].get('price', '-')})",
     )
+
+
+async def _save_transcript(interaction: discord.Interaction, reason: str) -> None:
+    """Sends the ticket's HTML transcript to the transcript/log channel."""
+    channel = interaction.channel
+    target_id = config.TRANSCRIPT_CHANNEL_ID or config.LOG_CHANNEL_ID
+    if channel is None or not target_id:
+        return
+    try:
+        ticket = db.get_ticket(channel.id)
+        name = getattr(channel, "name", "ticket")
+        file, count, people = await transcripts.build(channel, f"Ticket #{name}")
+        target = interaction.client.get_channel(target_id) or await interaction.client.fetch_channel(target_id)
+        buyer = ticket["buyer_id"] if ticket else None
+        embed = info_embed(
+            "Ticket transcript",
+            f"{theme.e('redeem')} **#{name}**\n"
+            f"**Buyer:** {f'<@{buyer}>' if buyer else '-'}\n"
+            f"**Closed by:** {interaction.user.mention}\n"
+            f"**Reason:** {reason}\n"
+            f"**Messages:** {count} • **Participants:** "
+            + (", ".join(f"<@{p}>" for p in sorted(people)) or "-"),
+        )
+        await target.send(  # type: ignore[union-attr]
+            embed=embed, file=file, allowed_mentions=discord.AllowedMentions.none()
+        )
+    except Exception as exc:  # never block closing the ticket
+        log.warning("Could not save the ticket transcript: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Coupon modal (inside a ticket)
+# ---------------------------------------------------------------------------
+class CouponModal(ui.Modal, title="Apply a coupon"):
+    code_input = ui.TextInput(label="Coupon code", max_length=24, required=True)
+
+    def __init__(self, cog: "ShopCog") -> None:
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        code = coupons.normalize_code(self.code_input.value)
+        coupon = await asyncio.to_thread(coupons.get, code)
+        if not coupons.usable(coupon):
+            logger.log_event(
+                warning_embed(
+                    "Invalid coupon tried",
+                    f"User: {interaction.user.mention}\nCode: `{code[:24]}`",
+                )
+            )
+            await interaction.response.send_message(
+                embed=error_embed("Invalid coupon", "This code does not exist or has run out."),
+                ephemeral=True,
+            )
+            return
+        await asyncio.to_thread(coupons.set_ticket_coupon, interaction.channel_id, code)
+        product = self.cog.selected_product(interaction.channel_id)
+        price_line = (
+            f"\n**{product.get('name')}:** ~~{product.get('original_price')}~~ → "
+            f"**{product.get('price')}**"
+            if product and product.get("coupon") else
+            "\nSelect the product to see the new price."
+        )
+        await interaction.response.send_message(
+            embed=success_embed(
+                "Coupon applied",
+                f"{theme.e('coupon')} `{code}` — **{coupon['percent']}% off**{price_line}",
+            )
+        )
+        logger.log_event(
+            info_embed(
+                "Coupon applied",
+                f"User: {interaction.user.mention}\nCode: `{code}` ({coupon['percent']}%)\n"
+                f"Ticket: {getattr(interaction.channel, 'mention', '-')}",
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +260,9 @@ class CloseTicketModal(ui.Modal, title="Close ticket"):
             )
         except discord.HTTPException:
             pass
+        await _save_transcript(interaction, reason)
         db.delete_ticket(interaction.channel_id)
+        await asyncio.to_thread(coupons.clear_ticket_coupon, interaction.channel_id)
         await asyncio.sleep(3)
         try:
             await interaction.channel.delete(
@@ -240,6 +327,7 @@ class ApprovalView(ui.View):
     def __init__(self, cog: "ShopCog") -> None:
         super().__init__(timeout=None)
         self.cog = cog
+        theme.skin(self, {"shop:approve": "success", "shop:reject": "error"})
 
     @ui.button(
         label="Approve & deliver key",
@@ -315,6 +403,11 @@ class TicketView(ui.View):
         super().__init__(timeout=None)
         self.cog = cog
 
+        theme.skin(self, {
+            "shop:pay_pix_auto": "pix", "shop:pay_pix": "pix",
+            "shop:pay_paypal": "paypal", "shop:paid": "paid", "shop:close": "close",
+            "shop:coupon": "coupon",
+        })
         # The automatic Pix button only exists when Mercado Pago is configured
         if not config.MERCADOPAGO_ACCESS_TOKEN:
             self.remove_item(self.pay_pix_auto)
@@ -376,6 +469,21 @@ class TicketView(ui.View):
         )
 
     # ------------------------------------------------------------------
+    @ui.button(
+        label="Coupon",
+        emoji="🏷️",
+        style=discord.ButtonStyle.secondary,
+        custom_id="shop:coupon",
+        row=4,
+    )
+    async def apply_coupon(
+        self, interaction: discord.Interaction, item: discord.ui.Button
+    ) -> None:
+        if self.cog is None:
+            return
+        await interaction.response.send_modal(CouponModal(self.cog))
+
+    # ------------------------------------------------------------------
     async def _payment(self, interaction: discord.Interaction, method: str) -> None:
         if self.cog is None:
             return
@@ -393,6 +501,11 @@ class TicketView(ui.View):
 
         payments = (_safe_shop().get("payments")) or {}
         price = product.get("price", "-")
+        if product.get("coupon"):
+            price = (
+                f"{price}` ~~{product.get('original_price')}~~ "
+                f"`{product['coupon']} -{product.get('coupon_percent')}%"
+            )
         name = product.get("name", "Product")
 
         if method == "pix":
@@ -518,6 +631,7 @@ class ShopView(ui.View):
     def __init__(self, cog: "ShopCog | None" = None) -> None:
         super().__init__(timeout=None)
         self.cog = cog
+        theme.skin(self, {"shop:buy": "shop", "shop:howto": "howto"})
 
     @ui.button(
         label="Open ticket",
@@ -611,6 +725,10 @@ class ShopCog(commands.Cog):
             db.release_ticket_approval(channel_id)
             raise
         renewed = bool(renew_key)
+        if product.get("coupon"):
+            await asyncio.to_thread(coupons.consume, product["coupon"])
+            await asyncio.to_thread(coupons.clear_ticket_coupon, channel_id)
+            note = f"{note} (coupon {product['coupon']} -{product.get('coupon_percent')}%)"
 
         dm_sent = False
         if buyer_id:
@@ -902,11 +1020,23 @@ class ShopCog(commands.Cog):
         if ticket is None or not ticket["product_id"]:
             # Tickets opened before the product was stored: with a single
             # product the answer is unambiguous
-            return products[0] if len(products) == 1 else None
-        return next(
+            return self._with_coupon(channel_id, products[0]) if len(products) == 1 else None
+        product = next(
             (p for p in products if _product_id(p) == ticket["product_id"]),
             None,
         )
+        return self._with_coupon(channel_id, product)
+
+    @staticmethod
+    def _with_coupon(channel_id: int, product: dict | None) -> dict | None:
+        """Applies the coupon stored for this ticket (if any, and still valid)."""
+        if product is None:
+            return None
+        code = coupons.ticket_coupon(channel_id)
+        coupon = coupons.get(code) if code else None
+        if not code or not coupons.usable(coupon):
+            return product
+        return coupons.apply(product, code, coupon)
 
     # ------------------------------------------------------------------
     # Payment reported by the buyer -> approval message for the staff

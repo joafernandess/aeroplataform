@@ -92,7 +92,7 @@ PANEL_DESCRIPTION = os.environ.get(
     "Click the buttons below to redeem your key, get the script, "
     "claim your role, reset your HWID or view your key stats.",
 )
-PANEL_COLOR = _color("PANEL_COLOR", 0x5865F2)
+PANEL_COLOR = _color("PANEL_COLOR", 0x8FA2F9)  # Aero periwinkle
 
 # Maximum HWID resets per key (anti key-sharing)
 MAX_HWID_RESETS = _int("MAX_HWID_RESETS", 3)
@@ -256,6 +256,19 @@ EXEC_LOG_POLL_SECONDS = max(5, _int("EXEC_LOG_POLL_SECONDS", 15))
 EXEC_LOG_DENIED = _int("EXEC_LOG_DENIED", 1) != 0
 # Alert when one IP used this many different keys in 24 h (alts / resellers)
 IP_MULTI_KEY_ALERT = _int("IP_MULTI_KEY_ALERT", 3)
+# Ban keys automatically when they run with a blacklisted HWID / Roblox account
+BLACKLIST_AUTO_BAN = _int("BLACKLIST_AUTO_BAN", 1) != 0
+# Watchdog: alert after this many failed platform checks (one per minute)
+WATCHDOG_FAILS = max(1, _int("WATCHDOG_FAILS", 3))
+# Privileged intents - turn on in the Developer Portal FIRST, then set to 1:
+#   MEMBERS_INTENT          -> "Server Members Intent" (buyer-left alerts)
+#   MESSAGE_CONTENT_INTENT  -> "Message Content Intent" (full ticket transcripts)
+MEMBERS_INTENT = _int("MEMBERS_INTENT", 0) != 0
+MESSAGE_CONTENT_INTENT = _int("MESSAGE_CONTENT_INTENT", 0) != 0
+# Channel that receives ticket transcripts (empty = LOG_CHANNEL_ID)
+TRANSCRIPT_CHANNEL_ID = _int("TRANSCRIPT_CHANNEL_ID", 0)
+# Currency symbol used by /sales
+SALES_CURRENCY = os.environ.get("SALES_CURRENCY", "$").strip() or "$"
 
 # How often (minutes) the @Buyer role is removed from users with no usable key
 ROLE_SYNC_MINUTES = max(1, _int("ROLE_SYNC_MINUTES", 30))

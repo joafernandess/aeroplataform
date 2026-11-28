@@ -22,6 +22,7 @@ from discord.ext import commands, tasks
 from aiohttp import web
 
 import catalog
+import theme
 import config
 import platform_bridge as db  # key storage: platform over HTTP, or local
 import logger as logmod
@@ -49,6 +50,9 @@ log = logging.getLogger("keybot")
 class KeyBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
+        # Privileged: only when enabled in the Developer Portal (else login fails)
+        intents.members = config.MEMBERS_INTENT
+        intents.message_content = config.MESSAGE_CONTENT_INTENT
         super().__init__(
             command_prefix=commands.when_mentioned,  # prefixes not used
             intents=intents,
@@ -62,6 +66,18 @@ class KeyBot(commands.Bot):
 
     # ------------------------------------------------------------------
     async def setup_hook(self) -> None:
+        # Server emojis named aero_<slot> -> used in embeds and buttons.
+        # Loaded before the cogs so the persistent panels get them too.
+        emojis: list[discord.Emoji] = []
+        try:
+            if config.GUILD_ID:
+                guild = await self.fetch_guild(config.GUILD_ID)
+                emojis.extend(guild.emojis)
+            emojis.extend(await self.fetch_application_emojis())
+        except (discord.HTTPException, AttributeError) as exc:
+            log.warning("Could not load custom emojis: %s", exc)
+        theme.load(emojis)
+
         await self.load_extension("cogs.lang")
         await self.load_extension("cogs.panel")
         await self.load_extension("cogs.admin")
@@ -69,6 +85,8 @@ class KeyBot(commands.Bot):
         await self.load_extension("cogs.embeds")
         await self.load_extension("cogs.executions")
         await self.load_extension("cogs.shop_editor")
+        await self.load_extension("cogs.security")
+        await self.load_extension("cogs.operations")
 
         # Sync the slash commands (never fatal: the bot must stay online)
         try:

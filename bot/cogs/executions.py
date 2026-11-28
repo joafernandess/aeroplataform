@@ -37,10 +37,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+import blacklist
 import catalog
 import config
 import logger
 import platform_bridge as db
+import theme
 from utils import error_embed, info_embed, mask_key, staff_only
 
 log = logging.getLogger("keybot.executions")
@@ -75,7 +77,7 @@ def _plain(value, limit: int = 80) -> str:
 
 
 def _section(title: str, rows: list[tuple[str, object]]) -> str:
-    lines = [f"**{title}**", "━━━━━━━━━━━━━━━━━━"]
+    lines = [f"**{title}**", theme.divider()]
     for name, value in rows:
         shown = value if isinstance(value, Raw) else _clean(value)
         lines.append(f"**{name}**\n{shown}")
@@ -162,20 +164,21 @@ def build_execution_embed(ev: dict) -> discord.Embed:
     job_id = tel.get("job_id")
 
     if ok:
-        title = "🚀 Script executed"
+        title = f"{theme.e('rocket')} Script executed"
         intro = (
             f"**{_plain(username, 40)}** just executed Aero in "
             f"**{_plain(place_name)}** ({_clean(place_id)})."
         )
-        color = 0x57F287
+        color = theme.SUCCESS
     else:
-        title = "⛔ Kicked by AutoKick" if kind == "autokick_denied" else "⛔ Execution refused"
+        title = (f"{theme.e('error')} Kicked by AutoKick" if kind == "autokick_denied"
+                 else f"{theme.e('error')} Execution refused")
         intro = (
             f"**{_plain(username, 40)}** tried to run Aero in "
             f"**{_plain(place_name)}** ({_clean(place_id)}).\n"
             f"**Reason:** {_clean(ev.get('reason'), 200)}"
         )
-        color = 0xED4245
+        color = theme.ERROR
 
     profile = (
         Raw(f"[{rbx_id}](https://www.roblox.com/users/{rbx_id}/profile)")
@@ -210,16 +213,16 @@ def build_execution_embed(ev: dict) -> discord.Embed:
         )
         parts = [
             intro,
-            _section("🎮 GAME", [
+            _section(f"{theme.e('game')} GAME", [
                 ("Game ID", ev.get("game_id")),
                 ("Script ID", ev.get("script_id")),
             ]),
-            _section("💻 DEVICE", [
+            _section(f"{theme.e('device')} DEVICE", [
                 ("HWID", ev.get("hwid")),
                 ("IP", ev.get("ip")),
                 ("Loader", ev.get("loader_version")),
             ]),
-            _section("🔑 KEY", [
+            _section(f"{theme.e('key')} KEY", [
                 ("Owner", Raw(f"<@{owner}>") if owner else "not redeemed"),
                 ("Key", mask_key(key)),
                 ("IPs on this key (24 h)", ev.get("key_ips_24h")),
@@ -232,11 +235,11 @@ def build_execution_embed(ev: dict) -> discord.Embed:
         ts = ev.get("ts")
         if ts:
             embed.timestamp = datetime.datetime.fromtimestamp(int(ts), tz=datetime.timezone.utc)
-        embed.set_footer(text=f"{ev.get('kind')}")
+        embed.set_footer(text=f"{theme.BRAND} • {ev.get('kind')}")
         return embed
     parts = [
         intro,
-        _section("👤 ACCOUNT", [
+        _section(f"{theme.e('user')} ACCOUNT", [
             ("Username", username),
             ("Display Name", tel.get("display_name")),
             ("User ID", profile),
@@ -244,7 +247,7 @@ def build_execution_embed(ev: dict) -> discord.Embed:
             ("Membership", tel.get("membership")),
             ("Country", tel.get("country")),
         ]),
-        _section("🌍 SERVER", [
+        _section(f"{theme.e('server')} SERVER", [
             ("Place ID", place_id),
             ("Universe ID", tel.get("universe_id")),
             ("Job ID", job_id),
@@ -253,7 +256,7 @@ def build_execution_embed(ev: dict) -> discord.Embed:
             ("Locale", locale),
             ("Players", players),
         ] + ([("Join", join)] if join else [])),
-        _section("💻 DEVICE", [
+        _section(f"{theme.e('device')} DEVICE", [
             ("Executor", executor),
             ("Device", tel.get("device")),
             ("Resolution", tel.get("viewport")),
@@ -261,7 +264,7 @@ def build_execution_embed(ev: dict) -> discord.Embed:
             ("IP", ev.get("ip")),
             ("Loader", ev.get("loader_version") or tel.get("loader_version")),
         ]),
-        _section("🔑 KEY", [
+        _section(f"{theme.e('key')} KEY", [
             ("Owner", Raw(f"<@{owner}>") if owner else "not redeemed"),
             ("Key", mask_key(key)),
             ("IPs on this key (24 h)", ev.get("key_ips_24h")),
@@ -274,7 +277,7 @@ def build_execution_embed(ev: dict) -> discord.Embed:
         embed.timestamp = datetime.datetime.fromtimestamp(
             int(ts), tz=datetime.timezone.utc
         )
-    embed.set_footer(text=f"Event #{ev.get('event_id')} • {kind}")
+    embed.set_footer(text=f"{theme.BRAND} • Event #{ev.get('event_id')} • {kind}")
     return embed
 
 
@@ -329,7 +332,7 @@ class ExecutionLogCog(commands.Cog):
     async def _starter_embed(self, owner: int | None, key: str | None) -> discord.Embed:
         if owner is None:
             return info_embed(
-                "❓ Unknown / unredeemed keys",
+                "Unknown / unredeemed keys",
                 "Executions with invalid keys, or keys nobody has redeemed yet, "
                 "are logged here.",
             )
@@ -347,7 +350,7 @@ class ExecutionLogCog(commands.Cog):
             if row["redeemed_at"]:
                 lines.append(f"**Redeemed:** <t:{int(row['redeemed_at'])}:R>")
         lines.append("\nEvery execution of this user's key is logged below.")
-        return info_embed("📒 Execution log", "\n".join(lines))
+        return info_embed(f"{theme.e('log')} Execution log", "\n".join(lines))
 
     async def _thread_for(self, owner: int | None, key: str | None) -> discord.Thread | None:
         """The user's forum post (created on first use)."""
@@ -569,11 +572,54 @@ class ExecutionLogCog(commands.Cog):
             await asyncio.sleep(0.4)  # stay far from Discord rate limits
         return posted
 
+    async def _check_blacklist(self, ev: dict) -> None:
+        """Auto-ban keys run with a blacklisted HWID / Roblox account."""
+        from cogs.security import alert_view
+
+        hits = await asyncio.to_thread(blacklist.match, ev)
+        key = ev.get("key")
+        for kind, value, info in hits:
+            if not await asyncio.to_thread(_cooldown, f"bl:{kind}:{value}:{key}", 3600):
+                continue
+            action = "Alert only (IPs can be shared)."
+            if kind in ("hwid", "roblox") and key and config.BLACKLIST_AUTO_BAN:
+                if info.get("key") != key and ev.get("result") == "ok":
+                    banned = await asyncio.to_thread(
+                        db.ban_key, key, f"Blacklisted {kind}", 0
+                    )
+                    action = "Key **auto-banned**." if banned else "Auto-ban FAILED."
+                    if banned and ev.get("discord_id"):
+                        from roles import remove_buyer_role
+                        await remove_buyer_role(
+                            self.bot, int(ev["discord_id"]), f"Blacklisted {kind}"
+                        )
+                else:
+                    action = "Same key that was banned — no new action."
+            owner = ev.get("discord_id")
+            logger.log_event(
+                error_embed(
+                    f"Blacklisted {kind} detected",
+                    f"{kind}: `{value[:60]}`\nKey: `{mask_key(key)}` • owner "
+                    f"{f'<@{owner}>' if owner else 'not redeemed'}\n"
+                    f"IP: `{ev.get('ip') or '-'}`\n"
+                    f"Blacklisted for: {info.get('reason', '-')} "
+                    f"(original key `{mask_key(info.get('key'))}`)\n{action}",
+                ),
+                security=True,
+                view=alert_view(key),
+            )
+
     async def handle_event(self, ev: dict) -> None:
         if ev.get("kind") == "loader_auth":
             return  # the loader's pre-check; the execute event right after covers it
+        from cogs.security import alert_view  # late import: avoids a cycle
+
+        key = ev.get("key")
         for alert in await asyncio.to_thread(self._alerts, ev):
-            logger.log_event(alert, security=True)
+            logger.log_event(alert, security=True, view=alert_view(key))
+        await self._check_blacklist(ev)
+        if ev.get("result") == "ok" and key and ev.get("hwid"):
+            await asyncio.to_thread(blacklist.remember_hwid, key, str(ev["hwid"]))
 
         if ev.get("kind") == "rate_limited":
             return  # no key: alert only

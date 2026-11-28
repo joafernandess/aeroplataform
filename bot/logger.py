@@ -50,13 +50,18 @@ def _send_done(task: asyncio.Task) -> None:
         log.warning("Could not send event to the log channel: %s", exc)
 
 
-async def _send(channel_id: int, embed: discord.Embed) -> None:
+async def _send(
+    channel_id: int, embed: discord.Embed, view: discord.ui.View | None = None
+) -> None:
     assert _bot is not None
     channel = _bot.get_channel(channel_id)
     if channel is None:
         # Not cached (e.g. right after startup or a thread): fetch it once
         channel = await _bot.fetch_channel(channel_id)
-    await channel.send(embed=embed)  # type: ignore[union-attr]
+    kwargs = {"embed": embed, "allowed_mentions": discord.AllowedMentions.none()}
+    if view is not None:
+        kwargs["view"] = view
+    await channel.send(**kwargs)  # type: ignore[union-attr]
 
 
 def _to_file(embed: discord.Embed, security: bool) -> None:
@@ -71,7 +76,12 @@ def _to_file(embed: discord.Embed, security: bool) -> None:
         _events.info("[EVENT] %s", text)
 
 
-def log_event(embed: discord.Embed, *, security: bool = False) -> None:
+def log_event(
+    embed: discord.Embed,
+    *,
+    security: bool = False,
+    view: discord.ui.View | None = None,
+) -> None:
     """
     Sends `embed` to the log channel. security=True routes it to the
     security channel (or the main one when no security channel is set).
@@ -85,10 +95,10 @@ def log_event(embed: discord.Embed, *, security: bool = False) -> None:
         return
     if embed.timestamp is None:
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
-    if security and not embed.footer.text:
-        embed.set_footer(text="🛡️ Security")
+    if security:
+        embed.set_footer(text="Aero • 🛡️ Security")
     try:
-        task = _bot.loop.create_task(_send(channel_id, embed))
+        task = _bot.loop.create_task(_send(channel_id, embed, view))
     except RuntimeError:
         return  # loop closed (shutdown)
     _pending.add(task)
