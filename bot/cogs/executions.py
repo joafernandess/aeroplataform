@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import hashlib
+import json
 import logging
 import time
 
@@ -44,6 +46,7 @@ from utils import error_embed, info_embed, mask_key, staff_only
 log = logging.getLogger("keybot.executions")
 
 _LAST_ID = "exec_log:last_id"
+_LEGACY = "exec_log:legacy"  # cursor when reading the platform's old /events
 _UNKNOWN = "unknown"
 _BATCH = 50
 _NO_PINGS = discord.AllowedMentions.none()
@@ -91,6 +94,60 @@ def _cooldown(name: str, seconds: int) -> bool:
         return False
     catalog.set_kv(f"alert:{name}", True)
     return True
+
+
+# ---------------------------------------------------------------------------
+# Legacy mode: platforms without /executions (not updated yet).
+# The bot reads the original /events endpoint instead. Same IP / HWID / key /
+# result data; the Roblox account, server and device details only exist once
+# the platform + loader are updated, so those sections are left out.
+# ---------------------------------------------------------------------------
+def _fingerprint(row: dict) -> str:
+    if row.get("id") is not None:
+        return f"id:{row['id']}"
+    raw = json.dumps(
+        [row.get(k) for k in ("ts", "kind", "result", "reason", "key", "ip", "hwid")],
+        default=str,
+    )
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]
+
+
+def _noise(row: dict) -> bool:
+    return row.get("kind") in ("heartbeat", "loader_auth") and row.get("result") == "ok"
+
+
+def _normalize(row: dict) -> dict:
+    """An /events row in the /executions shape."""
+    ev = dict(row)
+    tel, loader = {}, None
+    detail = row.get("detail") or ""
+    try:
+        parsed = json.loads(detail)
+        if isinstance(parsed, dict):
+            tel, loader = parsed.get("tel") or {}, parsed.get("loader")
+    except (ValueError, TypeError):
+        if detail.startswith("loader="):
+            loader = detail.split("=", 1)[1]
+    ev["event_id"] = row.get("id") or _fingerprint(row)
+    ev["telemetry"] = tel if isinstance(tel, dict) else {}
+    ev["loader_version"] = loader
+    return ev
+
+
+def _windows(ev: dict) -> None:
+    """24 h IPs-per-key / keys-per-IP counters, kept by the bot (legacy mode)."""
+    now_ts = time.time()
+    key, ip, ts = ev.get("key"), ev.get("ip"), int(ev.get("ts") or now_ts)
+
+    def bump(slot: str, item, count: bool) -> int:
+        entries = [e for e in (_kv(slot) or []) if now_ts - e[1] < 86400]
+        if item and count and [item, ts] not in entries:
+            entries.append([item, ts])
+        catalog.set_kv(slot, entries[-300:])
+        return len({e[0] for e in entries})
+
+    ev["key_ips_24h"] = bump(f"win:key:{key}", ip, ev.get("result") == "ok") if key else 0
+    ev["ip_keys_24h"] = bump(f"win:ip:{ip}", key, True) if ip else 0
 
 
 def build_execution_embed(ev: dict) -> discord.Embed:
@@ -145,6 +202,38 @@ def build_execution_embed(ev: dict) -> discord.Embed:
 
     owner = ev.get("discord_id")
     key = ev.get("key")
+    if not tel:
+        who = f"<@{owner}>" if owner else "An unredeemed key"
+        intro = (
+            f"{who} just executed Aero." if ok
+            else f"{who} tried to run Aero.\n**Reason:** {_clean(ev.get('reason'), 200)}"
+        )
+        parts = [
+            intro,
+            _section("🎮 GAME", [
+                ("Game ID", ev.get("game_id")),
+                ("Script ID", ev.get("script_id")),
+            ]),
+            _section("💻 DEVICE", [
+                ("HWID", ev.get("hwid")),
+                ("IP", ev.get("ip")),
+                ("Loader", ev.get("loader_version")),
+            ]),
+            _section("🔑 KEY", [
+                ("Owner", Raw(f"<@{owner}>") if owner else "not redeemed"),
+                ("Key", mask_key(key)),
+                ("IPs on this key (24 h)", ev.get("key_ips_24h")),
+                ("Keys on this IP (24 h)", ev.get("ip_keys_24h")),
+            ]),
+            "-# Roblox account / server / device details appear after the "
+            "platform and loader are updated.",
+        ]
+        embed = discord.Embed(title=title, description="\n\n".join(parts)[:4000], color=color)
+        ts = ev.get("ts")
+        if ts:
+            embed.timestamp = datetime.datetime.fromtimestamp(int(ts), tz=datetime.timezone.utc)
+        embed.set_footer(text=f"{ev.get('kind')}")
+        return embed
     parts = [
         intro,
         _section("👤 ACCOUNT", [
@@ -196,6 +285,7 @@ class ExecutionLogCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._thread_lock = asyncio.Lock()
+        self._legacy: bool | None = None  # None = not detected yet
 
     async def cog_load(self) -> None:
         if not config.EXEC_LOG_FORUM_ID:
@@ -382,7 +472,85 @@ class ExecutionLogCog(commands.Cog):
     async def _before_poll(self) -> None:
         await self.bot.wait_until_ready()
 
+    async def _detect(self) -> None:
+        """Uses /executions when the platform has it, else the old /events."""
+        if self._legacy is not None:
+            return
+        try:
+            await asyncio.to_thread(db.executions, 0, 1, None, None, None, True)
+            self._legacy = False
+        except db.PlatformError as exc:
+            if not db.feed_missing(exc):
+                raise
+            self._legacy = True
+            log.info(
+                "Platform has no /executions yet: execution log uses /events "
+                "(IP, HWID, key and result; no Roblox details until it is updated)"
+            )
+
+    async def _fetch(
+        self, count: int, *, discord_id: int | None = None, ip: str | None = None
+    ) -> list[dict]:
+        """Newest events for a user or an IP, in either mode (newest first)."""
+        await self._detect()
+        if not self._legacy:
+            return await asyncio.to_thread(
+                db.executions, 0, count, ip, discord_id, None, True
+            )
+        key = None
+        if discord_id:
+            row = await asyncio.to_thread(db.get_user_key, discord_id)
+            if row is None:
+                return []
+            key = row["key"]
+        rows = await asyncio.to_thread(db.recent_events, 500, key)
+        out = []
+        for r in rows:
+            if _noise(r) or (ip and r.get("ip") != ip):
+                continue
+            out.append(_normalize(r))
+            if len(out) >= count:
+                break
+        return out
+
+    async def _poll_legacy(self) -> int:
+        rows = await asyncio.to_thread(db.recent_events, 200)
+        pairs = [(r, _fingerprint(r)) for r in reversed(rows)]  # oldest first
+        state = await asyncio.to_thread(_kv, _LEGACY)
+        if state is None:
+            top = max((int(r.get("ts") or 0) for r, _ in pairs), default=0)
+            seen = [fp for r, fp in pairs if int(r.get("ts") or 0) == top]
+            await asyncio.to_thread(catalog.set_kv, _LEGACY, {"ts": top, "seen": seen})
+            log.info("Execution log (legacy) starting after ts %s", top)
+            return 0
+
+        last_ts, seen = int(state.get("ts") or 0), set(state.get("seen") or [])
+        fresh = [
+            (r, fp) for r, fp in pairs
+            if int(r.get("ts") or 0) >= last_ts and fp not in seen
+        ]
+        fresh.sort(key=lambda pair: (int(pair[0].get("ts") or 0), pair[0].get("id") or 0))
+        posted = 0
+        for row, fp in fresh:
+            ts = int(row.get("ts") or 0)
+            if ts > last_ts:
+                last_ts, seen = ts, set()
+            seen.add(fp)
+            if not _noise(row):
+                ev = _normalize(row)
+                await asyncio.to_thread(_windows, ev)
+                await self.handle_event(ev)
+                posted += 1
+                await asyncio.sleep(0.4)
+            await asyncio.to_thread(
+                catalog.set_kv, _LEGACY, {"ts": last_ts, "seen": sorted(seen)}
+            )
+        return posted
+
     async def poll_once(self) -> int:
+        await self._detect()
+        if self._legacy:
+            return await self._poll_legacy()
         last = await asyncio.to_thread(_kv, _LAST_ID)
         if last is None:
             # First start: begin from now instead of flooding old history
@@ -437,9 +605,7 @@ class ExecutionLogCog(commands.Cog):
     ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            rows = await asyncio.to_thread(
-                db.executions, 0, count, None, user.id, None, True
-            )
+            rows = await self._fetch(count, discord_id=user.id)
         except db.PlatformError as exc:
             await interaction.followup.send(
                 embed=error_embed("Unavailable", str(exc)), ephemeral=True
@@ -476,9 +642,7 @@ class ExecutionLogCog(commands.Cog):
     async def ipcheck(self, interaction: discord.Interaction, ip: str) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            rows = await asyncio.to_thread(
-                db.executions, 0, 200, ip.strip(), None, None, True
-            )
+            rows = await self._fetch(200, ip=ip.strip())
         except db.PlatformError as exc:
             await interaction.followup.send(
                 embed=error_embed("Unavailable", str(exc)), ephemeral=True

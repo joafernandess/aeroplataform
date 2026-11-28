@@ -685,3 +685,22 @@ def executions(after_id: int = 0, limit: int = 50, ip: str | None = None,
     if newest_first:
         params["order"] = "desc"
     return _call("GET", f"/executions?{urlencode(params)}") or []
+
+
+def recent_events(limit: int = 200, key: str | None = None) -> list[dict]:
+    """
+    Newest auth/execution events from the platform's original /events
+    endpoint (fallback for platforms without /executions). Newest first.
+    """
+    if not HTTP_MODE:
+        raise PlatformError("Execution logs need the Aero Platform bridge.")
+    from urllib.parse import urlencode
+    params: dict = {"limit": max(1, min(int(limit), 500))}
+    if key:
+        params["key"] = key
+    return _call("GET", f"/events?{urlencode(params)}") or []
+
+
+def feed_missing(exc: Exception) -> bool:
+    """True when the platform is an older version without /executions."""
+    return "404" in str(exc)
