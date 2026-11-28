@@ -1,0 +1,19 @@
+{
+  "title": "AERO Script Shop",
+  "description": "Buy your AERO key in a private ticket.\n**$9.00** — only you and the staff can see the ticket.",
+  "ticket_label": "Open ticket",
+  "products": [
+    {
+      "id": "aero",
+      "name": "AERO Script",
+      "price": "$9.00",
+      "description": "Full access to AERO"
+    }
+  ],
+  "payments": {
+    "pix_type": "E-mail / CPF / CNPJ / Phone",
+    "pix_key": "your-pix-key-here",
+    "paypal_url": "https://paypal.me/yourname"
+  },
+  "instructions": "1. Click **Open ticket**.\n2. Select the **payment method** (Pix or PayPal).\n3. Pay using the details shown in the ticket.\n4. Send the receipt in the ticket.\n5. A staff member delivers your key (you can also use `/deliver`).\n6. Redeem it on the key panel and click **Get Script**."
+}
