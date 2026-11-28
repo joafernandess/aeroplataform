@@ -32,10 +32,19 @@ LOADER_DIR = os.path.join(PLATFORM_DIR, "loader")
 # Helpers
 # ---------------------------------------------------------------------------
 def client_ip(request: web.Request) -> str:
+    """
+    Real visitor IP. Behind Cloudflare the edge sets CF-Connecting-IP. With
+    another reverse proxy, use the LAST X-Forwarded-For entry: that one is
+    appended by our proxy, while the first entries are whatever the client
+    sent (a forged IP would otherwise land in the logs and dodge limits).
+    """
     if config.TRUST_PROXY:
+        cf = request.headers.get("CF-Connecting-IP", "").strip()
+        if cf:
+            return cf[:64]
         fwd = request.headers.get("X-Forwarded-For", "")
         if fwd:
-            return fwd.split(",")[0].strip()
+            return fwd.split(",")[-1].strip()[:64]
     return request.remote or "unknown"
 
 
@@ -244,8 +253,10 @@ async def _deliver_source(request: web.Request, kind: str) -> web.Response:
         services.log_event(kind, result="denied", reason="missing key", ip=ip)
         return web.Response(text=_lua_error("No key provided."), content_type="text/plain")
 
+    tel = body.get("tel") or request.rel_url.query.get("tel")
     allowed, reason, krow, script = services.validate_execution(
-        key, hwid, place_id, lv, kind, ip=ip, game_id=game_id)
+        key, hwid, place_id, lv, kind, ip=ip, game_id=game_id,
+        telemetry=services.sanitize_telemetry(tel))
     if not allowed:
         message = reason or "Key rejected."
         return web.Response(text=_lua_error(message), content_type="text/plain")
@@ -859,6 +870,28 @@ async def events_list(request: web.Request) -> web.Response:
 
 
 @require_auth()
+async def executions_list(request: web.Request) -> web.Response:
+    """Execution log feed for the Discord bot (and lookups by IP/user/key)."""
+    q = request.rel_url.query
+
+    def as_int(name: str, default: int = 0) -> int:
+        try:
+            return int(q.get(name, default) or default)
+        except (TypeError, ValueError):
+            return default
+
+    rows = services.execution_events(
+        after_id=as_int("after_id"),
+        limit=as_int("limit", 100),
+        ip=(q.get("ip") or "").strip() or None,
+        discord_id=as_int("discord_id") or None,
+        key=(q.get("key") or "").strip() or None,
+        newest_first=q.get("order") == "desc",
+    )
+    return json_ok(rows)
+
+
+@require_auth()
 async def audit_list(request: web.Request) -> web.Response:
     q = request.rel_url.query
     try:
@@ -1112,6 +1145,7 @@ def new_app() -> web.Application:
         web.get("/api/v1/users/{user_id}", user_detail),
         web.get("/api/v1/overview", overview),
         web.get("/api/v1/events", events_list),
+        web.get("/api/v1/executions", executions_list),
         web.get("/api/v1/audit", audit_list),
         web.get("/api/v1/sales", sales_list),
         web.post("/api/v1/sales", sales_create),

@@ -248,6 +248,15 @@ BOT_API_TOKEN = _bot_api_token()
 # so this alerts a human instead of banning.
 SHARE_ALERT_IPS = _int("SHARE_ALERT_IPS", 3)
 
+# Execution log: a FORUM channel where every buyer gets their own post and
+# each script execution is logged inside it. Empty = disabled.
+EXEC_LOG_FORUM_ID = _int("EXEC_LOG_FORUM_ID", 0)
+EXEC_LOG_POLL_SECONDS = max(5, _int("EXEC_LOG_POLL_SECONDS", 15))
+# Log denied executions (invalid key, HWID mismatch...) in the forum too
+EXEC_LOG_DENIED = _int("EXEC_LOG_DENIED", 1) != 0
+# Alert when one IP used this many different keys in 24 h (alts / resellers)
+IP_MULTI_KEY_ALERT = _int("IP_MULTI_KEY_ALERT", 3)
+
 # How often (minutes) the @Buyer role is removed from users with no usable key
 ROLE_SYNC_MINUTES = max(1, _int("ROLE_SYNC_MINUTES", 30))
 

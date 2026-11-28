@@ -67,6 +67,8 @@ class KeyBot(commands.Bot):
         await self.load_extension("cogs.admin")
         await self.load_extension("cogs.shop")
         await self.load_extension("cogs.embeds")
+        await self.load_extension("cogs.executions")
+        await self.load_extension("cogs.shop_editor")
 
         # Sync the slash commands (never fatal: the bot must stay online)
         try:

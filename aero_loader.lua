@@ -92,7 +92,7 @@ local function detect_hwid()
     local s = tostring(LocalPlayer.UserId) .. "|aero-hwid"
     local h = 0x811c9dc5
     for i = 1, #s do
-        h = (h ~ string.byte(s, i)) * 16777619 % 4294967296
+        h = (bit32.bxor(h, string.byte(s, i)) * 16777619) % 4294967296
     end
     local hex = ""
     local v = h
@@ -101,6 +101,12 @@ local function detect_hwid()
         v = (v * 1103515245 + 12345) % 4294967296
     end
     return "uid-" .. hex:sub(1, 24) .. "-" .. tostring(LocalPlayer.UserId)
+end
+
+local function url_encode(s)
+    return (tostring(s):gsub("[^%w%-_%.~]", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end))
 end
 
 -- ----------------------------------------------------------------
@@ -158,12 +164,6 @@ local function http_post_json(path, payload)
         task.wait(1 + attempt)
     end
     return false, "request failed after retries"
-end
-
-local function url_encode(s)
-    return s:gsub("[^%w%-_%.~]", function(c)
-        return string.format("%%%02X", string.byte(c))
-    end)
 end
 
 -- ----------------------------------------------------------------
@@ -314,6 +314,69 @@ local function start_heartbeat(key, hwid)
 end
 
 -- ----------------------------------------------------------------
+-- Execution telemetry (shown to staff in the Discord execution log).
+-- Only information about the buyer's own session; the server adds the IP.
+-- ----------------------------------------------------------------
+local function try(fn, default)
+    local ok, value = pcall(fn)
+    if ok and value ~= nil then return value end
+    return default
+end
+
+local function collect_telemetry()
+    local Localization = game:GetService("LocalizationService")
+    local UIS = game:GetService("UserInputService")
+
+    local exec_name, exec_version = "unknown", ""
+    pcall(function()
+        local n, v = identifyexecutor()
+        exec_name, exec_version = tostring(n or "unknown"), tostring(v or "")
+    end)
+    if exec_name == "unknown" then exec_name = identify_executor() end
+
+    local device = "PC"
+    pcall(function()
+        if UIS.TouchEnabled and not UIS.KeyboardEnabled then
+            device = "Mobile"
+        elseif UIS.GamepadEnabled and not UIS.KeyboardEnabled then
+            device = "Console"
+        end
+    end)
+
+    local viewport = try(function()
+        local v = workspace.CurrentCamera.ViewportSize
+        return ("%dx%d"):format(v.X, v.Y)
+    end, "")
+
+    return {
+        username     = try(function() return LocalPlayer.Name end, ""),
+        display_name = try(function() return LocalPlayer.DisplayName end, ""),
+        user_id      = try(function() return LocalPlayer.UserId end, 0),
+        account_age  = try(function() return LocalPlayer.AccountAge end, -1),
+        membership   = try(function() return LocalPlayer.MembershipType.Name end, ""),
+        country      = try(function()
+            return Localization:GetCountryRegionForPlayerAsync(LocalPlayer)
+        end, ""),
+        roblox_locale = try(function() return Localization.RobloxLocaleId end, ""),
+        system_locale = try(function() return Localization.SystemLocaleId end, ""),
+        place_id      = PlaceId,
+        universe_id   = GameId,
+        job_id        = JobId,
+        place_version = try(function() return game.PlaceVersion end, 0),
+        place_name    = try(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(PlaceId).Name
+        end, game_name()),
+        players       = try(function() return #Players:GetPlayers() end, 0),
+        max_players   = try(function() return Players.MaxPlayers end, 0),
+        executor      = exec_name,
+        executor_version = exec_version,
+        device        = device,
+        viewport      = viewport,
+        loader_version = LOADER_VERSION,
+    }
+end
+
+-- ----------------------------------------------------------------
 -- Boot sequence
 -- ----------------------------------------------------------------
 local hwid = detect_hwid()
@@ -324,9 +387,12 @@ Core.AERO_KEY = key
 -- heartbeat runs concurrently with delivery
 start_heartbeat(key, hwid)
 
-local url = ("%s/v1/execute?key=%s&hwid=%s&place=%s&game_id=%s&lv=%s"):format(
+local telemetry = ""
+pcall(function() telemetry = HttpService:JSONEncode(collect_telemetry()) end)
+
+local url = ("%s/v1/execute?key=%s&hwid=%s&place=%s&game_id=%s&lv=%s&tel=%s"):format(
     API_URL, url_encode(key), url_encode(hwid), tostring(PlaceId),
-    tostring(GameId), LOADER_VERSION)
+    tostring(GameId), LOADER_VERSION, url_encode(telemetry))
 
 local ok, body = http_get(url)
 if not ok then

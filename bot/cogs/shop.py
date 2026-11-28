@@ -1154,14 +1154,21 @@ class ShopCog(commands.Cog):
             return
 
         target = channel or interaction.channel
-        await target.send(embed=build_shop_embed(data), view=ShopView(self))
-        await interaction.response.send_message(
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        message = await target.send(embed=build_shop_embed(data), view=ShopView(self))
+        # Remember it so the shop editor can update its prices later
+        from cogs.shop_editor import open_editor, remember_panel
+        await asyncio.to_thread(remember_panel, message)
+        await interaction.followup.send(
             embed=success_embed(
                 "Shop panel posted!",
-                f"The shop panel has been sent to {target.mention}.",
+                f"The shop panel has been sent to {target.mention}.\n"
+                "Use the editor below (or `/shopedit` later) to change "
+                "products and prices — posted panels update automatically.",
             ),
             ephemeral=True,
         )
+        await open_editor(self.bot, interaction)
         logger.log_event(
             success_embed(
                 "Shop panel posted",

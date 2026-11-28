@@ -853,7 +853,8 @@ def validate_execution(key: str, hwid: str, place_id: int | None = None,
                        loader_version: str | None = None,
                        kind: str = "execute",
                        ip: str | None = None,
-                       game_id: int | None = None) -> tuple[bool, str | None, dict | None, dict | None]:
+                       game_id: int | None = None,
+                       telemetry: dict | None = None) -> tuple[bool, str | None, dict | None, dict | None]:
     """
     Single source of truth for granting access.
 
@@ -864,6 +865,10 @@ def validate_execution(key: str, hwid: str, place_id: int | None = None,
     """
     key = (key or "").strip()
     hwid = (hwid or "").strip()[:128]
+    detail = json.dumps(
+        {"loader": loader_version or "-", "tel": telemetry or {}},
+        separators=(",", ":"),
+    )
 
     def deny(reason: str, krow: dict | None, script_row: dict | None = None,
               event_kind: str | None = None):
@@ -871,7 +876,7 @@ def validate_execution(key: str, hwid: str, place_id: int | None = None,
         log_event(event_kind or kind, result="denied", reason=reason, key=key,
                   discord_id=(krow or {}).get("discord_id"), hwid=hwid, ip=ip,
                   script_id=(script_row or {}).get("id"),
-                  game_id=game["id"] if game else None)
+                  game_id=game["id"] if game else None, detail=detail)
         return False, reason, krow, script_row
 
     row = get_key(key)
@@ -949,7 +954,8 @@ def validate_execution(key: str, hwid: str, place_id: int | None = None,
                first_exec = COALESCE(first_exec, ?), last_exec = ? WHERE key = ?""",
             (hwid, ts, ts, key),
         )
-    elif kind == "execute" or kind == "heartbeat":
+    elif kind in ("execute", "execute_ok"):
+        # Count real script deliveries only (heartbeats are not executions)
         db.execute(
             """UPDATE keys SET executions = executions + 1,
                first_exec = COALESCE(first_exec, ?), last_exec = ? WHERE key = ?""",
@@ -959,8 +965,114 @@ def validate_execution(key: str, hwid: str, place_id: int | None = None,
     log_event(kind, result="ok", key=key, discord_id=row["discord_id"], hwid=hwid,
               ip=ip, script_id=script and script["id"],
               game_id=game_for_place(place_id, game_id)["id"] if game_for_place(place_id, game_id) else None,
-              detail=f"loader={loader_version or '-'}")
+              detail=detail)
     return True, None, get_key(key), script
+
+
+# ---------------------------------------------------------------------------
+# Execution telemetry (sent by the loader, shown in the Discord execution log)
+# ---------------------------------------------------------------------------
+# field -> (type, max length). Everything else the client sends is dropped.
+_TELEMETRY_FIELDS = {
+    "username": (str, 40), "display_name": (str, 40), "user_id": (int, 0),
+    "account_age": (int, 0), "membership": (str, 30), "country": (str, 8),
+    "roblox_locale": (str, 16), "system_locale": (str, 16),
+    "place_id": (int, 0), "universe_id": (int, 0), "job_id": (str, 64),
+    "place_version": (int, 0), "place_name": (str, 80), "players": (int, 0),
+    "max_players": (int, 0), "executor": (str, 40), "executor_version": (str, 30),
+    "device": (str, 12), "viewport": (str, 16), "loader_version": (str, 12),
+}
+
+
+def sanitize_telemetry(raw) -> dict:
+    """Whitelists and truncates the loader's telemetry (client data, untrusted)."""
+    if isinstance(raw, str):
+        if len(raw) > 4096:
+            return {}
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            return {}
+    if not isinstance(raw, dict):
+        return {}
+    clean: dict = {}
+    for name, (kind, limit) in _TELEMETRY_FIELDS.items():
+        value = raw.get(name)
+        if value is None:
+            continue
+        if kind is int:
+            try:
+                clean[name] = int(float(value))
+            except (TypeError, ValueError):
+                continue
+        else:
+            text = "".join(ch for ch in str(value) if ch.isprintable())
+            clean[name] = text[:limit]
+    return clean
+
+
+_indexes_ready = False
+
+
+def _ensure_event_indexes() -> None:
+    """Indexes for the per-key / per-IP lookups (created once, idempotent)."""
+    global _indexes_ready
+    if _indexes_ready:
+        return
+    db.execute("CREATE INDEX IF NOT EXISTS idx_auth_events_key_ts ON auth_events(key, ts)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_auth_events_ip_ts ON auth_events(ip, ts)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_auth_events_discord ON auth_events(discord_id)")
+    _indexes_ready = True
+
+
+# Noise the execution log does not need: successful heartbeats/auths
+_EXEC_LOG_SKIP = "NOT ((kind IN ('heartbeat', 'loader_auth')) AND result = 'ok')"
+
+
+def execution_events(after_id: int = 0, limit: int = 100, ip: str | None = None,
+                     discord_id: int | None = None, key: str | None = None,
+                     newest_first: bool = False) -> list[dict]:
+    """
+    Execution/auth events for the bot's execution log, with the telemetry
+    decoded and per-key / per-IP sharing counters for the last 24 hours.
+    """
+    _ensure_event_indexes()
+    where, params = [_EXEC_LOG_SKIP, "rowid > ?"], [after_id]
+    if ip:
+        where.append("ip = ?")
+        params.append(ip)
+    if discord_id:
+        where.append("discord_id = ?")
+        params.append(discord_id)
+    if key:
+        where.append("key = ?")
+        params.append(key)
+    order = "DESC" if newest_first else "ASC"
+    rows = db.query(
+        f"SELECT rowid AS event_id, * FROM auth_events WHERE {' AND '.join(where)} "
+        f"ORDER BY rowid {order} LIMIT ?",
+        params + [max(1, min(limit, 500))],
+    )
+    since = now() - 86400
+    for r in rows:
+        tel, loader = {}, None
+        try:
+            parsed = json.loads(r.get("detail") or "")
+            if isinstance(parsed, dict):
+                tel = parsed.get("tel") or {}
+                loader = parsed.get("loader")
+        except (ValueError, TypeError):
+            pass
+        r["telemetry"] = tel
+        r["loader_version"] = loader
+        key_ = r.get("key")
+        r["key_ips_24h"] = db.scalar(
+            "SELECT COUNT(DISTINCT ip) FROM auth_events WHERE key = ? AND ts >= ? "
+            "AND result = 'ok'", (key_, since)) if key_ else 0
+        r["ip_keys_24h"] = db.scalar(
+            "SELECT COUNT(DISTINCT key) FROM auth_events WHERE ip = ? AND ts >= ? "
+            "AND key IS NOT NULL AND key != ''", (r.get("ip"), since)) if r.get("ip") else 0
+    return rows
 
 
 # ---------------------------------------------------------------------------

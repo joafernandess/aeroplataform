@@ -660,3 +660,28 @@ def _db():
             "active; use the public db.* functions instead."
         )
     return _local._db()
+
+
+# ===========================================================================
+# Execution log feed (platform only)
+# ===========================================================================
+def executions(after_id: int = 0, limit: int = 50, ip: str | None = None,
+               discord_id: int | None = None, key: str | None = None,
+               newest_first: bool = False) -> list[dict]:
+    """
+    Execution/auth events from the platform (telemetry, IP, HWID, result).
+    Raises PlatformError in local mode or when the platform is unreachable.
+    """
+    if not HTTP_MODE:
+        raise PlatformError("Execution logs need the Aero Platform bridge.")
+    from urllib.parse import urlencode
+    params: dict = {"after_id": int(after_id), "limit": int(limit)}
+    if ip:
+        params["ip"] = ip
+    if discord_id:
+        params["discord_id"] = int(discord_id)
+    if key:
+        params["key"] = key
+    if newest_first:
+        params["order"] = "desc"
+    return _call("GET", f"/executions?{urlencode(params)}") or []
