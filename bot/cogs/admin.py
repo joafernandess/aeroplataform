@@ -31,6 +31,7 @@ import catalog
 import config
 import platform_bridge as db
 import logger
+from roles import remove_buyer_role
 from utils import (
     error_embed,
     success_embed,
@@ -459,7 +460,10 @@ class AdminCog(commands.Cog):
         reason: str = "",
         days: app_commands.Range[int, 0, 3650] = 0,
     ) -> None:
-        if db.ban_user(user.id, reason, days):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        if await asyncio.to_thread(db.ban_user, user.id, reason, days):
+            # Banned keys are unusable: take the buyer role away now
+            await remove_buyer_role(self.bot, user.id, f"Banned: {reason or '-'}")
             logger.log_event(
                 error_embed(
                     "User banned",
@@ -467,10 +471,11 @@ class AdminCog(commands.Cog):
                     f"User: {user.mention}\n"
                     f"Reason: {reason or '-'}\n"
                     f"Days: {days if days else 'permanent'}",
-                )
+                ),
+                security=True,
             )
             expira = "permanent" if days == 0 else f"{days} day(s)"
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=success_embed(
                     "User banned!",
                     f"**User:** {user.mention}\n"
@@ -480,7 +485,7 @@ class AdminCog(commands.Cog):
                 ephemeral=True,
             )
         else:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     "Nothing to ban",
                     f"{user.mention} has no redeemed key.",
@@ -500,14 +505,15 @@ class AdminCog(commands.Cog):
     async def unban(
         self, interaction: discord.Interaction, user: discord.Member
     ) -> None:
-        if db.unban_user(user.id):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        if await asyncio.to_thread(db.unban_user, user.id):
             logger.log_event(
                 success_embed(
                     "User unbanned",
                     f"By: {interaction.user.mention}\nUser: {user.mention}",
                 )
             )
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=success_embed(
                     "User unbanned!",
                     f"{user.mention} can now use their key again.",
@@ -515,7 +521,7 @@ class AdminCog(commands.Cog):
                 ephemeral=True,
             )
         else:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     "Nothing to unban",
                     f"{user.mention} has no redeemed key.",
@@ -717,8 +723,14 @@ class AdminCog(commands.Cog):
         key: str,
         note: str | None = None,
     ) -> None:
-        if not db.unlink_key(key):
-            await interaction.response.send_message(
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            before = await asyncio.to_thread(db.get_key, key.strip())
+        except Exception:
+            before = None
+        owner_id = before["discord_id"] if before is not None else None
+        if not await asyncio.to_thread(db.unlink_key, key):
+            await interaction.followup.send(
                 embed=error_embed(
                     "Nothing to unlink",
                     "Key not found, or the key is not bound to anyone.",
@@ -726,7 +738,7 @@ class AdminCog(commands.Cog):
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=success_embed(
                 "Key unbound!",
                 f"Key: `{key.strip()}`\n"
@@ -735,10 +747,16 @@ class AdminCog(commands.Cog):
             ),
             ephemeral=True,
         )
+        if owner_id:
+            # Old owner keeps the role only if another usable key is left
+            other = await asyncio.to_thread(db.get_user_key, owner_id)
+            if other is None or db.status(other) != "ok":
+                await remove_buyer_role(self.bot, owner_id, "Key unlinked")
         logger.log_event(
             info_embed(
                 "Key unbound",
                 f"By: {interaction.user.mention}\n"
+                f"Previous owner: {f'<@{owner_id}>' if owner_id else '-'}\n"
                 f"Key: `{mask_key(key.strip())}`\n"
                 f"Reason: {note or '-'}",
             )

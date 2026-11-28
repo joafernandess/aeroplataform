@@ -24,6 +24,7 @@ import logger
 from bot_api import BotApiClient, BotApiError
 from ratelimit import RateLimiter
 from cogs.lang import open_language_menu
+from roles import give_buyer_role
 from utils import error_embed, success_embed, info_embed, ago, admin_only, mask_key
 
 # Used when the bot object has no client of its own (tests, standalone runs)
@@ -166,13 +167,60 @@ class GamePickerView(ui.View):
 # ---------------------------------------------------------------------------
 # Redeem modal
 # ---------------------------------------------------------------------------
-# Anti brute-force: 5 wrong keys per user, then a 10 minute pause
-_redeem_limiter = RateLimiter(limit=4, window=600.0)
+# Anti brute-force. Per user: REDEEM_USER_FAIL_LIMIT wrong/foreign keys, then
+# a 10 minute pause. Globally: REDEEM_GLOBAL_FAIL_LIMIT failures from everyone
+# combined pauses redemption for all (stops guessing spread over many alts).
+_redeem_limiter = RateLimiter(limit=config.REDEEM_USER_FAIL_LIMIT, window=600.0)
+_global_redeem_limiter = RateLimiter(limit=config.REDEEM_GLOBAL_FAIL_LIMIT, window=600.0)
+_GLOBAL_BUCKET = "redeem:all"
+# Lockouts are logged once per window, not on every blocked click
+_lockout_logged = RateLimiter(limit=1, window=600.0)
 _REDEEM_BLOCKED = {
     "pt": ("Muitas tentativas", "Você errou a key várias vezes. Tente de novo em alguns minutos."),
     "es": ("Demasiados intentos", "Fallaste la key varias veces. Inténtalo de nuevo en unos minutos."),
     "en": ("Too many attempts", "You entered a wrong key several times. Try again in a few minutes."),
 }
+_REDEEM_PAUSED = {
+    "pt": ("Resgate pausado", "O resgate de keys está temporariamente pausado. Tente de novo em alguns minutos."),
+    "es": ("Canje pausado", "El canje de keys está pausado temporalmente. Inténtalo de nuevo en unos minutos."),
+    "en": ("Redeem paused", "Key redemption is temporarily paused. Try again in a few minutes."),
+}
+_ACCOUNT_TOO_NEW = {
+    "pt": ("Conta muito nova", "Sua conta do Discord precisa ter pelo menos {days} dia(s) para resgatar uma key. Fale com a staff."),
+    "es": ("Cuenta muy nueva", "Tu cuenta de Discord debe tener al menos {days} día(s) para canjear una key. Habla con el staff."),
+    "en": ("Account too new", "Your Discord account must be at least {days} day(s) old to redeem a key. Contact the staff."),
+}
+_REDEEM_UNAVAILABLE = {
+    "pt": ("Indisponível", "Não foi possível falar com o servidor de keys agora. Tente de novo em instantes."),
+    "es": ("No disponible", "No se pudo contactar con el servidor de keys. Inténtalo de nuevo en un momento."),
+    "en": ("Unavailable", "Could not reach the key server right now. Try again in a moment."),
+}
+_ROLE_NOTE = {
+    "granted": {
+        "pt": "\n\n✅ Você recebeu o cargo {role}.",
+        "es": "\n\n✅ Recibiste el rol {role}.",
+        "en": "\n\n✅ You received the {role} role.",
+    },
+    "forbidden": {
+        "pt": "\n\n⚠️ Não consegui te dar o cargo automaticamente. Use **Get Role** ou fale com a staff.",
+        "es": "\n\n⚠️ No pude darte el rol automáticamente. Usa **Get Role** o habla con el staff.",
+        "en": "\n\n⚠️ I couldn't give you the role automatically. Use **Get Role** or contact the staff.",
+    },
+}
+
+# Failure codes that count toward the lockouts: a wrong key, or someone
+# else's key (somebody trying leaked/shared keys)
+_COUNTED_FAILURES = ("not_found", "taken")
+
+
+def _who(user: discord.abc.User) -> str:
+    created = int(user.created_at.timestamp())
+    return f"{user.mention} (`{user.id}`, account created <t:{created}:R>)"
+
+
+def _lockout(bucket: str, title: str, text: str) -> None:
+    if not _lockout_logged.hit(bucket):
+        logger.log_event(error_embed(title, text), security=True)
 
 
 class RedeemModal(ui.Modal):
@@ -190,61 +238,201 @@ class RedeemModal(ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         lang = i18n.get_lang(interaction.user.id)
+        user = interaction.user
         key = str(self.key_input.value).strip()
-        bucket = f"redeem:{interaction.user.id}"
+        bucket = f"redeem:{user.id}"
+
+        def pick(table: dict) -> tuple[str, str]:
+            return table.get(lang, table["en"])
+
+        # 1. Lockouts (checked before touching the key server)
         if _redeem_limiter.over(bucket):
-            title, text = _REDEEM_BLOCKED.get(lang, _REDEEM_BLOCKED["en"])
+            _lockout(
+                f"user:{user.id}", "Redeem lockout (user)",
+                f"User: {_who(user)}\nToo many wrong or foreign keys; "
+                "blocked for up to 10 minutes.",
+            )
+            title, text = pick(_REDEEM_BLOCKED)
             await interaction.response.send_message(
                 embed=error_embed(title, text), ephemeral=True
             )
             return
-        code, _row = await asyncio.to_thread(db.redeem, key, interaction.user.id)
-        if code == "not_found":
-            _redeem_limiter.hit(bucket)
+        if _global_redeem_limiter.over(_GLOBAL_BUCKET):
+            _lockout(
+                "global", "Redeem paused for everyone",
+                f"More than {config.REDEEM_GLOBAL_FAIL_LIMIT} failed redemptions "
+                "in 10 minutes across all users — possible brute-force. "
+                f"Last attempt by {_who(user)}.",
+            )
+            title, text = pick(_REDEEM_PAUSED)
+            await interaction.response.send_message(
+                embed=error_embed(title, text), ephemeral=True
+            )
+            return
 
-        if code == "ok":
-            embed = success_embed(
-                i18n.tl(lang, "redeem_ok"),
-                i18n.tl(lang, "redeem_ok_desc", user=interaction.user.mention),
-            )
-            logger.log_event(
-                success_embed(
-                    "Key redeemed",
-                    f"User: {interaction.user.mention}\nKey: `{mask_key(key)}`",
+        # 2. Account age gate (anti alts)
+        if config.MIN_ACCOUNT_AGE_DAYS:
+            age_days = (discord.utils.utcnow() - user.created_at).days
+            if age_days < config.MIN_ACCOUNT_AGE_DAYS:
+                logger.log_event(
+                    error_embed(
+                        "Redeem refused: account too new",
+                        f"User: {_who(user)}\nKey: `{mask_key(key)}`\n"
+                        f"Minimum: {config.MIN_ACCOUNT_AGE_DAYS} day(s)",
+                    ),
+                    security=True,
                 )
+                title, text = pick(_ACCOUNT_TOO_NEW)
+                await interaction.response.send_message(
+                    embed=error_embed(title, text.format(days=config.MIN_ACCOUNT_AGE_DAYS)),
+                    ephemeral=True,
+                )
+                return
+
+        # The key server can take a few seconds: answer Discord first
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            code, row = await asyncio.to_thread(db.redeem, key, user.id)
+        except Exception as exc:
+            logger.log_event(
+                error_embed(
+                    "Redeem failed: key server error",
+                    f"User: {_who(user)}\nKey: `{mask_key(key)}`\nError: {exc}",
+                ),
+                security=True,
             )
+            title, text = pick(_REDEEM_UNAVAILABLE)
+            await interaction.followup.send(embed=error_embed(title, text), ephemeral=True)
+            return
+
+        if code in _COUNTED_FAILURES:
+            _redeem_limiter.hit(bucket)
+            _global_redeem_limiter.hit(_GLOBAL_BUCKET)
+
+        if code in ("ok", "already"):
+            role_note = ""
+            # "already" is returned before the expiry/ban checks, so only a
+            # key that is actually usable earns the role
+            usable = row is not None and db.status(row) == "ok"
+            if config.AUTO_ROLE_ON_REDEEM and (code == "ok" or usable):
+                result = await give_buyer_role(user, reason="Key redeemed")
+                role = (
+                    interaction.guild.get_role(config.BUYER_ROLE_ID)
+                    if interaction.guild else None
+                )
+                if result in _ROLE_NOTE:
+                    role_note = _ROLE_NOTE[result].get(lang, _ROLE_NOTE[result]["en"])
+                    role_note = role_note.format(role=role.mention if role else "@Buyer")
+                if result == "granted":
+                    logger.log_event(
+                        success_embed(
+                            "Role granted (auto)",
+                            f"User: {user.mention}\n"
+                            f"Role: {role.mention if role else config.BUYER_ROLE_ID}\n"
+                            "Reason: key redeemed",
+                        )
+                    )
+                elif result in ("forbidden", "error"):
+                    logger.log_event(
+                        error_embed(
+                            "Auto role FAILED",
+                            f"User: {user.mention}\nResult: `{result}`\n"
+                            "Give the bot **Manage Roles** and move its role "
+                            "above the buyer role.",
+                        ),
+                        security=True,
+                    )
+            if code == "ok":
+                embed = success_embed(
+                    i18n.tl(lang, "redeem_ok"),
+                    i18n.tl(lang, "redeem_ok_desc", user=user.mention) + role_note,
+                )
+                logger.log_event(
+                    success_embed(
+                        "Key redeemed",
+                        f"User: {_who(user)}\nKey: `{mask_key(key)}`",
+                    )
+                )
+            else:
+                embed = error_embed(
+                    i18n.tl(lang, "redeem_already"),
+                    i18n.tl(lang, "redeem_already_desc") + role_note,
+                )
         elif code == "not_found":
             embed = error_embed(
                 i18n.tl(lang, "redeem_not_found"),
                 i18n.tl(lang, "redeem_not_found_desc"),
             )
-        elif code == "already":
-            embed = error_embed(
-                i18n.tl(lang, "redeem_already"),
-                i18n.tl(lang, "redeem_already_desc"),
+            logger.log_event(
+                error_embed(
+                    "Redeem failed: invalid key",
+                    f"User: {_who(user)}\nKey tried: `{mask_key(key)}`",
+                ),
+                security=True,
             )
         elif code == "taken":
             embed = error_embed(
                 i18n.tl(lang, "redeem_taken"),
                 i18n.tl(lang, "redeem_taken_desc"),
             )
-        elif code == "banned":
-            embed = error_embed(
-                i18n.tl(lang, "redeem_banned"),
-                i18n.tl(lang, "redeem_banned_desc"),
+            owner = row["discord_id"] if row is not None else None
+            logger.log_event(
+                error_embed(
+                    "Key-sharing attempt: key belongs to someone else",
+                    f"Tried by: {_who(user)}\n"
+                    f"Owner: {f'<@{owner}>' if owner else 'unknown'}\n"
+                    f"Key: `{mask_key(key)}`\n"
+                    "The owner may have shared or leaked their key.",
+                ),
+                security=True,
             )
-        elif code == "inactive":
+        elif code in ("banned", "inactive", "expired"):
             embed = error_embed(
-                i18n.tl(lang, "redeem_inactive"),
-                i18n.tl(lang, "redeem_inactive_desc"),
+                i18n.tl(lang, f"redeem_{code}"),
+                i18n.tl(lang, f"redeem_{code}_desc"),
             )
-        else:  # expired
+            logger.log_event(
+                error_embed(
+                    f"Redeem refused: key {code}",
+                    f"User: {_who(user)}\nKey: `{mask_key(key)}`",
+                ),
+                security=(code == "banned"),
+            )
+        else:
             embed = error_embed(
                 i18n.tl(lang, "redeem_expired"),
                 i18n.tl(lang, "redeem_expired_desc"),
             )
+            logger.log_event(
+                error_embed(
+                    "Redeem refused: unknown result",
+                    f"User: {_who(user)}\nKey: `{mask_key(key)}`\nCode: `{code}`",
+                ),
+                security=True,
+            )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.log_event(
+            error_embed(
+                "Redeem crashed",
+                f"User: {interaction.user.mention}\nError: `{type(error).__name__}: {error}`",
+            ),
+            security=True,
+        )
+        try:
+            send = (
+                interaction.followup.send
+                if interaction.response.is_done()
+                else interaction.response.send_message
+            )
+            await send(
+                embed=error_embed("Internal error", "Something went wrong. Please try again."),
+                ephemeral=True,
+            )
+        except discord.HTTPException:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -333,15 +521,14 @@ class PanelView(ui.View):
     async def get_script(
         self, interaction: discord.Interaction, item: discord.ui.Button
     ) -> None:
-        err, row = self._require_key(interaction.user.id)
+        # Answer Discord first: the key lookup is an HTTP call to the platform
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        err, row = await asyncio.to_thread(self._require_key, interaction.user.id)
         if err:
-            await interaction.response.send_message(
-                embed=err, ephemeral=True
-            )
+            await interaction.followup.send(embed=err, ephemeral=True)
             return
 
         # The loader comes from the private API (key + game validation)
-        await interaction.response.defer(ephemeral=True, thinking=True)
         await deliver_loader(interaction, row["key"], None)
 
     # ------------------------------------------------------------------
@@ -357,11 +544,11 @@ class PanelView(ui.View):
         self, interaction: discord.Interaction, item: discord.ui.Button
     ) -> None:
         lang = i18n.get_lang(interaction.user.id)
-        err, _row = self._require_key(interaction.user.id)
+        # Answer Discord first: the key lookup is an HTTP call to the platform
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        err, row = await asyncio.to_thread(self._require_key, interaction.user.id)
         if err:
-            await interaction.response.send_message(
-                embed=err, ephemeral=True
-            )
+            await interaction.followup.send(embed=err, ephemeral=True)
             return
 
         role = (
@@ -370,7 +557,7 @@ class PanelView(ui.View):
             else None
         )
         if role is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     i18n.tl(lang, "panel_misconfig"),
                     i18n.tl(lang, "panel_role_missing"),
@@ -380,7 +567,7 @@ class PanelView(ui.View):
             return
 
         if role in interaction.user.roles:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     i18n.tl(lang, "panel_role_already"),
                     i18n.tl(lang, "panel_role_already_desc", role=role.mention),
@@ -394,7 +581,7 @@ class PanelView(ui.View):
                 role, reason="Get Role via panel"
             )
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     i18n.tl(lang, "panel_role_forbidden"),
                     i18n.tl(lang, "panel_role_forbidden_desc", role=role.mention),
@@ -409,7 +596,7 @@ class PanelView(ui.View):
                 f"User: {interaction.user.mention}\nRole: {role.mention}",
             )
         )
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=success_embed(
                 i18n.tl(lang, "success"),
                 i18n.tl(lang, "panel_role_granted", role=role.mention),
@@ -430,15 +617,15 @@ class PanelView(ui.View):
         self, interaction: discord.Interaction, item: discord.ui.Button
     ) -> None:
         lang = i18n.get_lang(interaction.user.id)
-        err, row = self._require_key(interaction.user.id)
+        # Answer Discord first: the key lookup is an HTTP call to the platform
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        err, row = await asyncio.to_thread(self._require_key, interaction.user.id)
         if err:
-            await interaction.response.send_message(
-                embed=err, ephemeral=True
-            )
+            await interaction.followup.send(embed=err, ephemeral=True)
             return
 
         if row["hwid_resets"] >= config.MAX_HWID_RESETS:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     i18n.tl(lang, "panel_limit"),
                     i18n.tl(lang, "panel_limit_desc",
@@ -448,16 +635,35 @@ class PanelView(ui.View):
             )
             return
 
-        db.reset_hwid(interaction.user.id)
+        if not await asyncio.to_thread(db.reset_hwid, interaction.user.id):
+            logger.log_event(
+                error_embed(
+                    "HWID reset failed",
+                    f"User: {interaction.user.mention}\n"
+                    f"Key: `{mask_key(row['key'])}`\n"
+                    "The key server refused it (limit reached or unreachable).",
+                ),
+                security=True,
+            )
+            await interaction.followup.send(
+                embed=error_embed(
+                    i18n.tl(lang, "panel_limit"),
+                    i18n.tl(lang, "panel_limit_desc", max=config.MAX_HWID_RESETS),
+                ),
+                ephemeral=True,
+            )
+            return
         logger.log_event(
             info_embed(
                 "HWID reset",
                 f"User: {interaction.user.mention}\n"
+                f"Key: `{mask_key(row['key'])}`\n"
+                f"Old HWID: `{row['hwid'] or '-'}`\n"
                 f"Resets used: {row['hwid_resets'] + 1}/"
                 f"{config.MAX_HWID_RESETS}",
             )
         )
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=success_embed(
                 i18n.tl(lang, "success"),
                 i18n.tl(lang, "panel_hwid_reset"),
@@ -478,11 +684,11 @@ class PanelView(ui.View):
         self, interaction: discord.Interaction, item: discord.ui.Button
     ) -> None:
         lang = i18n.get_lang(interaction.user.id)
-        err, row = self._require_key(interaction.user.id)
+        # Answer Discord first: the key lookup is an HTTP call to the platform
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        err, row = await asyncio.to_thread(self._require_key, interaction.user.id)
         if err:
-            await interaction.response.send_message(
-                embed=err, ephemeral=True
-            )
+            await interaction.followup.send(embed=err, ephemeral=True)
             return
 
         hwid_status = (
@@ -550,7 +756,7 @@ class PanelView(ui.View):
                 inline=False,
             )
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=embed, ephemeral=True
         )
 
@@ -645,18 +851,18 @@ class PanelCog(commands.Cog):
         interaction: discord.Interaction,
         game: str | None = None,
     ) -> None:
-        err, row = PanelView._require_key(interaction.user.id)
-        if err:
-            await interaction.response.send_message(embed=err, ephemeral=True)
-            return
         await interaction.response.defer(ephemeral=True, thinking=True)
+        err, row = await asyncio.to_thread(PanelView._require_key, interaction.user.id)
+        if err:
+            await interaction.followup.send(embed=err, ephemeral=True)
+            return
         await deliver_loader(interaction, row["key"], (game or "").strip().lower() or None)
 
     @loader.autocomplete("game")
     async def loader_game_autocomplete(
         self, interaction: discord.Interaction, current: str
     ) -> list[app_commands.Choice[str]]:
-        row = db.get_user_key(interaction.user.id)
+        row = await asyncio.to_thread(db.get_user_key, interaction.user.id)
         if row is None:
             return []
         try:

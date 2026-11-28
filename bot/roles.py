@@ -119,3 +119,65 @@ async def grant_buyer_role(bot: discord.Client, user_id: int) -> bool:
             log.warning("Could not grant the buyer role to %s: %s", user_id, exc)
     return False
 
+
+
+async def give_buyer_role(member: discord.abc.User, reason: str) -> str:
+    """
+    Gives the buyer role to a guild member right away (used on redeem).
+    Returns "granted", "already", "missing" (role not configured / not in
+    this server), "forbidden" (bot role below the buyer role) or "error".
+    """
+    if not config.BUYER_ROLE_ID or not isinstance(member, discord.Member):
+        return "missing"
+    role = member.guild.get_role(config.BUYER_ROLE_ID)
+    if role is None:
+        return "missing"
+    if role in member.roles:
+        await asyncio.to_thread(catalog.del_kv, _flag(member.id))
+        return "already"
+    try:
+        await member.add_roles(role, reason=reason)
+    except discord.Forbidden:
+        log.warning(
+            "Missing permission to give the buyer role to %s "
+            "(the bot's role must be above it and have Manage Roles)", member.id,
+        )
+        return "forbidden"
+    except discord.HTTPException as exc:
+        log.warning("Could not give the buyer role to %s: %s", member.id, exc)
+        return "error"
+    await asyncio.to_thread(catalog.del_kv, _flag(member.id))
+    return "granted"
+
+
+async def remove_buyer_role(bot: discord.Client, user_id: int, reason: str) -> bool:
+    """
+    Takes the buyer role away immediately (ban / unlink), instead of waiting
+    for the next sync_buyer_roles run. Best effort; True when removed.
+    """
+    if not config.BUYER_ROLE_ID:
+        return False
+    removed = False
+    for guild in bot.guilds:
+        if config.GUILD_ID and guild.id != config.GUILD_ID:
+            continue
+        role = guild.get_role(config.BUYER_ROLE_ID)
+        if role is None:
+            continue
+        try:
+            member = guild.get_member(user_id) or await guild.fetch_member(user_id)
+        except discord.HTTPException:
+            continue
+        if role not in member.roles:
+            continue
+        try:
+            await member.remove_roles(role, reason=reason)
+            removed = True
+        except discord.HTTPException as exc:
+            log.warning("Could not remove the buyer role from %s: %s", user_id, exc)
+    if removed:
+        await asyncio.to_thread(catalog.set_kv, _flag(user_id), True)
+        logger.log_event(
+            info_embed("Buyer role removed", f"User: <@{user_id}>\nReason: {reason}")
+        )
+    return removed

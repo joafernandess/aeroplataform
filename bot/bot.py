@@ -29,7 +29,7 @@ from api import start_api
 from bot_api import BotApiClient, BotApiError
 from dashboard import start_dashboard
 from roles import sync_buyer_roles
-from utils import error_embed
+from utils import error_embed, info_embed, mask_key
 
 # Logs go to the console (when there is one) and to bot.log
 _handlers: list = []
@@ -231,11 +231,22 @@ class KeyBot(commands.Bot):
     async def on_ready(self) -> None:
         log.info("Logged in as %s (ID %s)", self.user, self.user and self.user.id)
         log.info("Servers: %d", len(self.guilds))
-        logmod.configure(self, config.LOG_CHANNEL_ID)
+        logmod.configure(
+            self, config.LOG_CHANNEL_ID, config.SECURITY_LOG_CHANNEL_ID
+        )
         if config.LOG_CHANNEL_ID:
             log.info("Log channel: %s", config.LOG_CHANNEL_ID)
         else:
             log.info("Log channel not configured (LOG_CHANNEL_ID empty)")
+        if config.SECURITY_LOG_CHANNEL_ID:
+            log.info("Security log channel: %s", config.SECURITY_LOG_CHANNEL_ID)
+        logmod.log_event(
+            info_embed(
+                "Bot online",
+                f"Logged in as {self.user} — {len(self.guilds)} server(s)\n"
+                f"Mode: {'Aero Platform' if db.using_platform() else 'local'}",
+            )
+        )
         if not self.backup_loop.is_running():
             self.backup_loop.start()
         if not self.reminder_loop.is_running():
@@ -248,6 +259,24 @@ class KeyBot(commands.Bot):
             activity=discord.Activity(
                 type=discord.ActivityType.watching,
                 name="the key panel",
+            )
+        )
+
+    # ------------------------------------------------------------------
+    async def on_app_command_completion(
+        self,
+        interaction: discord.Interaction,
+        command: app_commands.Command | app_commands.ContextMenu,
+    ) -> None:
+        """Audit log: every staff/admin command that ran successfully."""
+        if not getattr(command, "checks", None):
+            return  # public command (no permission check): not audited
+        logmod.log_event(
+            info_embed(
+                f"Command used: /{command.qualified_name}",
+                f"By: {interaction.user.mention} (`{interaction.user.id}`)\n"
+                f"Channel: {getattr(interaction.channel, 'mention', '-')}\n"
+                f"Options: {_describe_options(interaction)}",
             )
         )
 
@@ -277,11 +306,29 @@ async def on_app_command_error(
     error: app_commands.AppCommandError,
 ) -> None:
     original = getattr(error, "original", error)
+    name = interaction.command.qualified_name if interaction.command else "?"
     if isinstance(error, app_commands.CheckFailure):
         message = str(original) or "You don't have permission to do that."
         embed = error_embed("No permission", message)
+        logmod.log_event(
+            error_embed(
+                f"Permission denied: /{name}",
+                f"User: {interaction.user.mention} (`{interaction.user.id}`)\n"
+                f"Channel: {getattr(interaction.channel, 'mention', '-')}\n"
+                f"Options: {_describe_options(interaction)}",
+            ),
+            security=True,
+        )
     else:
         log.exception("Error in slash command", exc_info=original)
+        logmod.log_event(
+            error_embed(
+                f"Command error: /{name}",
+                f"User: {interaction.user.mention}\n"
+                f"Error: `{type(original).__name__}: {str(original)[:500]}`",
+            ),
+            security=True,
+        )
         embed = error_embed(
             "Internal error",
             "Something went wrong while running the command. Please try again.",
@@ -296,6 +343,22 @@ async def on_app_command_error(
             )
     except discord.HTTPException:
         pass
+
+
+_SECRET_OPTIONS = ("key", "token", "password", "secret")
+
+
+def _describe_options(interaction: discord.Interaction) -> str:
+    """Slash command options for the logs, with keys masked."""
+    parts = []
+    for name, value in vars(interaction.namespace).items():
+        if any(word in name.lower() for word in _SECRET_OPTIONS):
+            value = mask_key(str(value))
+        elif getattr(value, "mention", None):
+            value = value.mention  # users, roles, channels
+        text = str(value).replace("`", "'")
+        parts.append(f"`{name}`={text[:200]}")
+    return ", ".join(parts) or "-"
 
 
 def main() -> None:

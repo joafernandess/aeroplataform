@@ -77,6 +77,9 @@ PANEL_CHANNEL_ID = _int("PANEL_CHANNEL_ID", 0)
 # Channel that receives event logs (redemptions, executions, bans...).
 # 0 = logging disabled.
 LOG_CHANNEL_ID = _int("LOG_CHANNEL_ID", 0)
+# Security events only (failed redeems, key-sharing attempts, permission
+# denials, errors). Empty = they go to LOG_CHANNEL_ID.
+SECURITY_LOG_CHANNEL_ID = _int("SECURITY_LOG_CHANNEL_ID", 0)
 
 # ---------------------------------------------------------------------------
 # Panel
@@ -93,6 +96,17 @@ PANEL_COLOR = _color("PANEL_COLOR", 0x5865F2)
 
 # Maximum HWID resets per key (anti key-sharing)
 MAX_HWID_RESETS = _int("MAX_HWID_RESETS", 3)
+
+# Give the @Buyer role automatically when a key is redeemed (1/0)
+AUTO_ROLE_ON_REDEEM = _int("AUTO_ROLE_ON_REDEEM", 1) != 0
+# Discord accounts younger than this cannot redeem keys (anti alt / anti
+# brute-force with throwaway accounts). 0 = disabled.
+MIN_ACCOUNT_AGE_DAYS = max(0, _int("MIN_ACCOUNT_AGE_DAYS", 0))
+# Wrong/foreign keys allowed per user every 10 minutes before a lockout
+REDEEM_USER_FAIL_LIMIT = max(1, _int("REDEEM_USER_FAIL_LIMIT", 4))
+# Wrong/foreign keys allowed from EVERYONE combined every 10 minutes before
+# redemption is paused for all (stops brute-force spread over many alts)
+REDEEM_GLOBAL_FAIL_LIMIT = max(1, _int("REDEEM_GLOBAL_FAIL_LIMIT", 30))
 
 # ---------------------------------------------------------------------------
 # API (script delivery + execution/HWID tracking)

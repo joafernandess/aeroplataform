@@ -1184,9 +1184,31 @@ class ShopCog(commands.Cog):
         user: discord.Member,
         key: str,
     ) -> None:
-        row = db.get_key(key)
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        row = await asyncio.to_thread(db.get_key, key.strip())
+        if row is not None and row["discord_id"] and row["discord_id"] != user.id:
+            # Never DM a key that is already bound to another buyer
+            logger.log_event(
+                error_embed(
+                    "Blocked: delivering someone else's key",
+                    f"Staff: {interaction.user.mention}\n"
+                    f"Target: {user.mention}\n"
+                    f"Key owner: <@{row['discord_id']}>\n"
+                    f"Key: `{mask_key(row['key'])}`",
+                ),
+                security=True,
+            )
+            await interaction.followup.send(
+                embed=error_embed(
+                    "Key already bound",
+                    f"That key belongs to <@{row['discord_id']}>. "
+                    "Use `/unlink` first if this is a transfer.",
+                ),
+                ephemeral=True,
+            )
+            return
         if row is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     "Key not found",
                     "Check that you typed the key correctly.",
@@ -1205,7 +1227,7 @@ class ShopCog(commands.Cog):
         try:
             await user.send(embed=dm_embed)
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 embed=error_embed(
                     "DMs closed",
                     f"{user.mention} cannot receive direct messages.",
@@ -1214,7 +1236,7 @@ class ShopCog(commands.Cog):
             )
             return
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=success_embed(
                 "Key delivered",
                 f"{user.mention} received the key by DM.",
